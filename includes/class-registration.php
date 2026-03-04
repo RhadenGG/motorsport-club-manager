@@ -46,16 +46,19 @@ class MSC_Registration {
         $vehicle_id = intval($_POST['vehicle_id']);
         $ind_method = sanitize_key($_POST['indemnity_method'] ?? '');
         $ind_sig    = sanitize_textarea_field($_POST['indemnity_sig'] ?? '');
-        $ind_full   = sanitize_text_field($_POST['indemnity_full_name'] ?? '');
         $is_minor   = !empty($_POST['is_minor']) ? 1 : 0;
         $parent     = sanitize_text_field($_POST['parent_name'] ?? '');
         $em_name    = sanitize_text_field($_POST['emergency_name'] ?? '');
         $em_phone   = sanitize_text_field($_POST['emergency_phone'] ?? '');
         $notes      = sanitize_textarea_field($_POST['notes'] ?? '');
 
+        // Pull full name from user profile
+        $user_obj = get_userdata($user_id);
+        $ind_full = $user_obj ? $user_obj->display_name : 'Unknown';
+
         // Validations
-        if ( ! $event_id || ! $vehicle_id || ! $ind_full || ! $em_name || ! $em_phone ) {
-            wp_send_json_error(array('message'=>'Please complete all required participant and contact fields.'));
+        if ( ! $event_id || ! $vehicle_id || ! $em_name || ! $em_phone ) {
+            wp_send_json_error(array('message'=>'Please complete all required emergency contact fields.'));
         }
         if ( $is_minor && ! $parent ) {
             wp_send_json_error(array('message'=>'Please provide the parent/guardian name for a minor.'));

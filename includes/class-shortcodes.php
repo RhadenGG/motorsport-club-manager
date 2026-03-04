@@ -213,12 +213,11 @@ class MSC_Shortcodes {
                 <div class="msc-step-body">
                     
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
-                        <div class="msc-field-group">
-                            <label>Full Names</label>
-                            <input type="text" id="msc-full-name" value="<?php echo esc_attr(wp_get_current_user()->display_name); ?>" placeholder="Enter your full names">
+                        <div class="msc-field-group" style="display:flex;align-items:center;padding-top:5px;">
+                            <label style="cursor:pointer;font-weight:600;"><input type="checkbox" id="msc-is-minor"> I am under 18 and never married</label>
                         </div>
-                        <div class="msc-field-group" style="display:flex;align-items:center;padding-top:25px;">
-                            <label style="cursor:pointer"><input type="checkbox" id="msc-is-minor"> I am under 18 and never married</label>
+                        <div class="msc-field-group">
+                            <!-- Empty spacer for grid alignment if needed -->
                         </div>
                         <div class="msc-field-group">
                             <label>Emergency Contact Name</label>

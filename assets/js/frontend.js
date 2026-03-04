@@ -136,7 +136,6 @@ jQuery(function ($) {
                     vehicle_id:       msc.vehicleId,
                     indemnity_method: method === 'sign' ? 'signed' : 'bring',
                     indemnity_sig:    sig,
-                    indemnity_full_name: $('#msc-full-name').val(),
                     is_minor:         $('#msc-is-minor').is(':checked') ? 1 : 0,
                     parent_name:      $('#msc-parent-name').val(),
                     emergency_name:   $('#msc-emergency-name').val(),
