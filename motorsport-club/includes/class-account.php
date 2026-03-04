@@ -119,7 +119,7 @@ class MSC_Account {
                             <label for="v_type">Vehicle Type <span class="msc-required">*</span></label>
                             <select id="v_type">
                                 <option value="">Select type…</option>
-                                <?php foreach ( array( 'Car', 'Motorcycle' ) as $vt ) : ?>
+                                <?php foreach ( MSC_Taxonomies::get_vehicle_types() as $vt ) : ?>
                                 <option value="<?php echo $vt; ?>"><?php echo $vt; ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -252,7 +252,7 @@ class MSC_Account {
                                     <label>Vehicle Type</label>
                                     <select class="edit-v_type" data-id="<?php echo $v->ID; ?>">
                                         <option value="">Select type…</option>
-                                        <?php foreach ( array( 'Car', 'Motorcycle' ) as $vt ) : ?>
+                                        <?php foreach ( MSC_Taxonomies::get_vehicle_types() as $vt ) : ?>
                                         <option value="<?php echo $vt; ?>" <?php selected( $type, $vt ); ?>><?php echo $vt; ?></option>
                                         <?php endforeach; ?>
                                     </select>

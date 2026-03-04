@@ -19,10 +19,7 @@ class MSC_Shortcodes {
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => wp_login_url(),
             'loggedIn' => is_user_logged_in(),
-            'classes'  => array(
-                'Car'        => array( 'Modifieds / Super Modifieds', 'Super GT\'S', 'Retro Racing', 'Sports Cars', 'Porsche Challenge', 'Time Challenge' ),
-                'Motorcycle' => array( 'Juniors', 'Motards / Supermotards', 'Powersport', 'CBR150', '300 Class', '600/1000', 'MiniGP' ),
-            ),
+            'classes'  => MSC_Taxonomies::get_hardcoded_classes(),
         ) );
     }
 

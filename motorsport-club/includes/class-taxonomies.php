@@ -43,4 +43,32 @@ class MSC_Taxonomies {
         $terms = wp_get_post_terms( $event_id, 'msc_vehicle_class', array( 'fields' => 'ids' ) );
         return is_array( $terms ) ? $terms : array();
     }
+
+    /** Return supported vehicle types */
+    public static function get_vehicle_types() {
+        return array( 'Car', 'Motorcycle' );
+    }
+
+    /** Return hardcoded classes by type for selection */
+    public static function get_hardcoded_classes() {
+        return array(
+            'Car'        => array(
+                'Modifieds / Super Modifieds',
+                "Super GT's",
+                'Retro Racing',
+                'Sports Cars',
+                'Porsche Challenge',
+                'Time Challenge'
+            ),
+            'Motorcycle' => array(
+                'Juniors',
+                'Motards / Supermotards',
+                'Powersport',
+                'CBR150',
+                '300 Class',
+                '600/1000',
+                'MiniGP'
+            ),
+        );
+    }
 }

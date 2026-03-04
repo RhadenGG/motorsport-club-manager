@@ -111,7 +111,7 @@ class MSC_Registration {
         if ( $status === 'confirmed' ) MSC_Emails::send_confirmation($reg_id);
 
         // Email signed indemnity PDF to all parties
-        if ( $ind_method === 'sign' ) {
+        if ( $ind_method === 'signed' ) {
             MSC_Indemnity::email_signed_pdf($reg_id);
         }
 

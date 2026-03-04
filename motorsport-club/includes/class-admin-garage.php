@@ -27,7 +27,7 @@ class MSC_Admin_Garage {
             'reg_number'    => get_post_meta( $post->ID, '_msc_reg_number', true ),
             'notes'         => get_post_meta( $post->ID, '_msc_notes', true ),
         );
-        $types = array('Car','Bike','Motorcycle','Quad','Kart','Truck','Other');
+        $types = MSC_Taxonomies::get_vehicle_types();
         ?>
         <table class="form-table">
             <tr>

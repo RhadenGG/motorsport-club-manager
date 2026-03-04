@@ -165,10 +165,7 @@ class MSC_Admin_Events {
     }
 
     public static function meta_box_classes( $post ) {
-        $vehicle_types = array(
-            'Car'        => array( 'Modifieds / Super Modifieds', "Super GT'S", 'Retro Racing', 'Sports Cars', 'Porsche Challenge', 'Time Challenge' ),
-                               'Motorcycle' => array( 'Juniors', 'Motards / Supermotards', 'Powersport', 'CBR150', '300 Class', '600/1000', 'MiniGP' ),
-        );
+        $vehicle_types = MSC_Taxonomies::get_hardcoded_classes();
 
         $saved_type    = get_post_meta( $post->ID, '_msc_event_vehicle_type', true ) ?: 'Both';
         $saved_classes = get_post_meta( $post->ID, '_msc_event_classes', true );
