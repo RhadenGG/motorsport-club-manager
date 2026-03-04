@@ -1,0 +1,281 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class MSC_Shortcodes {
+
+    public static function init() {
+        add_shortcode( 'msc_events_list',     array( __CLASS__, 'events_list' ) );
+        add_shortcode( 'msc_register_event',  array( __CLASS__, 'register_form' ) );
+        add_action(    'wp_enqueue_scripts',  array( __CLASS__, 'enqueue' ) );
+        add_filter( 'the_content', array( __CLASS__, 'append_to_event' ) );
+    }
+
+    public static function enqueue() {
+        wp_enqueue_style(  'msc-frontend', MSC_URL . 'assets/css/frontend.css', array(), MSC_VERSION );
+        wp_enqueue_script( 'msc-signature', 'https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js', array(), null, true );
+        wp_enqueue_script( 'msc-frontend',  MSC_URL . 'assets/js/frontend.js', array('jquery','msc-signature'), MSC_VERSION, true );
+        wp_localize_script( 'msc-frontend', 'mscData', array(
+            'ajaxUrl'  => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('msc_nonce'),
+            'loginUrl' => wp_login_url(),
+            'loggedIn' => is_user_logged_in(),
+            'classes'  => array(
+                'Car'        => array( 'Modifieds / Super Modifieds', 'Super GT\'S', 'Retro Racing', 'Sports Cars', 'Porsche Challenge', 'Time Challenge' ),
+                'Motorcycle' => array( 'Juniors', 'Motards / Supermotards', 'Powersport', 'CBR150', '300 Class', '600/1000', 'MiniGP' ),
+            ),
+        ) );
+    }
+
+    public static function append_to_event( $content ) {
+        if ( is_singular('msc_event') && in_the_loop() && is_main_query() ) {
+            $event_id = get_the_ID();
+            $content .= self::render_event_meta( $event_id );
+            $content .= self::register_form( array( 'event_id' => $event_id ) );
+            if ( MSC_Results::is_closed( $event_id ) ) {
+                $content .= MSC_Results::get_results_html( $event_id );
+            }
+        }
+        return $content;
+    }
+
+    private static function render_event_meta( $event_id ) {
+        $date     = get_post_meta($event_id,'_msc_event_date',true);
+        $end_date = get_post_meta($event_id,'_msc_event_end_date',true);
+        $location = get_post_meta($event_id,'_msc_event_location',true);
+        $fee      = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
+        $capacity = get_post_meta($event_id,'_msc_capacity',true);
+        $classes  = MSC_Taxonomies::get_event_classes($event_id);
+        $class_names = array();
+        foreach($classes as $cid) {
+            $t = get_term($cid,'msc_vehicle_class');
+            if ($t && !is_wp_error($t)) $class_names[] = $t->name;
+        }
+
+        global $wpdb;
+        $reg_count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')", $event_id
+        ));
+
+        $html = '<div class="msc-event-meta">';
+        $items = array();
+        if ($date)     $items[] = array('📅','Date', date('D d F Y @ H:i', strtotime($date)) . ($end_date ? ' – '.date('H:i', strtotime($end_date)) : ''));
+        if ($location) $items[] = array('📍','Location', esc_html($location));
+        $items[] = array('💰','Entry Fee', $fee > 0 ? 'R '.number_format($fee,2) : 'Free');
+        if ($capacity) $items[] = array('👥','Entries', esc_html($reg_count.' / '.$capacity));
+        else           $items[] = array('👥','Entries', esc_html($reg_count.' registered'));
+        if (!empty($class_names)) $items[] = array('🏷','Classes', esc_html(implode(', ', $class_names)));
+
+        // Show closed badge if event is closed
+        if ( MSC_Results::is_closed( $event_id ) ) {
+            $items[] = array('🔴','Status','Event Closed — Results Available Below');
+        }
+
+        foreach($items as $i) {
+            $html .= "<div class='msc-meta-row'><span class='msc-meta-icon'>{$i[0]}</span><span class='msc-meta-label'>{$i[1]}</span><span class='msc-meta-value'>{$i[2]}</span></div>";
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    public static function events_list( $atts = array() ) {
+        $atts = shortcode_atts( array( 'count' => 10, 'show_past' => 0 ), $atts );
+        $args = array(
+            'post_type'      => 'msc_event',
+            'posts_per_page' => intval($atts['count']),
+            'post_status'    => 'publish',
+            'orderby'        => 'meta_value',
+            'meta_key'       => '_msc_event_date',
+            'order'          => 'ASC',
+        );
+        if ( ! $atts['show_past'] ) {
+            $args['meta_query'] = array(array(
+                'key'     => '_msc_event_date',
+                'value'   => date('Y-m-d\TH:i'),
+                'compare' => '>=',
+                'type'    => 'DATETIME',
+            ));
+        }
+        $events = get_posts($args);
+        if (empty($events)) return '<p class="msc-no-events">No upcoming events at the moment. Check back soon!</p>';
+
+        ob_start();
+        echo '<div class="msc-events-grid">';
+        foreach($events as $e) {
+            $date     = get_post_meta($e->ID,'_msc_event_date',true);
+            $location = get_post_meta($e->ID,'_msc_event_location',true);
+            $fee      = floatval(get_post_meta($e->ID,'_msc_entry_fee',true));
+            $terms    = get_the_terms($e->ID,'msc_vehicle_class');
+            $closed   = MSC_Results::is_closed( $e->ID );
+            global $wpdb;
+            $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$e->ID));
+            $capacity  = get_post_meta($e->ID,'_msc_capacity',true);
+            $full      = $capacity && $reg_count >= $capacity;
+            ?>
+            <div class="msc-event-card <?php echo $full ? 'msc-event-full' : ''; ?> <?php echo $closed ? 'msc-event-closed' : ''; ?>">
+                <?php if(has_post_thumbnail($e->ID)): ?>
+                <div class="msc-event-thumb"><?php echo get_the_post_thumbnail($e->ID,'medium') ?></div>
+                <?php else: ?>
+                <div class="msc-event-thumb msc-event-thumb-placeholder">🏁</div>
+                <?php endif ?>
+                <div class="msc-event-body">
+                    <?php if($closed): ?>
+                        <span class="msc-badge msc-badge-closed">RESULTS AVAILABLE</span>
+                    <?php elseif($full): ?>
+                        <span class="msc-badge msc-badge-full">FULL</span>
+                    <?php endif; ?>
+                    <h3 class="msc-event-title"><a href="<?php echo get_permalink($e->ID) ?>"><?php echo esc_html($e->post_title) ?></a></h3>
+                    <?php if($date): ?><p class="msc-event-date">📅 <?php echo esc_html(date('D d F Y',strtotime($date))) ?></p><?php endif ?>
+                    <?php if($location): ?><p class="msc-event-location">📍 <?php echo esc_html($location) ?></p><?php endif ?>
+                    <?php if(!empty($terms) && !is_wp_error($terms)): ?>
+                    <p class="msc-event-classes"><?php foreach($terms as $t) echo "<span class='msc-class-pill'>".esc_html($t->name)."</span> " ?></p>
+                    <?php endif ?>
+                    <div class="msc-event-footer">
+                        <span class="msc-event-fee"><?php echo $fee>0?'R '.number_format($fee,2):'Free' ?></span>
+                        <?php if($closed): ?>
+                            <a href="<?php echo get_permalink($e->ID) ?>" class="msc-btn">View Results</a>
+                        <?php else: ?>
+                            <a href="<?php echo get_permalink($e->ID) ?>" class="msc-btn <?php echo $full?'msc-btn-disabled':'' ?>"><?php echo $full?'View Event':'Register Now' ?></a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php
+        }
+        echo '</div>';
+        return ob_get_clean();
+    }
+
+    public static function register_form( $atts = array() ) {
+        $atts     = shortcode_atts( array('event_id' => get_the_ID()), $atts );
+        $event_id = intval($atts['event_id']);
+        $event    = get_post($event_id);
+        if (!$event || $event->post_type !== 'msc_event') return '';
+
+        // If event is closed, don't show registration form
+        if ( MSC_Results::is_closed( $event_id ) ) {
+            return '<div class="msc-notice msc-notice-info">🔴 This event has now closed. See the results below.</div>';
+        }
+
+        $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
+        $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
+        $now       = current_time('timestamp');
+        $indemnity = get_post_meta($event_id,'_msc_indemnity_text',true);
+        $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
+        $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
+
+        if ($reg_open  && strtotime($reg_open)  > $now) return '<div class="msc-notice msc-notice-info">Registration opens on '.date('D d F Y @ H:i',strtotime($reg_open)).'.</div>';
+        if ($reg_close && strtotime($reg_close) < $now) return '<div class="msc-notice msc-notice-warning">Registration for this event is now closed.</div>';
+
+        if (!is_user_logged_in()) {
+            return '<div class="msc-notice msc-notice-info"><p>You must be logged in to register for this event.</p><a href="'.wp_login_url(get_permalink()).'" class="msc-btn">Log In</a> <a href="'.wp_registration_url().'" class="msc-btn msc-btn-outline">Register Account</a></div>';
+        }
+
+        $user_id = get_current_user_id();
+
+        if (MSC_Registration::user_is_registered($user_id, $event_id)) {
+            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="?msc_tab=registrations">View your registration</a></div>';
+        }
+
+        global $wpdb;
+        $capacity  = intval(get_post_meta($event_id,'_msc_capacity',true));
+        $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$event_id));
+        if ($capacity && $reg_count >= $capacity) {
+            return '<div class="msc-notice msc-notice-warning">Sorry, this event is fully booked.</div>';
+        }
+
+        ob_start();
+        ?>
+        <div id="msc-reg-wrap" class="msc-registration-wrap" data-event="<?php echo $event_id ?>">
+            <h3 class="msc-section-title">Register for this Event</h3>
+
+            <?php if($approval==='manual'): ?>
+            <div class="msc-notice msc-notice-info" style="margin-bottom:16px">ℹ️ Registrations for this event require admin approval. You will be notified by email once confirmed.</div>
+            <?php endif ?>
+
+            <!-- Step 1: Vehicle -->
+            <div class="msc-step" id="msc-step-1">
+                <div class="msc-step-header"><span class="msc-step-num">1</span> Select Your Vehicle</div>
+                <div class="msc-step-body">
+                    <div id="msc-vehicles-loading">Loading your vehicles…</div>
+                    <div id="msc-vehicles-list" style="display:none"></div>
+                    <div id="msc-vehicles-empty" style="display:none">
+                        <p>No eligible vehicles found in your garage for this event's classes.</p>
+                        <a href="?msc_tab=garage" class="msc-btn msc-btn-outline">Add a Vehicle</a>
+                    </div>
+                    <div style="margin-top:12px">
+                        <label style="font-weight:600;display:block;margin-bottom:4px">Additional Notes (optional)</label>
+                        <textarea id="msc-notes" rows="2" placeholder="Any notes for the organiser..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box"></textarea>
+                    </div>
+                    <button id="msc-step1-next" class="msc-btn" style="margin-top:12px" disabled>Next: Review & Indemnity →</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Summary + Indemnity -->
+            <div class="msc-step" id="msc-step-2" style="display:none">
+                <div class="msc-step-header"><span class="msc-step-num">2</span> Review & Indemnity</div>
+                <div class="msc-step-body">
+                    <div id="msc-summary" class="msc-summary-box"></div>
+
+                    <?php if($fee > 0): ?>
+                    <div class="msc-notice msc-notice-info" style="margin:16px 0">
+                        💰 Entry fee: <strong>R <?php echo number_format($fee,2) ?></strong>. This is recorded but payment is handled separately at the event.
+                    </div>
+                    <?php endif ?>
+
+                    <div class="msc-indemnity-section">
+                        <h4>Indemnity Declaration</h4>
+                        <div class="msc-indemnity-text"><?php echo nl2br(esc_html($indemnity)) ?></div>
+
+                        <div style="margin-top:16px">
+                            <label style="font-weight:700;display:block;margin-bottom:10px">How would you like to complete the indemnity?</label>
+                            <label class="msc-radio-option" id="opt-sign">
+                                <input type="radio" name="msc_ind_method" value="sign"> ✍️ Sign electronically now
+                            </label>
+                            <label class="msc-radio-option" id="opt-bring">
+                                <input type="radio" name="msc_ind_method" value="bring"> 📄 I will download, print, sign and bring on the day
+                            </label>
+                        </div>
+
+                        <!-- E-signature panel -->
+                        <div id="msc-sig-panel" style="display:none;margin-top:16px">
+                            <p style="margin-bottom:8px">Choose your signing method:</p>
+                            <div style="margin-bottom:12px">
+                                <label><input type="radio" name="msc_sig_type" value="draw" checked> ✏️ Draw signature</label>
+                                &nbsp;&nbsp;
+                                <label><input type="radio" name="msc_sig_type" value="type"> ⌨️ Type signature</label>
+                            </div>
+                            <div id="msc-sig-draw-wrap">
+                                <canvas id="msc-sig-canvas"></canvas>
+                                <div style="margin-top:6px"><button type="button" id="msc-sig-clear" class="msc-btn msc-btn-sm msc-btn-outline">Clear</button></div>
+                            </div>
+                            <div id="msc-sig-type-wrap" style="display:none">
+                                <input type="text" id="msc-sig-typed" placeholder="Type your full name as signature" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-family:cursive;font-size:18px;box-sizing:border-box">
+                            </div>
+                        </div>
+
+                        <!-- Bring reminder panel -->
+                        <div id="msc-bring-panel" style="display:none;margin-top:16px">
+                            <div class="msc-notice msc-notice-warning">
+                                📋 Remember: You <strong>must</strong> bring your completed, signed indemnity form to the event. Entry may be refused without it.
+                                <br><br>
+                                <a id="msc-download-indemnity-preview" href="#" class="msc-btn msc-btn-sm">Preview Form</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="msc-reg-error" class="msc-notice msc-notice-error" style="display:none;margin-top:12px"></div>
+
+                    <div style="margin-top:20px;display:flex;gap:12px">
+                        <button id="msc-step2-back" class="msc-btn msc-btn-outline">← Back</button>
+                        <button id="msc-submit-reg" class="msc-btn" disabled>Submit Registration</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success -->
+            <div id="msc-reg-success" style="display:none" class="msc-notice msc-notice-success msc-success-big"></div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+}

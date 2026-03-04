@@ -1,0 +1,48 @@
+<?php
+/**
+ * Plugin Name: Motorsport Club Manager
+ * Plugin URI:  https://yourclub.com
+ * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
+ * Version:     1.1.0
+ * Author:      Your Club
+ * Text Domain: motorsport-club
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+define( 'MSC_VERSION',  '1.1.0' );
+define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
+define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
+define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
+
+require_once MSC_PATH . 'includes/lib/class-msc-pdf.php';
+require_once MSC_PATH . 'includes/class-activator.php';
+require_once MSC_PATH . 'includes/class-post-types.php';
+require_once MSC_PATH . 'includes/class-taxonomies.php';
+require_once MSC_PATH . 'includes/class-admin-events.php';
+require_once MSC_PATH . 'includes/class-admin-garage.php';
+require_once MSC_PATH . 'includes/class-registration.php';
+require_once MSC_PATH . 'includes/class-indemnity.php';
+require_once MSC_PATH . 'includes/class-emails.php';
+require_once MSC_PATH . 'includes/class-shortcodes.php';
+require_once MSC_PATH . 'includes/class-account.php';
+require_once MSC_PATH . 'includes/class-security.php';
+require_once MSC_PATH . 'includes/class-results.php';
+
+register_activation_hook( __FILE__,   array( 'MSC_Activator', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'MSC_Activator', 'deactivate' ) );
+
+add_action( 'plugins_loaded', 'msc_init' );
+function msc_init() {
+    MSC_Post_Types::init();
+    MSC_Taxonomies::init();
+    MSC_Admin_Events::init();
+    MSC_Admin_Garage::init();
+    MSC_Registration::init();
+    MSC_Indemnity::init();
+    MSC_Emails::init();
+    MSC_Shortcodes::init();
+    MSC_Account::init();
+    MSC_Security::init();
+    MSC_Results::init();
+}

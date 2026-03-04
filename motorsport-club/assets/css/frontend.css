@@ -1,0 +1,719 @@
+/* ── Motorsport Club — Frontend Styles ───────────────────────────────────── */
+
+:root {
+    --msc-primary:   #e94560;
+    --msc-dark:      #1a1a2e;
+    --msc-light:     #f8f9fa;
+    --msc-border:    #e0e0e0;
+    --msc-success:   #d1e7dd;
+    --msc-warning:   #fff3cd;
+    --msc-info:      #cff4fc;
+    --msc-error:     #f8d7da;
+    --msc-radius:    8px;
+}
+
+/* ── Events Grid ─────────────────────────────────────────────────────────── */
+.msc-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    margin: 20px 0;
+}
+.msc-event-card {
+    border: 1px solid var(--msc-border);
+    border-radius: var(--msc-radius);
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    transition: transform .2s, box-shadow .2s;
+    display: flex;
+    flex-direction: column;
+}
+.msc-event-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.msc-event-card.msc-event-full { opacity: .8; }
+.msc-event-card.msc-event-closed { border-top: 3px solid var(--msc-dark); }
+.msc-event-thumb { height: 180px; overflow: hidden; background: var(--msc-dark); }
+.msc-event-thumb img { width:100%; height:100%; object-fit:cover; }
+.msc-event-thumb-placeholder { display:flex; align-items:center; justify-content:center; font-size:64px; }
+.msc-event-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
+.msc-event-title { margin: 0 0 8px; font-size: 18px; }
+.msc-event-title a { color: var(--msc-dark); text-decoration: none; }
+.msc-event-title a:hover { color: var(--msc-primary); }
+.msc-event-date, .msc-event-location { margin: 4px 0; font-size: 13px; color: #555; }
+.msc-event-classes { margin: 8px 0; }
+.msc-class-pill { background: #ede7f6; color: #4a148c; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; display: inline-block; margin: 2px 2px 2px 0; }
+.msc-event-footer { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+.msc-event-fee { font-weight: 700; color: var(--msc-dark); }
+.msc-badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: .5px; display: inline-block; margin-bottom: 6px; }
+.msc-badge-full   { background: var(--msc-primary); color: #fff; }
+.msc-badge-closed { background: var(--msc-dark); color: #fff; }
+.msc-no-events { font-style: italic; color: #888; }
+
+/* ── Event Meta Block ────────────────────────────────────────────────────── */
+.msc-event-meta { background: var(--msc-light); border: 1px solid var(--msc-border); border-radius: var(--msc-radius); padding: 16px; margin: 20px 0; }
+.msc-meta-row { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--msc-border); gap: 10px; }
+.msc-meta-row:last-child { border-bottom: none; }
+.msc-meta-icon { font-size: 16px; width: 24px; flex-shrink: 0; }
+.msc-meta-label { font-weight: 600; color: #555; font-size: 13px; min-width: 100px; }
+.msc-meta-value { color: var(--msc-dark); font-size: 14px; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.msc-btn {
+    display: inline-block; background: var(--msc-primary); color: #fff !important;
+    padding: 10px 20px; border-radius: 4px; border: 2px solid var(--msc-primary);
+    font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none !important;
+    transition: all .2s; line-height: 1.4;
+}
+.msc-btn:hover { background: #c73652; border-color: #c73652; }
+.msc-btn-outline { background: transparent; color: var(--msc-primary) !important; }
+.msc-btn-outline:hover { background: var(--msc-primary); color: #fff !important; }
+.msc-btn-disabled { background: #ccc; border-color: #ccc; pointer-events: none; }
+.msc-btn-sm { padding: 6px 12px; font-size: 12px; }
+button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+
+/* ── Notices ─────────────────────────────────────────────────────────────── */
+.msc-notice { padding: 12px 16px; border-radius: var(--msc-radius); margin: 12px 0; font-size: 14px; border-left: 4px solid; }
+.msc-notice-success { background: var(--msc-success); color: #0a3622; border-color: #198754; }
+.msc-notice-warning { background: var(--msc-warning); color: #856404; border-color: #ffc107; }
+.msc-notice-info    { background: var(--msc-info);    color: #055160; border-color: #0dcaf0; }
+.msc-notice-error   { background: var(--msc-error);   color: #842029; border-color: #dc3545; }
+.msc-success-big    { font-size: 16px; padding: 20px; text-align: center; }
+
+/* ── Registration Form ───────────────────────────────────────────────────── */
+.msc-registration-wrap { margin: 30px 0; }
+.msc-section-title { font-size: 22px; color: var(--msc-dark); border-bottom: 3px solid var(--msc-primary); padding-bottom: 8px; margin-bottom: 20px; }
+.msc-step { border: 1px solid var(--msc-border); border-radius: var(--msc-radius); overflow: hidden; margin-bottom: 16px; }
+.msc-step-header { background: var(--msc-dark); color: #fff; padding: 14px 20px; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 12px; }
+.msc-step-num { background: var(--msc-primary); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+.msc-step-body { padding: 20px; }
+
+/* Vehicle selection cards */
+.msc-vehicle-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.msc-vehicle-card { border: 2px solid var(--msc-border); border-radius: 6px; padding: 14px; cursor: pointer; transition: all .2s; background: #fff; }
+.msc-vehicle-card:hover { border-color: var(--msc-primary); box-shadow: 0 2px 8px rgba(233,69,96,.15); }
+.msc-vehicle-card.selected { border-color: var(--msc-primary); background: #fff5f7; }
+.msc-vehicle-card-icon { font-size: 28px; margin-bottom: 6px; }
+.msc-vehicle-card-title { font-weight: 700; color: var(--msc-dark); font-size: 14px; margin-bottom: 2px; }
+.msc-vehicle-card-sub { font-size: 12px; color: #777; }
+.msc-vehicle-card-class { font-size: 11px; color: #4a148c; background: #ede7f6; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 4px; }
+
+/* Indemnity */
+.msc-indemnity-section { background: var(--msc-light); border: 1px solid var(--msc-border); border-radius: var(--msc-radius); padding: 20px; margin-top: 16px; }
+.msc-indemnity-section h4 { margin: 0 0 12px; color: var(--msc-dark); }
+.msc-indemnity-text { font-size: 13px; line-height: 1.7; color: #444; max-height: 180px; overflow-y: auto; background: #fff; padding: 12px; border: 1px solid var(--msc-border); border-radius: 4px; margin-bottom: 16px; }
+.msc-radio-option { display: block; padding: 12px 16px; margin-bottom: 8px; border: 2px solid var(--msc-border); border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all .2s; }
+.msc-radio-option:hover { border-color: var(--msc-primary); }
+.msc-radio-option input { margin-right: 8px; }
+
+/* Signature canvas */
+#msc-sig-canvas {
+    border: 2px solid var(--msc-dark) !important;
+    border-radius: 6px;
+    cursor: crosshair;
+    width: 100% !important;
+    height: 160px !important;
+    display: block;
+    touch-action: none;
+    background: #fafafa !important;
+    box-sizing: border-box;
+}
+.msc-summary-box { background: #fff; border: 1px solid var(--msc-border); border-radius: var(--msc-radius); padding: 16px; }
+.msc-summary-box table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.msc-summary-box td { padding: 8px; border-bottom: 1px solid #f0f0f0; }
+.msc-summary-box td:first-child { color: #888; font-weight: 600; width: 130px; }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   My Account — Profile & Garage  (KZNRRC theme)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Login prompt */
+.msc-login-prompt {
+    text-align: center;
+    padding: 60px 20px;
+}
+.msc-login-prompt-inner {
+    max-width: 420px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--msc-border);
+    border-radius: 12px;
+    padding: 40px 32px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.08);
+}
+.msc-login-icon { font-size: 48px; margin-bottom: 16px; }
+.msc-login-prompt h3 { margin: 0 0 10px; color: var(--msc-dark); font-size: 22px; }
+.msc-login-prompt p  { color: #666; margin-bottom: 24px; }
+
+/* Profile header */
+.msc-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--msc-dark);
+    color: #fff;
+    padding: 24px 28px;
+    border-radius: 10px;
+    margin-bottom: 0;
+}
+.msc-avatar-img {
+    width: 72px !important;
+    height: 72px !important;
+    border-radius: 50%;
+    border: 3px solid var(--msc-primary);
+    display: block;
+}
+.msc-profile-name {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+}
+.msc-profile-meta {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.msc-profile-badge {
+    background: var(--msc-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: .4px;
+}
+.msc-profile-stat {
+    color: rgba(255,255,255,.7);
+    font-size: 13px;
+}
+.msc-profile-stat::before { content: '·'; margin-right: 10px; }
+
+/* Tab navigation */
+.msc-tab-nav {
+    display: flex;
+    border-bottom: 2px solid var(--msc-border);
+    background: #fff;
+    margin-bottom: 24px;
+}
+.msc-tab-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    text-decoration: none !important;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all .2s;
+}
+.msc-tab-link:hover  { color: var(--msc-primary); }
+.msc-tab-link.active { color: var(--msc-primary); border-bottom-color: var(--msc-primary); }
+.msc-tab-count {
+    background: var(--msc-primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Tab content area */
+.msc-tab-content { padding: 0; }
+.msc-tab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.msc-tab-title {
+    margin: 0;
+    font-size: 20px;
+    color: var(--msc-dark);
+    font-weight: 700;
+}
+
+/* Empty state */
+.msc-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--msc-light);
+    border: 2px dashed var(--msc-border);
+    border-radius: 10px;
+}
+.msc-empty-icon { font-size: 52px; margin-bottom: 12px; }
+.msc-empty-state h4 { margin: 0 0 8px; color: var(--msc-dark); font-size: 18px; }
+.msc-empty-state p  { color: #888; margin-bottom: 20px; }
+
+/* ── Add Vehicle Panel ──────────────────────────────────────────── */
+.msc-add-vehicle-panel {
+    background: #fff;
+    border: 1px solid var(--msc-border);
+    border-radius: 10px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,.07);
+}
+.msc-panel-header {
+    background: var(--msc-dark);
+    color: #fff;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.msc-panel-header h4 { margin: 0; font-size: 16px; color: #fff; }
+.msc-panel-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.7);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+.msc-panel-close:hover { color: #fff; }
+
+/* Photo upload */
+.msc-photo-upload-area {
+    margin: 20px 22px 0;
+    border: 2px dashed var(--msc-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color .2s;
+    background: var(--msc-light);
+}
+.msc-photo-upload-area.drag-over { border-color: var(--msc-primary); background: #fff5f7; }
+.msc-photo-placeholder {
+    text-align: center;
+    padding: 28px 20px;
+}
+.msc-photo-icon { font-size: 36px; margin-bottom: 8px; }
+.msc-photo-placeholder p { margin: 0 0 4px; color: #555; font-size: 14px; }
+.msc-photo-hint { color: #aaa !important; font-size: 12px !important; }
+.msc-photo-label {
+    color: var(--msc-primary);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.msc-photo-preview {
+    position: relative;
+}
+.msc-photo-preview img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    display: block;
+}
+.msc-photo-remove-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,.55);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.msc-photo-remove-btn:hover { background: var(--msc-primary); }
+
+/* Form grid */
+.msc-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 20px 22px 0;
+}
+.msc-field { display: flex; flex-direction: column; gap: 5px; }
+.msc-field-full { grid-column: 1 / -1; }
+.msc-field label { font-size: 13px; font-weight: 600; color: #444; }
+.msc-required { color: var(--msc-primary); }
+.msc-field input,
+.msc-field select,
+.msc-field textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--msc-border);
+    border-radius: 5px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333 !important;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color .2s;
+    background-color: #fff !important;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.msc-field select {
+    height: 42px;
+    line-height: 42px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-color: #fff !important;
+    padding: 0 32px 0 12px;
+    cursor: pointer;
+    color: #333 !important;
+}
+.msc-field select option {
+    color: #333 !important;
+    background-color: #fff !important;
+    line-height: 1.5;
+    padding: 8px 12px;
+}
+.msc-field input:focus,
+.msc-field select:focus,
+.msc-field textarea:focus {
+    outline: none;
+    border-color: var(--msc-primary);
+    box-shadow: 0 0 0 3px rgba(233,69,96,.1);
+}
+.msc-panel-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 22px;
+    border-top: 1px solid var(--msc-border);
+    margin-top: 18px;
+}
+.msc-field-msg { font-size: 13px; color: #dc3545; }
+
+/* ── Garage grid ─────────────────────────────────────────────────── */
+.msc-garage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+.msc-garage-card {
+    background: #fff;
+    border: 1px solid var(--msc-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s, box-shadow .2s;
+}
+.msc-garage-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.11);
+}
+.msc-garage-card-photo {
+    position: relative;
+    height: 180px;
+    background: var(--msc-dark);
+    overflow: hidden;
+}
+.msc-garage-card-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.msc-garage-card-icon {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+}
+.msc-garage-class-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: var(--msc-primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: .3px;
+}
+.msc-garage-card-body { padding: 16px; flex: 1; }
+.msc-garage-card-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--msc-dark);
+}
+.msc-garage-card-spec {
+    margin: 0 0 10px;
+    color: #666;
+    font-size: 13px;
+}
+.msc-garage-card-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.msc-pill {
+    background: var(--msc-light);
+    border: 1px solid var(--msc-border);
+    color: #555;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+.msc-garage-card-notes {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+    line-height: 1.5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.msc-garage-card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--msc-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    align-items: center;
+}
+.msc-edit-link {
+    color: #555;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.msc-edit-link:hover { color: var(--msc-dark); text-decoration: underline; }
+.msc-inline-edit-form {
+    border-top: 2px solid var(--msc-primary);
+    background: var(--msc-light);
+}
+.msc-danger-link {
+    color: #dc3545;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.msc-danger-link:hover { color: #a71d2a; text-decoration: underline; }
+
+/* ── Registrations list ─────────────────────────────────────────── */
+.msc-regs-list { display: flex; flex-direction: column; gap: 12px; }
+.msc-reg-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #fff;
+    border: 1px solid var(--msc-border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+}
+.msc-reg-card-icon { font-size: 30px; flex-shrink: 0; }
+.msc-reg-card-body { flex: 1; min-width: 0; }
+.msc-reg-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+.msc-reg-card-top h4 { margin: 0; font-size: 15px; color: var(--msc-dark); }
+.msc-reg-card-top h4 a { color: inherit; text-decoration: none; }
+.msc-reg-card-top h4 a:hover { color: var(--msc-primary); }
+.msc-reg-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 12px;
+    color: #777;
+}
+.msc-reg-card-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Status badges */
+.msc-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: .3px;
+}
+.status-pending   { background: #fff3cd; color: #856404; }
+.status-confirmed { background: #d1e7dd; color: #0a3622; }
+.status-rejected  { background: #f8d7da; color: #842029; }
+.status-cancelled { background: #e2e3e5; color: #41464b; }
+
+/* Responsive */
+@media (max-width: 640px) {
+    .msc-profile-header { flex-direction: column; text-align: center; padding: 20px; }
+    .msc-profile-stat::before { display: none; }
+    .msc-form-grid { grid-template-columns: 1fr; }
+    .msc-field-full { grid-column: 1; }
+    .msc-garage-grid { grid-template-columns: 1fr; }
+    .msc-reg-card { flex-wrap: wrap; }
+    .msc-reg-card-actions { flex-direction: row; width: 100%; }
+    .msc-tab-link { padding: 12px 14px; font-size: 13px; }
+}
+
+/* ── Profile edit form ──────────────────────────────────────────── */
+.msc-profile-edit-form {
+    max-width: 720px;
+}
+.msc-form-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #e94560;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--msc-border, #2a2a4a);
+    margin-bottom: 14px;
+}
+.msc-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+}
+.msc-field-full { grid-column: 1 / -1; }
+.msc-profile-edit-form .msc-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #aaa;
+    margin-bottom: 4px;
+}
+.msc-profile-edit-form .msc-field input {
+    width: 100%;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 6px;
+    padding: 9px 12px;
+    color: #fff;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color .2s;
+}
+.msc-profile-edit-form .msc-field input:focus {
+    outline: none;
+    border-color: #e94560;
+}
+@media (max-width: 600px) {
+    .msc-form-grid { grid-template-columns: 1fr; }
+    .msc-field-full { grid-column: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Event Results — appended, nothing above this line was changed
+   ══════════════════════════════════════════════════════════════════ */
+
+.msc-results-wrap {
+    margin-top: 2.5em;
+    font-family: inherit;
+}
+
+.msc-results-title {
+    border-bottom: 3px solid var(--msc-primary);
+    padding-bottom: .4em;
+    color: var(--msc-dark);
+    font-size: 22px;
+    margin-bottom: 1em;
+}
+
+.msc-results-subtitle {
+    color: var(--msc-dark);
+    font-size: 17px;
+    margin: 1.5em 0 .6em;
+}
+
+/* Podium */
+.msc-podium {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 1.8em;
+}
+
+.msc-podium-card {
+    flex: 1;
+    min-width: 140px;
+    background: #fff;
+    border: 1px solid var(--msc-border);
+    border-top: 4px solid var(--msc-primary);
+    border-radius: var(--msc-radius);
+    padding: 1em;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.07);
+}
+
+.msc-podium-medal   { font-size: 2em; margin-bottom: .2em; }
+.msc-podium-name    { font-weight: 700; font-size: 1.05em; color: var(--msc-dark); margin: .3em 0 .1em; }
+.msc-podium-vehicle { font-size: .8em; color: #888; margin-bottom: .4em; }
+.msc-podium-stat    { color: #555; font-size: .88em; margin-top: .2em; }
+.msc-podium-bestlap { font-size: .82em; color: #999; }
+
+/* Results table */
+.msc-results-table-wrap { overflow-x: auto; }
+
+.msc-results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .93em;
+}
+
+.msc-results-table thead tr {
+    background: var(--msc-dark);
+    color: #fff;
+}
+
+.msc-results-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: .85em;
+    letter-spacing: .03em;
+}
+
+.msc-results-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.msc-row-even { background: #fff; }
+.msc-row-odd  { background: #f9f9f9; }
+
+.msc-col-pos     { width: 5%;  text-align: center; }
+.msc-col-driver  { width: 18%; }
+.msc-col-vehicle { width: 16%; }
+.msc-col-status  { width: 10%; text-align: center; }
+.msc-col-laps    { width: 7%;  text-align: center; }
+.msc-col-time    { width: 12%; text-align: center; }
+.msc-col-notes   { font-size: .9em; }
+
+.msc-result-badge {
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: .8em;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.msc-mono { font-family: monospace; font-size: .92em; }
+
+@media (max-width: 640px) {
+    .msc-podium { flex-direction: column; }
+    .msc-col-vehicle,
+    .msc-col-notes { display: none; }
+}

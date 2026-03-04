@@ -1,0 +1,173 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class MSC_Admin_Garage {
+
+    public static function init() {
+        add_action( 'add_meta_boxes',         array( __CLASS__, 'add_meta_boxes' ) );
+        add_action( 'save_post_msc_vehicle',  array( __CLASS__, 'save_meta' ) );
+        add_filter( 'manage_msc_vehicle_posts_columns',       array( __CLASS__, 'columns' ) );
+        add_action( 'manage_msc_vehicle_posts_custom_column', array( __CLASS__, 'column_data' ), 10, 2 );
+        // Allow users to see their own vehicles
+        add_filter( 'parse_query', array( __CLASS__, 'limit_to_own_vehicles' ) );
+    }
+
+    public static function add_meta_boxes() {
+        add_meta_box( 'msc_vehicle_details', 'Vehicle Details', array( __CLASS__, 'meta_box' ), 'msc_vehicle', 'normal', 'high' );
+    }
+
+    public static function meta_box( $post ) {
+        wp_nonce_field( 'msc_vehicle_save', 'msc_vehicle_nonce' );
+        $d = array(
+            'make'          => get_post_meta( $post->ID, '_msc_make', true ),
+            'model'         => get_post_meta( $post->ID, '_msc_model', true ),
+            'year'          => get_post_meta( $post->ID, '_msc_year', true ),
+            'color'         => get_post_meta( $post->ID, '_msc_color', true ),
+            'type'          => get_post_meta( $post->ID, '_msc_type', true ),
+            'reg_number'    => get_post_meta( $post->ID, '_msc_reg_number', true ),
+            'notes'         => get_post_meta( $post->ID, '_msc_notes', true ),
+        );
+        $types = array('Car','Bike','Motorcycle','Quad','Kart','Truck','Other');
+        ?>
+        <table class="form-table">
+            <tr>
+                <th><label>Vehicle Type</label></th>
+                <td>
+                    <select name="msc_type">
+                        <?php foreach($types as $t): ?>
+                        <option value="<?php echo $t ?>" <?php selected($d['type'],$t) ?>><?php echo $t ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <th><label>Year</label></th>
+                <td><input type="number" name="msc_year" value="<?php echo esc_attr($d['year']); ?>" class="small-text" min="1900" max="2099"></td>
+            </tr>
+            <tr>
+                <th><label>Make</label></th>
+                <td><input type="text" name="msc_make" value="<?php echo esc_attr($d['make']); ?>" class="regular-text" placeholder="e.g. Toyota"></td>
+                <th><label>Model</label></th>
+                <td><input type="text" name="msc_model" value="<?php echo esc_attr($d['model']); ?>" class="regular-text" placeholder="e.g. GR86"></td>
+            </tr>
+            <tr>
+                <th><label>Colour</label></th>
+                <td><input type="text" name="msc_color" value="<?php echo esc_attr($d['color']); ?>" class="regular-text"></td>
+                <th><label>Registration / Race Number</label></th>
+                <td><input type="text" name="msc_reg_number" value="<?php echo esc_attr($d['reg_number']); ?>" class="regular-text"></td>
+            </tr>
+            <tr>
+                <th><label>Vehicle Class</label></th>
+                <td colspan="3">
+                    <?php
+                    $current_classes = wp_get_post_terms($post->ID, 'msc_vehicle_class', array('fields'=>'ids'));
+                    $all = MSC_Taxonomies::get_all_classes();
+                    if (empty($all)) {
+                        echo '<a href="'.admin_url('edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle').'">Add vehicle classes first →</a>';
+                    } else {
+                        foreach($all as $id => $name) {
+                            $checked = in_array($id, $current_classes) ? 'checked' : '';
+                            echo "<label style='margin-right:12px'><input type='checkbox' name='msc_vehicle_class[]' value='$id' $checked> ".esc_html($name)."</label>";
+                        }
+                    }
+                    ?>
+                </td>
+            </tr>
+            <tr>
+                <th><label>Notes</label></th>
+                <td colspan="3"><textarea name="msc_notes" rows="3" class="large-text"><?php echo esc_textarea($d['notes']); ?></textarea></td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    public static function save_meta( $post_id ) {
+        if ( ! isset($_POST['msc_vehicle_nonce']) || ! wp_verify_nonce($_POST['msc_vehicle_nonce'],'msc_vehicle_save') ) return;
+        if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;
+        if ( ! current_user_can('edit_post',$post_id) ) return;
+
+        foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_reg_number') as $f ) {
+            if ( isset($_POST[$f]) ) update_post_meta($post_id,'_'.$f, sanitize_text_field($_POST[$f]));
+        }
+        if ( isset($_POST['msc_notes']) ) {
+            update_post_meta($post_id,'_msc_notes', sanitize_textarea_field($_POST['msc_notes']));
+        }
+        $class_ids = isset($_POST['msc_vehicle_class']) ? array_map('intval',$_POST['msc_vehicle_class']) : array();
+        wp_set_post_terms($post_id, $class_ids, 'msc_vehicle_class');
+    }
+
+    public static function columns($cols) {
+        return array_merge($cols, array(
+            'vehicle_type'  => 'Type',
+            'vehicle_make'  => 'Make/Model',
+            'vehicle_class' => 'Class',
+            'vehicle_owner' => 'Owner',
+        ));
+    }
+
+    public static function column_data($col, $post_id) {
+        switch($col) {
+            case 'vehicle_type':
+                echo esc_html(get_post_meta($post_id,'_msc_type',true) ?: '—');
+                break;
+            case 'vehicle_make':
+                $make  = get_post_meta($post_id,'_msc_make',true);
+                $model = get_post_meta($post_id,'_msc_model',true);
+                $year  = get_post_meta($post_id,'_msc_year',true);
+                echo esc_html(trim("$year $make $model") ?: '—');
+                break;
+            case 'vehicle_class':
+                $terms = wp_get_post_terms($post_id,'msc_vehicle_class',array('fields'=>'names'));
+                echo !empty($terms) ? esc_html(implode(', ',$terms)) : '—';
+                break;
+            case 'vehicle_owner':
+                $post  = get_post($post_id);
+                $user  = get_user_by('id',$post->post_author);
+                echo $user ? esc_html($user->display_name) : '—';
+                break;
+        }
+    }
+
+    public static function limit_to_own_vehicles($query) {
+        global $pagenow;
+        if ( is_admin() && $pagenow === 'edit.php' &&
+             isset($_GET['post_type']) && $_GET['post_type'] === 'msc_vehicle' &&
+             ! current_user_can('manage_options') ) {
+            $query->set('author', get_current_user_id());
+        }
+    }
+
+    /** Get vehicles for a user that match allowed classes (or all if no restriction) */
+    public static function get_user_vehicles_for_event( $user_id, $event_id ) {
+        // Get allowed classes (stored as string names) and vehicle type for this event
+        $allowed_classes  = get_post_meta( $event_id, '_msc_event_classes', true );
+        $allowed_classes  = $allowed_classes ? (array) $allowed_classes : array();
+        $allowed_type     = get_post_meta( $event_id, '_msc_event_vehicle_type', true ) ?: 'Both';
+
+        $args = array(
+            'post_type'   => 'msc_vehicle',
+            'post_status' => 'publish',
+            'author'      => $user_id,
+            'numberposts' => -1,
+        );
+
+        // Filter by vehicle type if not Both
+        if ( $allowed_type !== 'Both' ) {
+            $args['meta_query'][] = array(
+                'key'   => '_msc_type',
+                'value' => $allowed_type,
+            );
+        }
+
+        // Filter by class name if classes are set
+        if ( ! empty( $allowed_classes ) ) {
+            $args['tax_query'] = array(
+                array(
+                    'taxonomy' => 'msc_vehicle_class',
+                    'field'    => 'name',
+                    'terms'    => $allowed_classes,
+                ),
+            );
+        }
+
+        return get_posts($args);
+    }
+}
