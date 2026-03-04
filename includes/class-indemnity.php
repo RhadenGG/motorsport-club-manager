@@ -12,21 +12,46 @@ class MSC_Indemnity {
     /* ── PDF download endpoint ──────────────────────────────────────── */
     public static function maybe_output_pdf() {
         if ( ! isset( $_GET['msc_indemnity_pdf'] ) ) return;
+        
         $reg_id = intval( $_GET['msc_indemnity_pdf'] );
-        if ( ! is_user_logged_in() ) wp_die( 'Please log in.' );
+        if ( ! $reg_id ) wp_die( 'Invalid registration ID.' );
+
+        // 1. Must be logged in
+        if ( ! is_user_logged_in() ) {
+            auth_redirect(); // Redirect to login instead of just dying
+            exit;
+        }
 
         global $wpdb;
         $reg = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id=%d", $reg_id
+            "SELECT r.*, p.post_author as event_author 
+             FROM {$wpdb->prefix}msc_registrations r
+             LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
+             WHERE r.id=%d", $reg_id
         ) );
+
         if ( ! $reg ) wp_die( 'Registration not found.' );
-        if ( $reg->user_id != get_current_user_id() && ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+
+        // 2. Security Check: Only the participant, the event author (organizer), or a site admin can see this.
+        $current_user_id = get_current_user_id();
+        $is_owner  = ( (int)$reg->user_id === $current_user_id );
+        $is_admin  = current_user_can( 'manage_options' );
+        $is_author = ( (int)$reg->event_author === $current_user_id );
+
+        if ( ! $is_owner && ! $is_admin && ! $is_author ) {
+            wp_die( 'You do not have permission to view this indemnity form.' );
+        }
 
         $pdf = self::build_pdf( $reg );
 
+        // 3. Clear output buffer to prevent corruption
+        if (ob_get_length()) ob_end_clean();
+
         header( 'Content-Type: application/pdf' );
         header( 'Content-Disposition: inline; filename="indemnity-' . $reg_id . '.pdf"' );
-        header( 'Cache-Control: private, max-age=0, must-revalidate' );
+        header( 'Cache-Control: private, no-cache, no-store, must-revalidate' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
         echo $pdf;
         exit;
     }
