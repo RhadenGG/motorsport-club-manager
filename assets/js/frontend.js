@@ -139,7 +139,8 @@ jQuery(function ($) {
                 if (msc.sigPad) msc.sigPad.clear();
             });
 
-            $('#msc-parent-sig-clear').on('click', function () {
+            $('#msc-parent-sig-clear').on('click', function (e) {
+                e.preventDefault();
                 if (msc.parentSigPad) msc.parentSigPad.clear();
             });
 
@@ -207,19 +208,25 @@ jQuery(function ($) {
             // Main Pad
             var canvas = document.getElementById('msc-sig-canvas');
             if (canvas && window.SignaturePad) {
-                if (msc.sigPad) { msc.sigPad.off(); msc.sigPad = null; }
-                canvas.width  = canvas.offsetWidth;
-                canvas.height = canvas.offsetHeight;
-                msc.sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                // Only init if visible and width > 0
+                if (canvas.offsetWidth > 0) {
+                    if (msc.sigPad) { msc.sigPad.off(); msc.sigPad = null; }
+                    canvas.width  = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    msc.sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                }
             }
 
             // Parent Pad
             var pCanvas = document.getElementById('msc-parent-sig-canvas');
             if (pCanvas && window.SignaturePad) {
-                if (msc.parentSigPad) { msc.parentSigPad.off(); msc.parentSigPad = null; }
-                pCanvas.width  = pCanvas.offsetWidth;
-                pCanvas.height = pCanvas.offsetHeight;
-                msc.parentSigPad = new SignaturePad(pCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                // Only init if visible and width > 0
+                if (pCanvas.offsetWidth > 0) {
+                    if (msc.parentSigPad) { msc.parentSigPad.off(); msc.parentSigPad = null; }
+                    pCanvas.width  = pCanvas.offsetWidth;
+                    pCanvas.height = pCanvas.offsetHeight;
+                    msc.parentSigPad = new SignaturePad(pCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                }
             }
         },
 

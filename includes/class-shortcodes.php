@@ -209,15 +209,30 @@ class MSC_Shortcodes {
 
             <!-- Step 2: Summary + Indemnity -->
             <div class="msc-step" id="msc-step-2" style="display:none">
-                <div class="msc-step-header"><span class="msc-step-num">2</span> Participant & Indemnity</div>
+                <div class="msc-step-header"><span class="msc-step-num">2</span> Review & Indemnity</div>
                 <div class="msc-step-body">
                     
+                    <div class="msc-indemnity-section" style="margin-top:0; margin-bottom:24px;">
+                        <h4 style="margin-bottom:10px;">Indemnity Declaration</h4>
+                        <div class="msc-indemnity-text" style="margin-bottom:12px;"><?php echo nl2br(esc_html($indemnity)) ?></div>
+                        
+                        <div style="margin-top:16px">
+                            <label style="font-weight:700;display:block;margin-bottom:10px">How would you like to complete the indemnity?</label>
+                            <label class="msc-radio-option" id="opt-sign">
+                                <input type="radio" name="msc_ind_method" value="sign"> ✍️ Sign electronically now
+                            </label>
+                            <label class="msc-radio-option" id="opt-bring">
+                                <input type="radio" name="msc_ind_method" value="bring"> 📄 I will download, print, sign and bring on the day
+                            </label>
+                        </div>
+                    </div>
+
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
                         <div class="msc-field-group" style="display:flex;align-items:center;padding-top:5px;">
                             <label style="cursor:pointer;font-weight:600;"><input type="checkbox" id="msc-is-minor"> I am under 18 and never married</label>
                         </div>
                         <div class="msc-field-group">
-                            <!-- Empty spacer for grid alignment if needed -->
+                            <!-- Empty spacer for grid alignment -->
                         </div>
                         <div class="msc-field-group">
                             <label>Emergency Contact Name</label>
@@ -241,20 +256,7 @@ class MSC_Shortcodes {
                     </div>
                     <?php endif ?>
 
-                    <div class="msc-indemnity-section">
-                        <h4>Indemnity Declaration</h4>
-                        <div class="msc-indemnity-text"><?php echo nl2br(esc_html($indemnity)) ?></div>
-
-                        <div style="margin-top:16px">
-                            <label style="font-weight:700;display:block;margin-bottom:10px">How would you like to complete the indemnity?</label>
-                            <label class="msc-radio-option" id="opt-sign">
-                                <input type="radio" name="msc_ind_method" value="sign"> ✍️ Sign electronically now
-                            </label>
-                            <label class="msc-radio-option" id="opt-bring">
-                                <input type="radio" name="msc_ind_method" value="bring"> 📄 I will download, print, sign and bring on the day
-                            </label>
-                        </div>
-
+                    <div class="msc-signature-controls-wrap">
                         <!-- E-signature panel -->
                         <div id="msc-sig-panel" style="display:none;margin-top:16px">
                             <p style="margin-bottom:8px;font-weight:600">Participant Signature:</p>
@@ -264,7 +266,7 @@ class MSC_Shortcodes {
                                 <label><input type="radio" name="msc_sig_type" value="type"> ⌨️ Type signature</label>
                             </div>
                             <div id="msc-sig-draw-wrap">
-                                <canvas id="msc-sig-canvas"></canvas>
+                                <canvas id="msc-sig-canvas" class="msc-sig-canvas"></canvas>
                                 <div style="margin-top:6px"><button type="button" id="msc-sig-clear" class="msc-btn msc-btn-sm msc-btn-outline">Clear</button></div>
                             </div>
                             <div id="msc-sig-type-wrap" style="display:none">
@@ -281,7 +283,7 @@ class MSC_Shortcodes {
                                 <label><input type="radio" name="msc_parent_sig_type" value="type"> ⌨️ Type signature</label>
                             </div>
                             <div id="msc-parent-sig-draw-wrap">
-                                <canvas id="msc-parent-sig-canvas"></canvas>
+                                <canvas id="msc-parent-sig-canvas" class="msc-sig-canvas"></canvas>
                                 <div style="margin-top:6px"><button type="button" id="msc-parent-sig-clear" class="msc-btn msc-btn-sm msc-btn-outline">Clear</button></div>
                             </div>
                             <div id="msc-parent-sig-type-wrap" style="display:none">
@@ -293,8 +295,6 @@ class MSC_Shortcodes {
                         <div id="msc-bring-panel" style="display:none;margin-top:16px">
                             <div class="msc-notice msc-notice-warning">
                                 📋 Remember: You <strong>must</strong> bring your completed, signed indemnity form to the event. Entry may be refused without it.
-                                <br><br>
-                                <a id="msc-download-indemnity-preview" href="#" class="msc-btn msc-btn-sm">Preview Form</a>
                             </div>
                         </div>
                     </div>

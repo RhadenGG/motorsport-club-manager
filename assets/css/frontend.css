@@ -106,7 +106,7 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-radio-option input { margin-right: 8px; }
 
 /* Signature canvas */
-#msc-sig-canvas {
+.msc-sig-canvas {
     border: 2px solid var(--msc-dark) !important;
     border-radius: 6px;
     cursor: crosshair;
