@@ -1,10 +1,11 @@
 <?php
 /**
  * Plugin Name: Motorsport Club Manager
- * Plugin URI:  https://yourclub.com
+ * Plugin URI:  https://trevorbotha.net
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
- * Version:     1.1.0
- * Author:      Your Club
+ * Version:     0.1.0
+ * Author:      Trevor Botha
+ * Author URI:  https://trevorbotha.net
  * Text Domain: motorsport-club
  * License:     GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '1.1.0' );
+define( 'MSC_VERSION',  '0.1.0' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );

@@ -31,6 +31,7 @@ A WordPress plugin developed for **kznrrc.co.za** to manage motorsport events, p
 - **Cleanup:** Purged redundant `class-msc-` prefixed files from the `includes/` directory.
 - **Refactoring:** Centralized all vehicle type and class hardcoding into `MSC_Taxonomies` and updated all referencing files (Admin Garage, Admin Events, Shortcodes, and Account Dashboard).
 - **Licensing:** Updated the plugin to be open source under the **GNU General Public License v2.0 or later (GPLv2+)**. Added a `LICENSE` file and updated plugin headers.
+- **Metadata Update:** Reset the version to **0.1.0**, updated the author to **Trevor Botha**, and set the official URI to `trevorbotha.net`.
 - **Git Setup:** Initialized repository, created `.gitignore`, and pushed the documentation cleanup and project state to the remote server.
 
 ## Key Files
