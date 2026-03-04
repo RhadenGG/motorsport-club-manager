@@ -9,8 +9,10 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 - **Event Management** — Create racing events with specific dates, locations, capacity limits, and entry fees.
 - **Member Garage** — Users can manage their own fleet of vehicles (Cars & Motorcycles) within their WordPress profile.
 - **Intelligent Registration** — Members register for events using vehicles from their garage. The system automatically filters eligible vehicles based on the event's allowed classes.
-- **Digital Indemnity** — Integrated electronic signature support (via `signature_pad`) for indemnity forms. Members can sign digitally or choose to bring a physical copy.
-- **Automated PDFs** — Generates A4 PDF indemnity forms with participant details and signatures.
+- **Digital Indemnity** — Integrated electronic signature support (via `signature_pad`) for indemnity forms. Supports parent/guardian signatures for minors.
+- **Dynamic PDF Branding** — Automatically pulls the WordPress site logo and title into the generated PDF and email templates.
+- **Participant Safety** — Mandatory emergency contact fields and conditional parent/guardian acknowledgement for entrants under 18.
+- **Automated PDFs** — Generates A4 PDF indemnity forms with participant details, emergency contacts, and dual signatures where applicable.
 - **Race Results** — Record lap times and finishing positions for closed events.
 - **Shortcode Powered** — Easy integration into any WordPress theme using a suite of shortcodes for lists, registrations, and account management.
 
@@ -21,7 +23,7 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 - **PHP / WordPress Plugin API**
 - **Custom Post Types:** `msc_event` (Events), `msc_vehicle` (Member Vehicles)
 - **Custom Database Tables:**
-    - `{prefix}msc_registrations`: Stores entrant details, vehicle selection, and indemnity status.
+    - `{prefix}msc_registrations`: Stores entrant details, vehicle selection, emergency contacts, and indemnity signatures.
     - `{prefix}msc_event_results`: Stores lap times and finishing positions.
 - **Frontend:** Vanilla CSS (`msc-` prefixed) and jQuery.
 - **Libraries:**
@@ -37,6 +39,8 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 3. **Configure Account Page:** Create a new WordPress page, add the `[msc_my_account]` shortcode, and link to it in your site menu.
 4. **Create Events:** Start adding events under the **Motorsport Club → Events** menu.
 
+> **Note:** For existing installations, if you encounter database errors when registering, please deactivate and reactivate the plugin once to ensure the new columns (`emergency_phone`, `parent_sig`, etc.) are created.
+
 ### Detailed Setup Steps
 
 1. **Classifications:** Vehicle Types and Classes are centralized in `includes/class-taxonomies.php`. 
@@ -44,6 +48,7 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
    - **Motorcycles:** Juniors, Motards, Powersport, CBR150, 300 Class, 600/1000, MiniGP.
 2. **Event Configuration:** When adding an event, you can set the registration window, entry fee, and allowed vehicle classes. If no classes are selected, all are allowed.
 3. **Indemnity Text:** Each event can have its own unique indemnity wording, which is pulled into the signed PDF.
+4. **Site Branding:** The plugin automatically pulls the **Custom Logo** (if set in Appearance → Customize) into the PDF and email headers.
 
 ---
 
@@ -57,7 +62,7 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 | `[msc_my_account]` | The member dashboard (Garages + Registrations). |
 | `[msc_register_event event_id="X"]` | Manual embed for a specific event registration form. |
 
-> **Note:** The registration form is automatically appended to the bottom of single event posts; the shortcode is only needed for manual placement on other pages.
+> **Note:** The registration form automatically collects the participant's display name from their WordPress profile.
 
 ---
 
@@ -78,8 +83,8 @@ Once an event's registration is closed (via the event editor), you can record la
 
 | Trigger | Recipient | Content |
 |---|---|---|
-| New Registration | Member + Admin | Submission receipt and alert. |
-| Status Confirmed | Member | Official confirmation and next steps. |
+| New Registration | Member + Admin | Submission receipt, emergency details, and status. |
+| Status Confirmed | Member | Official confirmation with PDF indemnity attachment. |
 
 ### Indemnity PDF
 Access formatted indemnity PDFs via:
@@ -108,6 +113,8 @@ Events follow a strict lifecycle managed via `MSC_Results::is_closed($event_id)`
 - `includes/class-indemnity.php`: PDF construction and email delivery logic.
 - `includes/class-results.php`: Logic for event closing and results management.
 - `includes/lib/class-msc-pdf.php`: Custom PDF generation wrapper.
+- `assets/js/frontend.js`: Handles multi-step registration and electronic signatures.
+
 
 ---
 

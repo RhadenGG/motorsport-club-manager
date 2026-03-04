@@ -26,14 +26,13 @@ A WordPress plugin developed for **kznrrc.co.za** to manage motorsport events, p
 - **Indemnity Method:** The `indemnity_method` in the registration table MUST be `'signed'` (for electronic signatures) or `'bring'` (for manual physical copies).
 
 ## Recent Major Changes
-- **Restructuring:** Moved all files and folders from the `motorsport-club/` subdirectory into the root for a cleaner, flatter plugin structure.
-- **Documentation:** Consolidated all plugin documentation into a single root `README.md` and removed the redundant duplicate from the `motorsport-club/` directory.
-- **Bug Fix:** Resolved a critical typo in `MSC_Registration::ajax_submit` (`'sign'` -> `'signed'`) that blocked indemnity emails.
-- **Cleanup:** Purged redundant `class-msc-` prefixed files from the `includes/` directory.
-- **Refactoring:** Centralized all vehicle type and class hardcoding into `MSC_Taxonomies` and updated all referencing files (Admin Garage, Admin Events, Shortcodes, and Account Dashboard).
-- **Licensing:** Updated the plugin to be open source under the **GNU General Public License v2.0 or later (GPLv2+)**. Added a `LICENSE` file and updated plugin headers.
-- **Metadata Update:** Reset the version to **0.1.0**, updated the author to **Trevor Botha**, and set the official Plugin URI to the GitHub repository.
-- **Git Setup:** Initialized repository, created `.gitignore`, and pushed the documentation cleanup and project state to the remote server.
+- **Legal Compliance:** Enhanced the registration system to handle minors (under 18). Added mandatory fields for **Emergency Contacts** and **Parent/Guardian signatures** (dual signature capability).
+- **Dynamic Branding:** Refactored PDF and email generation to dynamically pull the **WordPress Site Logo** and **Site Title**, replacing hardcoded club branding with a professional, portable design.
+- **Form UX:** Reordered the registration process to present the Indemnity Declaration first. Integrated automatic participant name retrieval from user profiles.
+- **Database Architecture:** Expanded `{prefix}msc_registrations` with columns for emergency contacts, minor status, and parent signatures. Fixed `dbDelta` formatting for reliable table updates.
+- **Restructuring:** Moved all source files from `motorsport-club/` to the root for a flatter plugin structure.
+- **Bug Fixes:** Resolved multiple database insertion errors (missing columns, null status) and fixed signature pad initialization for hidden elements.
+- **Cleanup:** Removed redundant PDF template upload options from the event editor.
 
 ## Key Files
 - `motorsport-club.php`: Main initialization and inclusion of core classes.
