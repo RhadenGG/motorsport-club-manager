@@ -94,7 +94,7 @@ class MSC_PDF {
     }
 
     // Write text at current Y, auto word-wrap. Returns new Y.
-    public function write( $x, $str, $max_w = null, $sz = null, $lh = null, $bold = false ) {
+    public function write( $x, $str, $max_w = null, $sz = null, $lh = null, $bold = false, $align = 'L' ) {
         $sz     = $sz ?: $this->font_size;
         $lh     = $lh ?: $this->line_h;
         $max_w  = $max_w ?: ( $this->w - $x - $this->mr );
@@ -102,19 +102,15 @@ class MSC_PDF {
         $cpl    = max(1, (int)( $max_w / ($sz * 0.52) ));
 
         // Split into lines first (honour \n)
-        $paragraphs = explode("\n", $str);
+        $paragraphs = explode("\n", (string)$str);
         foreach ($paragraphs as $para) {
             $words = preg_split('/\s+/', trim($para));
             $line  = '';
             foreach ($words as $word) {
                 $test = $line === '' ? $word : $line . ' ' . $word;
                 if (mb_strlen($test) > $cpl && $line !== '') {
-                    $py = $this->h - $this->cur_y;
-                    $r  = $this->text_r; $g = $this->text_g; $b = $this->text_b;
-                    $this->page_out( sprintf(
-                        'BT %s %.1f Tf %.3f %.3f %.3f rg %.2f %.2f Td (%s) Tj ET',
-                        $font, $sz, $r, $g, $b, $x, $py, $this->esc($line)
-                    ) );
+                    $this->check_page_break($lh);
+                    $this->render_line($line, $x, $max_w, $font, $sz, $align);
                     $this->cur_y += $lh;
                     $line = $word;
                 } else {
@@ -122,12 +118,8 @@ class MSC_PDF {
                 }
             }
             if ($line !== '') {
-                $py = $this->h - $this->cur_y;
-                $r  = $this->text_r; $g = $this->text_g; $b = $this->text_b;
-                $this->page_out( sprintf(
-                    'BT %s %.1f Tf %.3f %.3f %.3f rg %.2f %.2f Td (%s) Tj ET',
-                    $font, $sz, $r, $g, $b, $x, $py, $this->esc($line)
-                ) );
+                $this->check_page_break($lh);
+                $this->render_line($line, $x, $max_w, $font, $sz, $align);
                 $this->cur_y += $lh;
             }
             if (count($paragraphs) > 1) $this->cur_y += $lh * 0.3;
@@ -135,10 +127,38 @@ class MSC_PDF {
         return $this->cur_y;
     }
 
+    private function render_line($text, $x, $max_w, $font, $sz, $align) {
+        $r = $this->text_r; $g = $this->text_g; $b = $this->text_b;
+        $str = $this->esc($text);
+        
+        // Simple width estimate: avg char is 0.52em
+        $est_w = mb_strlen($text) * ($sz * 0.52);
+        $dx = 0;
+        if ($align === 'C') $dx = ($max_w - $est_w) / 2;
+        if ($align === 'R') $dx = ($max_w - $est_w);
+        if ($dx < 0) $dx = 0;
+
+        $py = $this->h - $this->cur_y;
+        $this->page_out( sprintf(
+            'BT %s %.1f Tf %.3f %.3f %.3f rg %.2f %.2f Td (%s) Tj ET',
+            $font, $sz, $r, $g, $b, $x + $dx, $py, $str
+        ) );
+    }
+
     /* ── Images ─────────────────────────────────────────────────────── */
     public function image_from_file( $path, $x, $y, $w, $h ) {
         if (!function_exists('imagecreatefromstring')) return;
-        $data = @file_get_contents($path);
+        
+        // Handle URLs if passed
+        if (strpos($path, 'http') === 0) {
+            $response = wp_remote_get($path);
+            if (is_wp_error($response)) return;
+            $data = wp_remote_retrieve_body($response);
+        } else {
+            if (!file_exists($path)) return;
+            $data = @file_get_contents($path);
+        }
+        
         if (!$data) return;
         $this->embed_image_data($data, $x, $y, $w, $h);
     }

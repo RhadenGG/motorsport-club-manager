@@ -20,19 +20,31 @@ class MSC_Emails {
         ", $reg_id));
     }
 
-    private static function wrap( $title, $body ) {
-        $site = get_bloginfo('name');
+    public static function wrap( $title, $body ) {
+        $site_name = get_bloginfo('name');
+        $logo_url  = '';
+        $custom_logo_id = get_theme_mod( 'custom_logo' );
+        if ( $custom_logo_id ) {
+            $logo_data = wp_get_attachment_image_src( $custom_logo_id, 'full' );
+            if ( $logo_data ) { $logo_url = $logo_data[0]; }
+        }
+
+        $header_content = $logo_url 
+            ? "<img src='".esc_url($logo_url)."' alt='".esc_attr($site_name)."' style='max-height:60px;width:auto'>"
+            : "<h1 style='color:#ffffff;margin:0;font-size:22px'>🏁 $site_name</h1>";
+
         return "
-        <div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'>
-            <div style='background:#1a1a2e;padding:24px;text-align:center'>
-                <h1 style='color:#e94560;margin:0;font-size:20px'>🏁 $site</h1>
+        <div style='font-family:Arial,sans-serif;max-width:560px;margin:20px auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05)'>
+            <div style='background:#2d3436;padding:32px;text-align:center'>
+                $header_content
             </div>
-            <div style='padding:24px'>
-                <h2 style='color:#1a1a2e;margin-top:0'>$title</h2>
+            <div style='padding:32px;line-height:1.6;color:#2d3436'>
+                <h2 style='color:#2d3436;margin-top:0;font-size:20px;border-bottom:2px solid #f1f2f6;padding-bottom:12px'>$title</h2>
                 $body
             </div>
-            <div style='background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center'>
-                {$site} &bull; This is an automated message, please do not reply.
+            <div style='background:#f9f9f9;padding:20px 32px;font-size:12px;color:#999;text-align:center;border-top:1px solid #eee'>
+                <strong>{$site_name}</strong><br>
+                This is an automated message from " . get_bloginfo('wpurl') . ". Please do not reply.
             </div>
         </div>";
     }
@@ -42,29 +54,29 @@ class MSC_Emails {
         if ( ! $reg ) return;
         $event    = get_post($reg->event_id);
         $event_dt = get_post_meta($reg->event_id,'_msc_event_date',true);
-        $date_str = $event_dt ? date('D d F Y @ H:i', strtotime($event_dt)) : 'TBC';
-        $fee_str  = $reg->entry_fee > 0 ? 'R '.number_format($reg->entry_fee,2) : 'Free';
+        $date_str = $event_dt ? date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), strtotime($event_dt)) : 'TBC';
+        $fee_str  = $reg->entry_fee > 0 ? get_woocommerce_currency_symbol() . ' ' . number_format($reg->entry_fee,2) : 'Free';
         $status_msg = $reg->status === 'confirmed' ? 'You are confirmed! See you on the track.' : 'Your entry is <strong>pending approval</strong>. We will notify you once confirmed.';
 
         $body = "
         <p>Hi {$reg->user_name},</p>
-        <p>Thanks for registering for <strong>{$reg->event_name}</strong>.</p>
-        <table style='width:100%;border-collapse:collapse;margin:16px 0'>
-            <tr><td style='padding:8px;border:1px solid #eee;color:#888'>Event</td><td style='padding:8px;border:1px solid #eee'>{$reg->event_name}</td></tr>
-            <tr><td style='padding:8px;border:1px solid #eee;color:#888'>Date</td><td style='padding:8px;border:1px solid #eee'>{$date_str}</td></tr>
-            <tr><td style='padding:8px;border:1px solid #eee;color:#888'>Vehicle</td><td style='padding:8px;border:1px solid #eee'>{$reg->vehicle_name}</td></tr>
-            <tr><td style='padding:8px;border:1px solid #eee;color:#888'>Entry Fee</td><td style='padding:8px;border:1px solid #eee'>{$fee_str}</td></tr>
-            <tr><td style='padding:8px;border:1px solid #eee;color:#888'>Indemnity</td><td style='padding:8px;border:1px solid #eee'>" . ($reg->indemnity_method==='signed'?'✓ Electronically signed':'Will bring on the day') . "</td></tr>
+        <p>Thank you for registering for <strong>{$reg->event_name}</strong>.</p>
+        <table style='width:100%;border-collapse:collapse;margin:20px 0;background:#fdfdfd'>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Event</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$reg->event_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Date</td><td style='padding:10px;border:1px solid #f1f1f1'>{$date_str}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Vehicle</td><td style='padding:10px;border:1px solid #f1f1f1'>{$reg->vehicle_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Entry Fee</td><td style='padding:10px;border:1px solid #f1f1f1'>{$fee_str}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Indemnity</td><td style='padding:10px;border:1px solid #f1f1f1'>" . ($reg->indemnity_method==='signed'?'✓ Digitally signed':'Will bring physical copy') . "</td></tr>
         </table>
-        <p>$status_msg</p>
-        <p><a href='".home_url('/my-account/')."' style='background:#e94560;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;display:inline-block'>View My Registrations</a></p>
-        <p>See you at the track!<br>The {$_SERVER['SERVER_NAME']} team</p>";
+        <p style='margin:20px 0'>$status_msg</p>
+        <p style='text-align:center;margin:30px 0'><a href='".home_url('/my-account/')."' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
+        <p>See you at the track!<br>The " . get_bloginfo('name') . " team</p>";
 
         wp_mail( $reg->user_email, "Registration Received — {$reg->event_name}", self::wrap("Registration Received", $body) );
 
         // Notify admin
         wp_mail( get_option('admin_email'), "New Registration: {$reg->event_name} — {$reg->user_name}",
-            self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin →</a></p>")
+            self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>")
         );
     }
 
@@ -74,10 +86,11 @@ class MSC_Emails {
         $pdf_link = add_query_arg('msc_indemnity_pdf', $reg_id, home_url());
         $body = "
         <p>Hi {$reg->user_name},</p>
-        <p>Great news — your entry for <strong>{$reg->event_name}</strong> has been <strong style='color:green'>confirmed</strong>! 🎉</p>
+        <p>Great news — your entry for <strong>{$reg->event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
         <p>Entry No: <strong>#{$reg->id}</strong></p>
-        " . ($reg->indemnity_method==='bring' ? "<p><strong>Reminder:</strong> You selected to bring a signed indemnity form on the day. Please ensure you have it completed before arrival.</p><p><a href='{$pdf_link}' style='background:#e94560;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;display:inline-block'>Download Indemnity Form</a></p>" : "<p><a href='{$pdf_link}'>Download your signed indemnity form</a></p>") . "
-        <p>We look forward to seeing you at the event!</p>";
+        " . ($reg->indemnity_method==='bring' ? "<p><strong>Note:</strong> You selected to bring a physical indemnity form. Please ensure it is printed and signed before arrival.</p><p style='text-align:center;margin:25px 0'><a href='{$pdf_link}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Download Indemnity Form</a></p>" : "<p><a href='{$pdf_link}' style='color:#2d3436;font-weight:bold;text-decoration:underline'>Download your signed indemnity form (PDF)</a></p>") . "
+        <p>We look forward to seeing you at the event!</p>
+        <p>Best regards,<br>" . get_bloginfo('name') . "</p>";
         wp_mail( $reg->user_email, "Entry Confirmed — {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body) );
     }
 }
