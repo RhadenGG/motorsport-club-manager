@@ -100,6 +100,8 @@ class MSC_Registration {
             wp_send_json_error(array('message'=>'Invalid vehicle selection.'));
         }
 
+        $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
+        $status    = ($approval === 'manual') ? 'pending' : 'confirmed';
         $entry_fee = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
 
         $inserted = $wpdb->insert("{$wpdb->prefix}msc_registrations", array(
