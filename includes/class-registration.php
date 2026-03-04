@@ -100,11 +100,9 @@ class MSC_Registration {
             wp_send_json_error(array('message'=>'Invalid vehicle selection.'));
         }
 
-        $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
-        $status    = ($approval === 'manual') ? 'pending' : 'confirmed';
         $entry_fee = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
 
-        $wpdb->insert("{$wpdb->prefix}msc_registrations", array(
+        $inserted = $wpdb->insert("{$wpdb->prefix}msc_registrations", array(
             'event_id'         => $event_id,
             'user_id'          => $user_id,
             'vehicle_id'       => $vehicle_id,
@@ -123,6 +121,11 @@ class MSC_Registration {
             'notes'            => $notes,
             'created_at'       => current_time('mysql'),
         ));
+
+        if ( false === $inserted ) {
+            error_log('MSC Registration Error: ' . $wpdb->last_error);
+            wp_send_json_error(array('message' => 'Failed to save registration. Please contact the administrator. Database error: ' . $wpdb->last_error));
+        }
 
         $reg_id = $wpdb->insert_id;
 
