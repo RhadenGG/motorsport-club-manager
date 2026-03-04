@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Motorsport Club Manager
- * Plugin URI:  https://trevorbotha.net
+ * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
  * Version:     0.1.0
  * Author:      Trevor Botha
