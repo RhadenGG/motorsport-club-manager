@@ -8,27 +8,28 @@ class MSC_Activator {
         $charset = $wpdb->get_charset_collate();
 
         // Registrations table
-        $sql1 = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}msc_registrations (
-            id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            event_id      BIGINT UNSIGNED NOT NULL,
-            user_id       BIGINT UNSIGNED NOT NULL,
-            vehicle_id    BIGINT UNSIGNED NOT NULL,
-            status        VARCHAR(30) NOT NULL DEFAULT 'pending',
-            entry_fee     DECIMAL(10,2) DEFAULT 0,
-            fee_paid      TINYINT(1) DEFAULT 0,
-            indemnity_method VARCHAR(20) DEFAULT '',
-            indemnity_full_name VARCHAR(255) DEFAULT '',
-            is_minor      TINYINT(1) DEFAULT 0,
-            parent_name   VARCHAR(255) DEFAULT '',
-            parent_sig    LONGTEXT DEFAULT '',
-            emergency_name VARCHAR(255) DEFAULT '',
-            emergency_phone VARCHAR(50) DEFAULT '',
-            indemnity_sig LONGTEXT DEFAULT '',
-            indemnity_date DATETIME DEFAULT NULL,
-            created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            notes         TEXT DEFAULT '',
-            INDEX idx_event  (event_id),
-            INDEX idx_user   (user_id)
+        $sql1 = "CREATE TABLE {$wpdb->prefix}msc_registrations (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            event_id bigint(20) unsigned NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+            vehicle_id bigint(20) unsigned NOT NULL,
+            status varchar(30) NOT NULL DEFAULT 'pending',
+            entry_fee decimal(10,2) DEFAULT 0,
+            fee_paid tinyint(1) DEFAULT 0,
+            indemnity_method varchar(20) DEFAULT '',
+            indemnity_full_name varchar(255) DEFAULT '',
+            is_minor tinyint(1) DEFAULT 0,
+            parent_name varchar(255) DEFAULT '',
+            parent_sig longtext DEFAULT '',
+            emergency_name varchar(255) DEFAULT '',
+            emergency_phone varchar(50) DEFAULT '',
+            indemnity_sig longtext DEFAULT '',
+            indemnity_date datetime DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            notes text DEFAULT '',
+            PRIMARY KEY  (id),
+            KEY idx_event (event_id),
+            KEY idx_user (user_id)
         ) $charset;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
