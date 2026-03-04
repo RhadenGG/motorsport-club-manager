@@ -26,6 +26,7 @@ A WordPress plugin developed for **kznrrc.co.za** to manage motorsport events, p
 - **Indemnity Method:** The `indemnity_method` in the registration table MUST be `'signed'` (for electronic signatures) or `'bring'` (for manual physical copies).
 
 ## Recent Major Changes
+- **Restructuring:** Moved all files and folders from the `motorsport-club/` subdirectory into the root for a cleaner, flatter plugin structure.
 - **Documentation:** Consolidated all plugin documentation into a single root `README.md` and removed the redundant duplicate from the `motorsport-club/` directory.
 - **Bug Fix:** Resolved a critical typo in `MSC_Registration::ajax_submit` (`'sign'` -> `'signed'`) that blocked indemnity emails.
 - **Cleanup:** Purged redundant `class-msc-` prefixed files from the `includes/` directory.

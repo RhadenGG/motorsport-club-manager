@@ -32,7 +32,7 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 
 ## 🚀 Installation & Setup
 
-1. **Upload:** Move the `motorsport-club` folder to your `/wp-content/plugins/` directory.
+1. **Upload:** Move the plugin folder to your `/wp-content/plugins/` directory.
 2. **Activate:** Enable the plugin through the **Plugins** menu in WordPress.
 3. **Configure Account Page:** Create a new WordPress page, add the `[msc_my_account]` shortcode, and link to it in your site menu.
 4. **Create Events:** Start adding events under the **Motorsport Club → Events** menu.
@@ -102,7 +102,7 @@ Events follow a strict lifecycle managed via `MSC_Results::is_closed($event_id)`
 
 ## 📂 Key Files
 
-- `motorsport-club/motorsport-club.php`: Plugin entry point and class initialization.
+- `motorsport-club.php`: Plugin entry point and class initialization.
 - `includes/class-taxonomies.php`: Source of truth for vehicle types and classes.
 - `includes/class-registration.php`: Core AJAX registration logic and validation.
 - `includes/class-indemnity.php`: PDF construction and email delivery logic.
