@@ -8,7 +8,9 @@ jQuery(function ($) {
         eventId:   null,
         vehicleId: null,
         sigPad:    null,
+        parentSigPad: null,
         sigType:   'draw',
+        parentSigType: 'draw',
 
         init: function () {
             msc.eventId = $('#msc-reg-wrap').data('event');
@@ -73,7 +75,7 @@ jQuery(function ($) {
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
                 // Wait for DOM to paint before sizing canvas
-                setTimeout(function() { msc.initSignaturePad(); }, 100);
+                setTimeout(function() { msc.initSignaturePads(); }, 100);
             });
 
             $('#msc-step2-back').on('click', function () {
@@ -83,17 +85,29 @@ jQuery(function ($) {
             });
 
             $('#msc-is-minor').on('change', function(){
-                if($(this).is(':checked')) $('.msc-minor-only').show();
-                else $('.msc-minor-only').hide();
+                if($(this).is(':checked')) {
+                    $('.msc-minor-only').show();
+                    if ($('input[name="msc_ind_method"]:checked').val() === 'sign') {
+                        $('#msc-parent-sig-panel').show();
+                        setTimeout(function() { msc.initSignaturePads(); }, 100);
+                    }
+                } else {
+                    $('.msc-minor-only').hide();
+                    $('#msc-parent-sig-panel').hide();
+                }
             });
 
             $('input[name="msc_ind_method"]').on('change', function () {
                 if ($(this).val() === 'sign') {
                     $('#msc-sig-panel').show();
+                    if ($('#msc-is-minor').is(':checked')) {
+                        $('#msc-parent-sig-panel').show();
+                    }
                     $('#msc-bring-panel').hide();
-                    setTimeout(function() { msc.initSignaturePad(); }, 100);
+                    setTimeout(function() { msc.initSignaturePads(); }, 100);
                 } else {
                     $('#msc-sig-panel').hide();
+                    $('#msc-parent-sig-panel').hide();
                     $('#msc-bring-panel').show();
                 }
                 $('#msc-submit-reg').prop('disabled', false);
@@ -110,15 +124,35 @@ jQuery(function ($) {
                 }
             });
 
+            $('input[name="msc_parent_sig_type"]').on('change', function () {
+                msc.parentSigType = $(this).val();
+                if (msc.parentSigType === 'draw') {
+                    $('#msc-parent-sig-draw-wrap').show();
+                    $('#msc-parent-sig-type-wrap').hide();
+                } else {
+                    $('#msc-parent-sig-draw-wrap').hide();
+                    $('#msc-parent-sig-type-wrap').show();
+                }
+            });
+
             $('#msc-sig-clear').on('click', function () {
                 if (msc.sigPad) msc.sigPad.clear();
+            });
+
+            $('#msc-parent-sig-clear').on('click', function () {
+                if (msc.parentSigPad) msc.parentSigPad.clear();
             });
 
             $('#msc-submit-reg').on('click', function () {
                 var method = $('input[name="msc_ind_method"]:checked').val();
                 if (!method) { msc.showError('Please select an indemnity option.'); return; }
+                
                 var sig = '';
+                var parentSig = '';
+                var isMinor = $('#msc-is-minor').is(':checked');
+
                 if (method === 'sign') {
+                    // Participant Sig
                     if (msc.sigType === 'draw') {
                         if (!msc.sigPad || msc.sigPad.isEmpty()) { msc.showError('Please draw your signature.'); return; }
                         sig = msc.sigPad.toDataURL();
@@ -126,7 +160,19 @@ jQuery(function ($) {
                         sig = $('#msc-sig-typed').val().trim();
                         if (!sig) { msc.showError('Please type your name as a signature.'); return; }
                     }
+
+                    // Parent Sig
+                    if (isMinor) {
+                        if (msc.parentSigType === 'draw') {
+                            if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) { msc.showError('Please draw the Parent/Guardian signature.'); return; }
+                            parentSig = msc.parentSigPad.toDataURL();
+                        } else {
+                            parentSig = $('#msc-parent-sig-typed').val().trim();
+                            if (!parentSig) { msc.showError('Please type the Parent/Guardian name as a signature.'); return; }
+                        }
+                    }
                 }
+                
                 var btn = $(this);
                 btn.prop('disabled', true).text('Submitting…');
                 $.post(mscData.ajaxUrl, {
@@ -136,7 +182,8 @@ jQuery(function ($) {
                     vehicle_id:       msc.vehicleId,
                     indemnity_method: method === 'sign' ? 'signed' : 'bring',
                     indemnity_sig:    sig,
-                    is_minor:         $('#msc-is-minor').is(':checked') ? 1 : 0,
+                    parent_sig:       parentSig,
+                    is_minor:         isMinor ? 1 : 0,
                     parent_name:      $('#msc-parent-name').val(),
                     emergency_name:   $('#msc-emergency-name').val(),
                     emergency_phone:  $('#msc-emergency-phone').val(),
@@ -156,26 +203,24 @@ jQuery(function ($) {
             });
         },
 
-        initSignaturePad: function () {
+        initSignaturePads: function () {
+            // Main Pad
             var canvas = document.getElementById('msc-sig-canvas');
-            if (!canvas || !window.SignaturePad) return;
-
-            // Destroy existing instance if any
-            if (msc.sigPad) {
-                msc.sigPad.off();
-                msc.sigPad = null;
+            if (canvas && window.SignaturePad) {
+                if (msc.sigPad) { msc.sigPad.off(); msc.sigPad = null; }
+                canvas.width  = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                msc.sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
             }
 
-            // Set canvas pixel dimensions to match its CSS display size exactly
-            canvas.width  = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-
-            msc.sigPad = new SignaturePad(canvas, {
-                backgroundColor: 'rgb(250,250,250)',
-                penColor:        'rgb(0,0,0)',
-                minWidth:        1.5,
-                maxWidth:        3,
-            });
+            // Parent Pad
+            var pCanvas = document.getElementById('msc-parent-sig-canvas');
+            if (pCanvas && window.SignaturePad) {
+                if (msc.parentSigPad) { msc.parentSigPad.off(); msc.parentSigPad = null; }
+                pCanvas.width  = pCanvas.offsetWidth;
+                pCanvas.height = pCanvas.offsetHeight;
+                msc.parentSigPad = new SignaturePad(pCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+            }
         },
 
         showError: function (msg) {

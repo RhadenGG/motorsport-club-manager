@@ -20,6 +20,7 @@ class MSC_Activator {
             indemnity_full_name VARCHAR(255) DEFAULT '',
             is_minor      TINYINT(1) DEFAULT 0,
             parent_name   VARCHAR(255) DEFAULT '',
+            parent_sig    LONGTEXT DEFAULT '',
             emergency_name VARCHAR(255) DEFAULT '',
             emergency_phone VARCHAR(50) DEFAULT '',
             indemnity_sig LONGTEXT DEFAULT '',

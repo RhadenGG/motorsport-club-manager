@@ -104,13 +104,11 @@ class MSC_Indemnity {
             'Participant'  => $reg->indemnity_full_name ?: $user->display_name,
             'Email'        => $user->user_email,
             'Emergency'    => $reg->emergency_name . ' (' . $reg->emergency_phone . ')',
+            'Guardian'     => $reg->is_minor ? $reg->parent_name : 'N/A (Adult)',
             'Vehicle'      => trim( "$year $make $model" ) ?: $vehicle->post_title,
             'Reg / Number' => $regn ?: '—',
             'Class'        => $class,
         );
-        if ($reg->is_minor) {
-            $rows['Guardian'] = $reg->parent_name;
-        }
         self::table_rows( $pdf, $lm, $rw, $rows );
         $pdf->set_y( $pdf->get_y() + 10 );
 
@@ -155,16 +153,46 @@ class MSC_Indemnity {
             $pdf->set_y( $sig_y + 60 );
             $pdf->set_text_color( 99, 110, 114 );
             $pdf->set_font_size( 8 );
-            $pdf->write( $lm + 10, 'Signed by: ' . ($reg->indemnity_full_name ?: $user->display_name), $rw - 20, 8, 12, true );
-            if ($reg->is_minor) {
-                $pdf->write( $lm + 10, 'Parent/Guardian Acknowledgement: ' . $reg->parent_name, $rw - 20, 8, 12, true );
-            }
+            $pdf->write( $lm + 10, 'Participant: ' . ($reg->indemnity_full_name ?: $user->display_name), $rw - 20, 8, 12, true );
             $pdf->write( $lm + 10, 'Date Signed: ' . $sig_date, $rw - 20, 8, 12 );
 
-            $pdf->set_y( $sig_y + 95 );
+            // Conditional Parent Signature Panel
+            if ($reg->is_minor && $reg->parent_sig) {
+                $pdf->set_y( $sig_y + 100 );
+                if ($pdf->get_y() > 750) $pdf->add_page();
+                
+                $psig_y = $pdf->get_y();
+                $pdf->set_text_color( 45, 52, 54 );
+                $pdf->set_font_size( 9, null, true );
+                $pdf->write( $lm, 'PARENT / GUARDIAN ACKNOWLEDGEMENT:', $rw, 9, 14, true );
+                
+                $psig_box_y = $pdf->get_y() + 5;
+                $pdf->set_fill_color( 252, 252, 252 );
+                $pdf->rect( $lm, $psig_box_y, $rw, 85, 'F' );
+                $pdf->set_fill_color( 45, 52, 54 );
+                $pdf->rect( $lm, $psig_box_y, $rw, 0.5, 'F' );
+                $pdf->rect( $lm, $psig_box_y + 84.5, $rw, 0.5, 'F' );
+
+                if ( strpos( $reg->parent_sig, 'data:image/' ) === 0 ) {
+                    $pdf->image_from_dataurl( $reg->parent_sig, $lm + 10, $psig_box_y + 5, $rw - 20, 50 );
+                } else {
+                    $pdf->typed_signature( $lm + 10, $psig_box_y + 15, $reg->parent_sig, $rw - 20, 50 );
+                }
+                
+                $pdf->set_y( $psig_box_y + 60 );
+                $pdf->set_text_color( 99, 110, 114 );
+                $pdf->set_font_size( 8 );
+                $pdf->write( $lm + 10, 'Parent/Guardian: ' . $reg->parent_name, $rw - 20, 8, 12, true );
+                $pdf->write( $lm + 10, 'Date Signed: ' . $sig_date, $rw - 20, 8, 12 );
+                
+                $pdf->set_y( $psig_box_y + 95 );
+            } else {
+                $pdf->set_y( $sig_y + 95 );
+            }
+            
             $pdf->set_text_color( 99, 110, 114 );
             $pdf->set_font_size( 8 );
-            $pdf->write( $lm, 'This document was electronically signed. By signing, the participant acknowledges all terms of the indemnity declaration.', $rw, 8, 12 );
+            $pdf->write( $lm, 'This document was electronically signed. By signing, the participant (and guardian where applicable) acknowledges all terms of the indemnity declaration.', $rw, 8, 12 );
 
         } else {
             // Blank lines for physical signature

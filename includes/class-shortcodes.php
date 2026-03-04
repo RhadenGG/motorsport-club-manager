@@ -257,7 +257,7 @@ class MSC_Shortcodes {
 
                         <!-- E-signature panel -->
                         <div id="msc-sig-panel" style="display:none;margin-top:16px">
-                            <p style="margin-bottom:8px">Choose your signing method:</p>
+                            <p style="margin-bottom:8px;font-weight:600">Participant Signature:</p>
                             <div style="margin-bottom:12px">
                                 <label><input type="radio" name="msc_sig_type" value="draw" checked> ✏️ Draw signature</label>
                                 &nbsp;&nbsp;
@@ -269,6 +269,23 @@ class MSC_Shortcodes {
                             </div>
                             <div id="msc-sig-type-wrap" style="display:none">
                                 <input type="text" id="msc-sig-typed" placeholder="Type your full name as signature" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-family:cursive;font-size:18px;box-sizing:border-box">
+                            </div>
+                        </div>
+
+                        <!-- Parent/Guardian Signature Panel (Minor Only) -->
+                        <div id="msc-parent-sig-panel" style="display:none;margin-top:24px;padding-top:24px;border-top:1px solid #eee">
+                            <p style="margin-bottom:8px;font-weight:600">Parent/Guardian Signature:</p>
+                            <div style="margin-bottom:12px">
+                                <label><input type="radio" name="msc_parent_sig_type" value="draw" checked> ✏️ Draw signature</label>
+                                &nbsp;&nbsp;
+                                <label><input type="radio" name="msc_parent_sig_type" value="type"> ⌨️ Type signature</label>
+                            </div>
+                            <div id="msc-parent-sig-draw-wrap">
+                                <canvas id="msc-parent-sig-canvas"></canvas>
+                                <div style="margin-top:6px"><button type="button" id="msc-parent-sig-clear" class="msc-btn msc-btn-sm msc-btn-outline">Clear</button></div>
+                            </div>
+                            <div id="msc-parent-sig-type-wrap" style="display:none">
+                                <input type="text" id="msc-parent-sig-typed" placeholder="Parent/Guardian: Type your full name as signature" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-family:cursive;font-size:18px;box-sizing:border-box">
                             </div>
                         </div>
 
