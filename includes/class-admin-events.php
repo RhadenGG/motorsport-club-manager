@@ -118,48 +118,6 @@ class MSC_Admin_Events {
         <td colspan="3"><textarea name="msc_indemnity_text" rows="5" class="large-text"><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
         <p class="description">This text appears on the signed PDF sent to participants.</p></td>
         </tr>
-        <tr>
-        <th><label>Indemnity PDF Template</label></th>
-        <td colspan="3">
-        <?php
-        $pdf_id  = get_post_meta( $post->ID, '_msc_indemnity_pdf_id', true );
-        $pdf_url = $pdf_id ? wp_get_attachment_url( $pdf_id ) : '';
-        ?>
-        <?php if ( $pdf_url ) : ?>
-        <p>
-        <span style="color:green">✓ PDF uploaded:</span>
-        <a href="<?php echo esc_url($pdf_url); ?>" target="_blank"><?php echo esc_html(basename($pdf_url)); ?></a>
-        &nbsp;<a href="#" id="msc-remove-pdf" style="color:red;font-size:12px">Remove</a>
-        </p>
-        <?php endif; ?>
-        <input type="hidden" name="msc_indemnity_pdf_id" id="msc_indemnity_pdf_id" value="<?php echo esc_attr($pdf_id); ?>">
-        <button type="button" id="msc-upload-pdf-btn" class="button"><?php echo $pdf_url ? '🔄 Replace PDF' : '📎 Upload PDF Template'; ?></button>
-        <p class="description" style="margin-top:6px">Optional. Upload a branded PDF template for reference.</p>
-        <script>
-        jQuery(function($){
-            var frame;
-            $('#msc-upload-pdf-btn').on('click', function(e){
-                e.preventDefault();
-                if (frame) { frame.open(); return; }
-                frame = wp.media({ title: 'Select Indemnity PDF', button: { text: 'Use this PDF' }, multiple: false, library: { type: 'application/pdf' } });
-                frame.on('select', function(){
-                    var att = frame.state().get('selection').first().toJSON();
-                    $('#msc_indemnity_pdf_id').val(att.id);
-                    $(this).closest('td').find('p').first().html('<span style="color:green">✓ PDF selected:</span> ' + att.filename + ' &nbsp;<a href="#" id="msc-remove-pdf" style="color:red;font-size:12px">Remove</a>');
-                    $('#msc-upload-pdf-btn').text('🔄 Replace PDF');
-                }.bind(this));
-                frame.open();
-            });
-            $(document).on('click','#msc-remove-pdf', function(e){
-                e.preventDefault();
-                $('#msc_indemnity_pdf_id').val('');
-                $(this).closest('p').remove();
-                $('#msc-upload-pdf-btn').text('📎 Upload PDF Template');
-            });
-        });
-        </script>
-        </td>
-        </tr>
         </table>
         <?php
     }

@@ -209,8 +209,31 @@ class MSC_Shortcodes {
 
             <!-- Step 2: Summary + Indemnity -->
             <div class="msc-step" id="msc-step-2" style="display:none">
-                <div class="msc-step-header"><span class="msc-step-num">2</span> Review & Indemnity</div>
+                <div class="msc-step-header"><span class="msc-step-num">2</span> Participant & Indemnity</div>
                 <div class="msc-step-body">
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+                        <div class="msc-field-group">
+                            <label>Full Names</label>
+                            <input type="text" id="msc-full-name" value="<?php echo esc_attr(wp_get_current_user()->display_name); ?>" placeholder="Enter your full names">
+                        </div>
+                        <div class="msc-field-group" style="display:flex;align-items:center;padding-top:25px;">
+                            <label style="cursor:pointer"><input type="checkbox" id="msc-is-minor"> I am under 18 and never married</label>
+                        </div>
+                        <div class="msc-field-group">
+                            <label>Emergency Contact Name</label>
+                            <input type="text" id="msc-emergency-name" placeholder="Contact person name">
+                        </div>
+                        <div class="msc-field-group">
+                            <label>Emergency Contact Number</label>
+                            <input type="text" id="msc-emergency-phone" placeholder="Contact phone number">
+                        </div>
+                        <div class="msc-field-group msc-minor-only" style="display:none;grid-column: span 2;">
+                            <label>Parent/Guardian Full Name</label>
+                            <input type="text" id="msc-parent-name" placeholder="Parent or legal guardian name">
+                        </div>
+                    </div>
+
                     <div id="msc-summary" class="msc-summary-box"></div>
 
                     <?php if($fee > 0): ?>

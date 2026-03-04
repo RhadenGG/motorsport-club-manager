@@ -46,11 +46,19 @@ class MSC_Registration {
         $vehicle_id = intval($_POST['vehicle_id']);
         $ind_method = sanitize_key($_POST['indemnity_method'] ?? '');
         $ind_sig    = sanitize_textarea_field($_POST['indemnity_sig'] ?? '');
+        $ind_full   = sanitize_text_field($_POST['indemnity_full_name'] ?? '');
+        $is_minor   = !empty($_POST['is_minor']) ? 1 : 0;
+        $parent     = sanitize_text_field($_POST['parent_name'] ?? '');
+        $em_name    = sanitize_text_field($_POST['emergency_name'] ?? '');
+        $em_phone   = sanitize_text_field($_POST['emergency_phone'] ?? '');
         $notes      = sanitize_textarea_field($_POST['notes'] ?? '');
 
         // Validations
-        if ( ! $event_id || ! $vehicle_id ) {
-            wp_send_json_error(array('message'=>'Missing required fields.'));
+        if ( ! $event_id || ! $vehicle_id || ! $ind_full || ! $em_name || ! $em_phone ) {
+            wp_send_json_error(array('message'=>'Please complete all required participant and contact fields.'));
+        }
+        if ( $is_minor && ! $parent ) {
+            wp_send_json_error(array('message'=>'Please provide the parent/guardian name for a minor.'));
         }
 
         $event = get_post($event_id);
@@ -99,6 +107,11 @@ class MSC_Registration {
             'entry_fee'        => $entry_fee,
             'fee_paid'         => 0,
             'indemnity_method' => $ind_method,
+            'indemnity_full_name' => $ind_full,
+            'is_minor'         => $is_minor,
+            'parent_name'      => $parent,
+            'emergency_name'   => $em_name,
+            'emergency_phone'  => $em_phone,
             'indemnity_sig'    => $ind_sig,
             'indemnity_date'   => ($ind_method==='signed') ? current_time('mysql') : null,
             'notes'            => $notes,

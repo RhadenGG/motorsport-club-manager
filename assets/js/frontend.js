@@ -82,6 +82,11 @@ jQuery(function ($) {
                 $('#msc-reg-error').hide();
             });
 
+            $('#msc-is-minor').on('change', function(){
+                if($(this).is(':checked')) $('.msc-minor-only').show();
+                else $('.msc-minor-only').hide();
+            });
+
             $('input[name="msc_ind_method"]').on('change', function () {
                 if ($(this).val() === 'sign') {
                     $('#msc-sig-panel').show();
@@ -131,6 +136,11 @@ jQuery(function ($) {
                     vehicle_id:       msc.vehicleId,
                     indemnity_method: method === 'sign' ? 'signed' : 'bring',
                     indemnity_sig:    sig,
+                    indemnity_full_name: $('#msc-full-name').val(),
+                    is_minor:         $('#msc-is-minor').is(':checked') ? 1 : 0,
+                    parent_name:      $('#msc-parent-name').val(),
+                    emergency_name:   $('#msc-emergency-name').val(),
+                    emergency_phone:  $('#msc-emergency-phone').val(),
                     notes:            $('#msc-notes').val()
                 }, function (res) {
                     if (res.success) {

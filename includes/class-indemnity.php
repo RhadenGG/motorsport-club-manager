@@ -41,14 +41,11 @@ class MSC_Indemnity {
         $location   = get_post_meta( $reg->event_id, '_msc_event_location', true );
         $site_name  = get_bloginfo( 'name' );
 
-        // Pull Site Logo
         $logo_url   = '';
         $custom_logo_id = get_theme_mod( 'custom_logo' );
         if ( $custom_logo_id ) {
             $logo_data = wp_get_attachment_image_src( $custom_logo_id, 'full' );
-            if ( $logo_data ) {
-                $logo_url = $logo_data[0];
-            }
+            if ( $logo_data ) { $logo_url = $logo_data[0]; }
         }
 
         $pdf = new MSC_PDF();
@@ -58,86 +55,81 @@ class MSC_Indemnity {
         $rw  = 495;  // content width
         $mid = $lm + $rw / 2;
 
-        // ── Professional Header ───────────────────────────────────────
-        $pdf->set_fill_color( 45, 52, 54 ); // #2d3436 - Dark Grey
-        $pdf->rect( 0, 0, 595, 80, 'F' );
-        
-        // Accent Bar
-        $pdf->set_fill_color( 99, 110, 114 ); // #636e72 - Muted Grey
-        $pdf->rect( 0, 80, 595, 3, 'F' );
+        // ── Compact Header ──────────────────────────────────────────
+        $pdf->set_fill_color( 45, 52, 54 );
+        $pdf->rect( 0, 0, 595, 65, 'F' );
+        $pdf->set_fill_color( 99, 110, 114 );
+        $pdf->rect( 0, 65, 595, 2, 'F' );
 
-        $header_y = 25;
+        $header_y = 20;
         if ( $logo_url ) {
-            // Display logo on the left, shift text
-            $pdf->image_from_file( $logo_url, $lm, $header_y, 40, 40 );
-            $text_x = $lm + 55;
+            $pdf->image_from_file( $logo_url, $lm, $header_y, 35, 35 );
+            $text_x = $lm + 50;
         } else {
             $text_x = $lm;
         }
 
         $pdf->set_text_color( 255, 255, 255 );
-        $pdf->set_font_size( 18 );
-        $pdf->text_at( $text_x, $header_y + 15, $site_name );
-
-        $pdf->set_font_size( 10 );
-        $pdf->text_at( $text_x, $header_y + 32, 'Indemnity & Event Entry Confirmation' );
-
-        // ── Event Title & Core Info ──────────────────────────────────
-        $pdf->set_y( 105 );
-        $pdf->set_text_color( 45, 52, 54 );
         $pdf->set_font_size( 16 );
-        $pdf->write( $lm, $event->post_title, $rw, 16, 22, true );
+        $pdf->text_at( $text_x, $header_y + 12, $site_name );
+        $pdf->set_font_size( 9 );
+        $pdf->text_at( $text_x, $header_y + 26, 'Indemnity & Entry Form' );
+
+        // ── Core Event Info ──────────────────────────────────────────
+        $pdf->set_y( 85 );
+        $pdf->set_text_color( 45, 52, 54 );
+        $pdf->set_font_size( 14 );
+        $pdf->write( $lm, $event->post_title, $rw, 14, 18, true );
         
-        $pdf->set_font_size( 10 );
+        $pdf->set_font_size( 8 );
         $pdf->set_text_color( 99, 110, 114 );
-        $pdf->write( $lm, 'Registration Reference: #' . $reg->id . ' | Status: Confirmed', $rw, 10, 16 );
+        $pdf->write( $lm, 'Reference: #' . $reg->id . ' | Status: Confirmed', $rw, 8, 12 );
 
-        $pdf->set_y( $pdf->get_y() + 10 );
+        $pdf->set_y( $pdf->get_y() + 6 );
 
-        // ── Section: Event Details ────────────────────────────────────
-        self::section_header( $pdf, $lm, $rw, 'EVENT DETAILS' );
-        $rows = array(
-            'Date / Time' => $event_date ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $event_date ) ) : '—',
-            'Location'    => $location ?: '—',
-        );
-        self::table_rows( $pdf, $lm, $rw, $rows );
-        $pdf->set_y( $pdf->get_y() + 12 );
-
-        // ── Section: Participant Details ──────────────────────────────
-        self::section_header( $pdf, $lm, $rw, 'PARTICIPANT DETAILS' );
+        // ── Section: Event & Participant ──────────────────────────────
+        // Put core info into tighter tables
+        self::section_header( $pdf, $lm, $rw, 'EVENT & PARTICIPANT SUMMARY' );
+        
         $make  = get_post_meta( $vehicle->ID, '_msc_make',       true );
         $model = get_post_meta( $vehicle->ID, '_msc_model',      true );
         $year  = get_post_meta( $vehicle->ID, '_msc_year',       true );
         $regn  = get_post_meta( $vehicle->ID, '_msc_reg_number', true );
         $terms = wp_get_post_terms( $vehicle->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
         $class = ! empty( $terms ) ? implode( ', ', $terms ) : '—';
-        $rows  = array(
-            'Full Name' => $user->display_name,
-            'Email'     => $user->user_email,
-            'Vehicle'   => trim( "$year $make $model" ) ?: $vehicle->post_title,
-            'Registration' => $regn ?: '—',
-            'Class'     => $class,
+
+        $rows = array(
+            'Event Date'   => $event_date ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $event_date ) ) : '—',
+            'Location'     => $location ?: '—',
+            'Participant'  => $reg->indemnity_full_name ?: $user->display_name,
+            'Email'        => $user->user_email,
+            'Emergency'    => $reg->emergency_name . ' (' . $reg->emergency_phone . ')',
+            'Vehicle'      => trim( "$year $make $model" ) ?: $vehicle->post_title,
+            'Reg / Number' => $regn ?: '—',
+            'Class'        => $class,
         );
+        if ($reg->is_minor) {
+            $rows['Guardian'] = $reg->parent_name;
+        }
         self::table_rows( $pdf, $lm, $rw, $rows );
-        $pdf->set_y( $pdf->get_y() + 12 );
+        $pdf->set_y( $pdf->get_y() + 10 );
 
         // ── Section: Indemnity Text ───────────────────────────────────
         self::section_header( $pdf, $lm, $rw, 'INDEMNITY DECLARATION' );
 
-        $pdf->set_text_color( 60, 60, 60 );
-        $pdf->set_font_size( 10, 15 );
+        $pdf->set_text_color( 45, 52, 54 );
+        $pdf->set_font_size( 9, 13 ); // Condensed line height
         $start_y = $pdf->get_y();
-        $pdf->write( $lm + 10, $indem, $rw - 20, 10, 15 );
+        $pdf->write( $lm + 10, $indem, $rw - 20, 9, 13 );
         $end_y   = $pdf->get_y();
 
-        // Left Accent Border for Declaration
         $pdf->set_fill_color( 99, 110, 114 );
-        $pdf->rect( $lm, $start_y - 14, 2, $end_y - $start_y + 14, 'F' );
+        $pdf->rect( $lm, $start_y - 12, 1.5, $end_y - $start_y + 12, 'F' );
 
-        $pdf->set_y( $end_y + 20 );
+        $pdf->set_y( $end_y + 15 );
 
         // ── Section: Signature ─────────────────────────────────────────
-        if ( $pdf->get_y() > 650 ) { $pdf->add_page(); }
+        if ( $pdf->get_y() > 640 ) { $pdf->add_page(); }
 
         self::section_header( $pdf, $lm, $rw, 'SIGNATURE & ACKNOWLEDGEMENT' );
 
@@ -146,59 +138,93 @@ class MSC_Indemnity {
                 ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $reg->indemnity_date ) )
                 : date_i18n( get_option( 'date_format' ) );
 
-            $pdf->set_text_color( 80, 80, 80 );
-            $pdf->set_font_size( 9 );
-            $pdf->write( $lm, 'Digitally signed and accepted on ' . $sig_date, $rw, 9, 14 );
-            $pdf->set_y( $pdf->get_y() + 5 );
-
             $sig_y = $pdf->get_y();
-
-            // Signature box
-            $pdf->set_fill_color( 250, 250, 250 );
-            $pdf->rect( $lm, $sig_y, $rw, 70, 'F' );
+            $pdf->set_fill_color( 252, 252, 252 );
+            $pdf->rect( $lm, $sig_y, $rw, 85, 'F' );
             $pdf->set_fill_color( 45, 52, 54 );
-            $pdf->rect( $lm, $sig_y, $rw, 1, 'F' );
-            $pdf->rect( $lm, $sig_y + 69, $rw, 1, 'F' );
+            $pdf->rect( $lm, $sig_y, $rw, 0.5, 'F' );
+            $pdf->rect( $lm, $sig_y + 84.5, $rw, 0.5, 'F' );
 
             if ( strpos( $reg->indemnity_sig, 'data:image/' ) === 0 ) {
-                $pdf->image_from_dataurl( $reg->indemnity_sig, $lm + 10, $sig_y + 10, $rw - 20, 50 );
+                $pdf->image_from_dataurl( $reg->indemnity_sig, $lm + 10, $sig_y + 5, $rw - 20, 50 );
             } else {
                 $pdf->typed_signature( $lm + 10, $sig_y + 15, $reg->indemnity_sig, $rw - 20, 50 );
             }
 
-            $pdf->set_y( $sig_y + 80 );
-            $pdf->set_text_color( 80, 80, 80 );
-            $pdf->set_font_size( 9 );
-            $pdf->write( $lm, 'The participant hereby acknowledges that the electronic signature above is binding and carries the same legal weight as a physical signature.', $rw, 9, 14 );
+            // Details below signature
+            $pdf->set_y( $sig_y + 60 );
+            $pdf->set_text_color( 99, 110, 114 );
+            $pdf->set_font_size( 8 );
+            $pdf->write( $lm + 10, 'Signed by: ' . ($reg->indemnity_full_name ?: $user->display_name), $rw - 20, 8, 12, true );
+            if ($reg->is_minor) {
+                $pdf->write( $lm + 10, 'Parent/Guardian Acknowledgement: ' . $reg->parent_name, $rw - 20, 8, 12, true );
+            }
+            $pdf->write( $lm + 10, 'Date Signed: ' . $sig_date, $rw - 20, 8, 12 );
+
+            $pdf->set_y( $sig_y + 95 );
+            $pdf->set_text_color( 99, 110, 114 );
+            $pdf->set_font_size( 8 );
+            $pdf->write( $lm, 'This document was electronically signed. By signing, the participant acknowledges all terms of the indemnity declaration.', $rw, 8, 12 );
 
         } else {
             // Blank lines for physical signature
-            $pdf->set_text_color( 60, 60, 60 );
-            $pdf->set_font_size( 10 );
+            $pdf->set_text_color( 45, 52, 54 );
+            $pdf->set_font_size( 9 );
             
-            $pdf->write( $lm, 'Signature:', $rw );
-            $sy = $pdf->get_y() - 15;
+            $sy = $pdf->get_y();
+            $pdf->text_at( $lm, $sy + 10, 'Full Names:' );
             $pdf->set_fill_color( 0, 0, 0 );
-            $pdf->rect( $lm + 60, $sy + 12, 250, 0.5, 'F' );
+            $pdf->rect( $lm + 65, $sy + 10, 190, 0.5, 'F' );
             
-            $pdf->set_y( $pdf->get_y() + 10 );
-            $pdf->write( $lm, 'Print Name:', $rw );
-            $sy = $pdf->get_y() - 15;
-            $pdf->rect( $lm + 70, $sy + 12, 240, 0.5, 'F' );
+            $pdf->text_at( $lm + 270, $sy + 10, 'Date:' );
+            $pdf->rect( $lm + 300, $sy + 10, 150, 0.5, 'F' );
+
+            $pdf->set_y( $sy + 20 );
+            $sy = $pdf->get_y();
+            $pdf->text_at( $lm, $sy + 10, 'Emergency Contact Name:' );
+            $pdf->rect( $lm + 125, $sy + 10, 130, 0.5, 'F' );
             
-            $pdf->set_y( $pdf->get_y() + 10 );
-            $pdf->write( $lm, 'Date:', $rw );
-            $sy = $pdf->get_y() - 15;
-            $pdf->rect( $lm + 40, $sy + 12, 150, 0.5, 'F' );
+            $pdf->text_at( $lm + 270, $sy + 10, 'Contact Number:' );
+            $pdf->rect( $lm + 355, $sy + 10, 95, 0.5, 'F' );
+
+            $pdf->set_y( $sy + 20 );
+            $sy = $pdf->get_y();
+            $pdf->text_at( $lm, $sy + 10, 'Signature:' );
+            $pdf->rect( $lm + 55, $sy + 10, 200, 0.5, 'F' );
+
+            // Conditional Minor Section
+            if ($reg->is_minor) {
+                $pdf->set_y( $sy + 35 );
+                $sy = $pdf->get_y();
+                $pdf->set_text_color( 45, 52, 54 );
+                $pdf->set_font_size( 9, null, true );
+                $pdf->write( $lm, 'FOR MINORS (Parent/Guardian to complete):', $rw, 9, 14, true );
+                
+                $pdf->set_font_size( 9 );
+                $pdf->set_y( $pdf->get_y() + 5 );
+                $sy = $pdf->get_y();
+                $pdf->text_at( $lm, $sy + 10, 'Parent/Guardian Full Names:' );
+                $pdf->rect( $lm + 140, $sy + 10, 310, 0.5, 'F' );
+                
+                $pdf->set_y( $sy + 20 );
+                $sy = $pdf->get_y();
+                $pdf->text_at( $lm, $sy + 10, 'Parent/Guardian Signature:' );
+                $pdf->rect( $lm + 140, $sy + 10, 150, 0.5, 'F' );
+                
+                $pdf->text_at( $lm + 305, $sy + 10, 'Date:' );
+                $pdf->rect( $lm + 335, $sy + 10, 115, 0.5, 'F' );
+            }
+            
+            $pdf->set_y( $sy + 30 );
         }
 
         // ── Footer ─────────────────────────────────────────────────────
         $pdf->set_fill_color( 45, 52, 54 );
-        $pdf->rect( 0, 810, 595, 32, 'F' );
+        $pdf->rect( 0, 815, 595, 27, 'F' );
         $pdf->set_text_color( 223, 230, 233 );
-        $pdf->set_font_size( 8 );
-        $footer_text = $site_name . ' | ' . get_bloginfo( 'wpurl' ) . ' | Generated: ' . date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) );
-        $pdf->text_at( $lm, 822, $footer_text );
+        $pdf->set_font_size( 7 );
+        $footer_text = $site_name . ' | Generated: ' . date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) . ' | Ref: #' . $reg->id;
+        $pdf->text_at( $lm, 824, $footer_text );
 
         return $pdf->output_string();
     }
@@ -206,27 +232,29 @@ class MSC_Indemnity {
     /* ── Helpers ──────────────────────────────────────────────────────── */
     private static function section_header( $pdf, $lm, $rw, $title ) {
         $y = $pdf->get_y();
-        $pdf->set_fill_color( 241, 242, 246 ); // Very light grey
-        $pdf->rect( $lm, $y, $rw, 20, 'F' );
+        $pdf->set_fill_color( 241, 242, 246 );
+        $pdf->rect( $lm, $y, $rw, 16, 'F' );
         $pdf->set_text_color( 45, 52, 54 );
-        $pdf->set_font_size( 9, null, true );
-        $pdf->write( $lm + 10, $title, $rw - 20, 9, 20, true );
-        $pdf->set_y( $y + 24 );
+        $pdf->set_font_size( 8 );
+        $pdf->text_at( $lm + 8, $y + 11, $title );
+        $pdf->set_y( $y + 20 );
     }
 
     private static function table_rows( $pdf, $lm, $rw, $rows ) {
-        $col1 = 120;
+        $col1 = 110;
         foreach ( $rows as $label => $value ) {
             $y = $pdf->get_y();
             $pdf->set_text_color( 120, 120, 120 );
-            $pdf->set_font_size( 9 );
-            $pdf->text_at( $lm + 10, $y + 10, $label );
+            $pdf->set_font_size( 8 );
+            $pdf->text_at( $lm + 8, $y + 10, $label );
             $pdf->set_text_color( 45, 52, 54 );
-            $pdf->set_font_size( 9, null, false );
-            $pdf->write( $lm + $col1, (string)$value, $rw - $col1 - 10, 9, 16 );
-            // Bottom border for each row
-            $pdf->set_fill_color( 223, 230, 233 );
-            $pdf->rect( $lm + 10, $pdf->get_y(), $rw - 20, 0.5, 'F' );
+            $pdf->set_font_size( 8 );
+            // Draw value and get new Y
+            $pdf->set_y( $y + 10 );
+            $pdf->write( $lm + $col1, (string)$value, $rw - $col1 - 10, 8, 12 );
+            // Divider
+            $pdf->set_fill_color( 245, 245, 245 );
+            $pdf->rect( $lm + 8, $pdf->get_y(), $rw - 16, 0.5, 'F' );
             $pdf->set_y( $pdf->get_y() + 4 );
         }
     }
