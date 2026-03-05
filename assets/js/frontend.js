@@ -529,6 +529,45 @@ jQuery(function ($) {
                 });
             });
 
+            $('#msc-profile-photo-input').on('change', function () {
+                var file = this.files[0];
+                if (!file) return;
+                var msg = $('#msc-profile-photo-msg');
+                if (!file.type.match(/^image\/(jpeg|png|webp)/)) {
+                    msg.text('Only JPG, PNG or WebP allowed.').css('color', 'red');
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    msg.text('Photo must be under 5MB.').css('color', 'red');
+                    return;
+                }
+                // Immediate preview
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#msc-profile-photo-preview, #msc-header-avatar').attr('src', e.target.result);
+                };
+                reader.readAsDataURL(file);
+
+                msg.text('Uploading…').css('color', '#888');
+                var fd = new FormData();
+                fd.append('action', 'msc_upload_profile_photo');
+                fd.append('nonce',  mscData.nonce);
+                fd.append('photo',  file);
+                $.ajax({
+                    url: mscData.ajaxUrl, type: 'POST', data: fd,
+                    processData: false, contentType: false,
+                    success: function (res) {
+                        if (res.success) {
+                            msg.text('Photo updated!').css('color', 'green');
+                            $('#msc-profile-photo-preview, #msc-header-avatar').attr('src', res.data.url);
+                        } else {
+                            msg.text(res.data.message || 'Upload failed.').css('color', 'red');
+                        }
+                    },
+                    error: function () { msg.text('Network error.').css('color', 'red'); }
+                });
+            });
+
             $('#msc-save-profile').on('click', function (e) {
                 e.preventDefault();
                 var btn = $(this);

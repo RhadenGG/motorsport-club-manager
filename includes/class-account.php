@@ -12,7 +12,8 @@ class MSC_Account {
         add_action( 'wp_ajax_msc_add_vehicle',     array( __CLASS__, 'ajax_add_vehicle' ) );
         add_action( 'wp_ajax_msc_update_vehicle',  array( __CLASS__, 'ajax_update_vehicle' ) );
         add_action( 'wp_ajax_msc_delete_vehicle',  array( __CLASS__, 'ajax_delete_vehicle' ) );
-        add_action( 'wp_ajax_msc_update_profile',  array( __CLASS__, 'ajax_update_profile' ) );
+        add_action( 'wp_ajax_msc_update_profile',       array( __CLASS__, 'ajax_update_profile' ) );
+        add_action( 'wp_ajax_msc_upload_profile_photo', array( __CLASS__, 'ajax_upload_profile_photo' ) );
     }
 
     public static function render() {
@@ -32,7 +33,9 @@ class MSC_Account {
         }
 
         ob_start();
-        $user     = wp_get_current_user();
+        $user              = wp_get_current_user();
+        $profile_photo_id  = get_user_meta( $user->ID, 'msc_profile_photo', true );
+        $profile_photo_url = $profile_photo_id ? wp_get_attachment_image_url( $profile_photo_id, 'thumbnail' ) : '';
         $tab      = isset( $_GET['msc_tab'] ) ? sanitize_key( $_GET['msc_tab'] ) : 'garage';
         $regs     = MSC_Registration::get_user_registrations( $user->ID );
         $vehicles = get_posts( array(
@@ -48,7 +51,11 @@ class MSC_Account {
             <!-- Profile Header -->
             <div class="msc-profile-header">
                 <div class="msc-profile-avatar">
-                    <?php echo get_avatar( $user->ID, 72, '', '', array( 'class' => 'msc-avatar-img' ) ); ?>
+                    <?php if ( $profile_photo_url ) : ?>
+                        <img src="<?php echo esc_url( $profile_photo_url ); ?>" alt="<?php echo esc_attr( $user->display_name ); ?>" class="msc-avatar-img" id="msc-header-avatar">
+                    <?php else : ?>
+                        <?php echo get_avatar( $user->ID, 72, '', '', array( 'class' => 'msc-avatar-img', 'extra_attr' => 'id="msc-header-avatar"' ) ); ?>
+                    <?php endif; ?>
                 </div>
                 <div class="msc-profile-info">
                     <h2 class="msc-profile-name"><?php echo esc_html( $user->display_name ); ?></h2>
@@ -402,6 +409,23 @@ class MSC_Account {
                 <div class="msc-profile-edit-form">
                     <div id="msc-profile-msg" class="msc-field-msg" style="margin-bottom:12px"></div>
 
+                    <div class="msc-form-section-title">Profile Photo</div>
+                    <div class="msc-profile-photo-section">
+                        <div class="msc-profile-photo-current">
+                            <?php if ( $profile_photo_url ) : ?>
+                                <img id="msc-profile-photo-preview" src="<?php echo esc_url( $profile_photo_url ); ?>" alt="Profile photo">
+                            <?php else : ?>
+                                <?php echo get_avatar( $user->ID, 96, '', '', array( 'class' => '', 'extra_attr' => 'id="msc-profile-photo-preview"' ) ); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="msc-profile-photo-actions">
+                            <label for="msc-profile-photo-input" class="msc-btn msc-btn-sm" style="cursor:pointer">Upload Photo</label>
+                            <input type="file" id="msc-profile-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+                            <p class="msc-photo-hint" style="margin-top:8px">JPG, PNG or WebP · max 5MB</p>
+                            <div id="msc-profile-photo-msg" style="font-size:13px;margin-top:6px"></div>
+                        </div>
+                    </div>
+
                     <div class="msc-form-section-title">Personal Details</div>
                     <div class="msc-form-grid">
                         <div class="msc-field">
@@ -566,6 +590,40 @@ class MSC_Account {
         }
 
         wp_send_json_success( array('message' => 'Profile updated successfully!') );
+    }
+
+    public static function ajax_upload_profile_photo() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+
+        if ( empty( $_FILES['photo'] ) || empty( $_FILES['photo']['name'] ) ) {
+            wp_send_json_error( array( 'message' => 'No file received.' ) );
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        $check = wp_check_filetype_and_ext( $_FILES['photo']['tmp_name'], $_FILES['photo']['name'] );
+        if ( ! in_array( $check['ext'], array( 'jpg', 'jpeg', 'png', 'webp' ), true ) ) {
+            wp_send_json_error( array( 'message' => 'Only JPG, PNG or WebP images are allowed.' ) );
+        }
+
+        // Delete existing profile photo
+        $old_id = get_user_meta( $user_id, 'msc_profile_photo', true );
+        if ( $old_id ) wp_delete_attachment( $old_id, true );
+
+        $_FILES['photo']['name'] = 'profile-' . $user_id . '-' . time() . '.' . $check['ext'];
+        $attachment_id = media_handle_upload( 'photo', 0 );
+        if ( is_wp_error( $attachment_id ) ) {
+            wp_send_json_error( array( 'message' => $attachment_id->get_error_message() ) );
+        }
+
+        update_user_meta( $user_id, 'msc_profile_photo', $attachment_id );
+        $url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
+
+        wp_send_json_success( array( 'url' => $url ) );
     }
 
     public static function ajax_add_vehicle() {

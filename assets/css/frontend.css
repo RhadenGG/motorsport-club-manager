@@ -718,6 +718,25 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
     .msc-col-notes { display: none; }
 }
 
+/* ── Profile Photo ─────────────────────────────────────────────────────────── */
+.msc-profile-photo-section {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 0 24px;
+}
+.msc-profile-photo-current img {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--msc-border);
+    display: block;
+}
+@media (max-width: 480px) {
+    .msc-profile-photo-section { flex-direction: column; align-items: flex-start; }
+}
+
 /* ── Onboarding Banner ─────────────────────────────────────────────────────── */
 .msc-onboarding-banner {
     display: flex;
