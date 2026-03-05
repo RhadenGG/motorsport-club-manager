@@ -61,7 +61,7 @@ class MSC_Indemnity {
         $event      = get_post( $reg->event_id );
         $vehicle    = get_post( $reg->vehicle_id );
         $user       = get_user_by( 'id', $reg->user_id );
-        $indem      = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
+        $indem      = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
         $event_date = get_post_meta( $reg->event_id, '_msc_event_date', true );
         $location   = get_post_meta( $reg->event_id, '_msc_event_location', true );
         $site_name  = get_bloginfo( 'name' );
@@ -188,7 +188,7 @@ class MSC_Indemnity {
                 
                 $psig_y = $pdf->get_y();
                 $pdf->set_text_color( 45, 52, 54 );
-                $pdf->set_font_size( 9, null, true );
+                $pdf->set_font_size( 9 );
                 $pdf->write( $lm, 'PARENT / GUARDIAN ACKNOWLEDGEMENT:', $rw, 9, 14, true );
                 
                 $psig_box_y = $pdf->get_y() + 5;
@@ -324,20 +324,23 @@ class MSC_Indemnity {
         ) );
         if ( ! $reg ) return;
 
-        $pdf_data = self::build_pdf( $reg );
-        $filename = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg_id . '.pdf';
+        $pdf_data   = self::build_pdf( $reg );
+        $filename   = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg_id . '.pdf';
 
         // Write to a temp file for wp_mail attachment
         $tmp = wp_tempnam( $filename );
         file_put_contents( $tmp, $pdf_data );
 
+        $user_name  = esc_html( $reg->user_name );
+        $event_name = esc_html( $reg->event_name );
+        $site       = esc_html( get_bloginfo( 'name' ) );
+
         $subject  = 'Signed Indemnity Form — ' . $reg->event_name;
-        $site     = get_bloginfo( 'name' );
         $message  = "
-            <p>Hi {$reg->user_name},</p>
-            <p>Please find attached your signed indemnity form for <strong>{$reg->event_name}</strong>.</p>
+            <p>Hi {$user_name},</p>
+            <p>Please find attached your signed indemnity form for <strong>{$event_name}</strong>.</p>
             <p>Please keep this for your records. Entry #<strong>{$reg->id}</strong>.</p>
-            <p>See you at the track!<br>The $site Team</p>";
+            <p>See you at the track!<br>The {$site} Team</p>";
 
         $headers  = array( 'Content-Type: text/html; charset=UTF-8' );
         $attachments = array( $tmp );
@@ -362,6 +365,8 @@ class MSC_Indemnity {
             wp_mail( $event_author->user_email, 'Indemnity Signed: ' . $reg->event_name . ' — ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
         }
 
-        @unlink( $tmp );
+        if ( ! unlink( $tmp ) ) {
+            error_log( 'MSC: Failed to delete temp PDF: ' . $tmp );
+        }
     }
 }

@@ -62,3 +62,14 @@ function msc_run_migration() {
         update_option('msc_db_version', MSC_VERSION);
     }
 }
+
+/** Single source of truth for the default indemnity wording. */
+function msc_get_default_indemnity() {
+    return "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.";
+}
+
+/** Returns the URL of the member account page (configurable via Settings). */
+function msc_get_account_url( $tab = '' ) {
+    $base = get_option( 'msc_account_page_url', home_url( '/my-account/' ) );
+    return $tab ? add_query_arg( 'msc_tab', $tab, $base ) : $base;
+}

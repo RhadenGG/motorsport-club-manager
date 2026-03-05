@@ -26,4 +26,6 @@ yarn-error.log*
 
 # Plugin specific
 GEMINI.md
+CLAUDE.md
+REPORT.txt
 # (Optional: If you have any build-specific files or credentials, add them here)

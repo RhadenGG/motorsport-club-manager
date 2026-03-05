@@ -81,8 +81,7 @@ class MSC_Admin_Events {
                    'reg_close'      => get_post_meta( $post->ID, '_msc_reg_close', true ),
                    'indemnity_text' => get_post_meta( $post->ID, '_msc_indemnity_text', true ),
         );
-        $default_indemnity = "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.";
-        if ( ! $d['indemnity_text'] ) $d['indemnity_text'] = $default_indemnity;
+        if ( ! $d['indemnity_text'] ) $d['indemnity_text'] = msc_get_default_indemnity();
         ?>
         <table class="form-table" style="width:100%">
         <tr>
@@ -336,12 +335,12 @@ class MSC_Admin_Events {
         $sb = $status_bg[$r->status]     ?? '#eee';
         ?>
         <tr>
-        <td><?php echo $r->id ?></td>
+        <td><?php echo intval($r->id) ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
         <td><?php echo esc_html($r->vehicle_name) ?></td>
-        <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free' ?></td>
+        <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
         <td><?php 
             if ($r->pop_file_id) {
                 $url = wp_get_attachment_url($r->pop_file_id);
@@ -358,7 +357,7 @@ class MSC_Admin_Events {
         ?></td>
         <td>
         <span style="background:<?php echo $sb ?>;color:<?php echo $sc ?>;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">
-        <?php echo ucfirst($r->status) ?>
+        <?php echo esc_html(ucfirst($r->status)) ?>
         </span>
         </td>
         <td><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
@@ -401,17 +400,26 @@ class MSC_Admin_Events {
             check_admin_referer('msc_save_settings');
             update_option('msc_banking_details', wp_kses_post($_POST['msc_banking_details']));
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
+            update_option('msc_account_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url'] ?? ''))));
             echo '<div class="updated"><p>Settings saved.</p></div>';
         }
 
-        $banking   = get_option('msc_banking_details', '');
-        $indemnity = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
+        $banking     = get_option('msc_banking_details', '');
+        $indemnity   = get_option('msc_default_indemnity', msc_get_default_indemnity());
+        $account_url = get_option('msc_account_page_url', home_url('/my-account/'));
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
             <form method="post">
                 <?php wp_nonce_field('msc_save_settings'); ?>
                 <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="msc_account_page_url">Account Page URL</label></th>
+                        <td>
+                            <input type="url" name="msc_account_page_url" id="msc_account_page_url" value="<?php echo esc_attr($account_url); ?>" class="large-text" placeholder="<?php echo esc_attr(home_url('/my-account/')); ?>">
+                            <p class="description">Full URL of the page containing the <code>[msc_my_account]</code> shortcode. Used in registration emails and on-page links.</p>
+                        </td>
+                    </tr>
                     <tr>
                         <th scope="row"><label for="msc_banking_details">Banking Details</label></th>
                         <td>

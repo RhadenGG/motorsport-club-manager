@@ -4,7 +4,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class MSC_Emails {
 
     public static function init() {
-        add_filter( 'wp_mail_content_type', function(){ return 'text/html'; } );
+        // Content-Type is set per-send via explicit headers — no global filter needed.
+    }
+
+    /** Wrapper for wp_mail() that logs failures. */
+    private static function send_mail( $to, $subject, $body, $headers = array(), $attachments = array() ) {
+        $sent = wp_mail( $to, $subject, $body, $headers, $attachments );
+        if ( ! $sent ) {
+            error_log( 'MSC Email failed: To=' . $to . ' | Subject=' . $subject );
+        }
+        return $sent;
     }
 
     private static function get_reg($reg_id) {
@@ -21,17 +30,18 @@ class MSC_Emails {
     }
 
     public static function wrap( $title, $body ) {
-        $site_name = get_bloginfo('name');
-        $logo_url  = '';
+        $site_name     = esc_html( get_bloginfo( 'name' ) );
+        $site_url_esc  = esc_html( get_bloginfo( 'wpurl' ) );
+        $logo_url      = '';
         $custom_logo_id = get_theme_mod( 'custom_logo' );
         if ( $custom_logo_id ) {
             $logo_data = wp_get_attachment_image_src( $custom_logo_id, 'full' );
             if ( $logo_data ) { $logo_url = $logo_data[0]; }
         }
 
-        $header_content = $logo_url 
-            ? "<img src='".esc_url($logo_url)."' alt='".esc_attr($site_name)."' style='max-height:60px;width:auto'>"
-            : "<h1 style='color:#ffffff;margin:0;font-size:22px'>🏁 $site_name</h1>";
+        $header_content = $logo_url
+            ? "<img src='" . esc_url( $logo_url ) . "' alt='" . esc_attr( get_bloginfo( 'name' ) ) . "' style='max-height:60px;width:auto'>"
+            : "<h1 style='color:#ffffff;margin:0;font-size:22px'>🏁 {$site_name}</h1>";
 
         return "
         <div style='font-family:Arial,sans-serif;max-width:560px;margin:20px auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05)'>
@@ -44,7 +54,7 @@ class MSC_Emails {
             </div>
             <div style='background:#f9f9f9;padding:20px 32px;font-size:12px;color:#999;text-align:center;border-top:1px solid #eee'>
                 <strong>{$site_name}</strong><br>
-                This is an automated message from " . get_bloginfo('wpurl') . ". Please do not reply.
+                This is an automated message from {$site_url_esc}. Please do not reply.
             </div>
         </div>";
     }
@@ -52,25 +62,31 @@ class MSC_Emails {
     public static function send_registration_received( $reg_id ) {
         $reg = self::get_reg($reg_id);
         if ( ! $reg ) return;
-        $event    = get_post($reg->event_id);
-        $event_dt = get_post_meta($reg->event_id,'_msc_event_date',true);
-        $date_str = $event_dt ? date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), strtotime($event_dt)) : 'TBC';
-        $fee_str  = $reg->entry_fee > 0 ? 'R ' . number_format($reg->entry_fee,2) : 'Free';
+
+        $user_name    = esc_html( $reg->user_name );
+        $event_name   = esc_html( $reg->event_name );
+        $vehicle_name = esc_html( $reg->vehicle_name );
+        $site_name    = esc_html( get_bloginfo( 'name' ) );
+        $account_url  = esc_url( msc_get_account_url( 'registrations' ) );
+
+        $event_dt   = get_post_meta($reg->event_id,'_msc_event_date',true);
+        $date_str   = $event_dt ? date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), strtotime($event_dt)) : 'TBC';
+        $fee_str    = $reg->entry_fee > 0 ? 'R ' . number_format($reg->entry_fee,2) : 'Free';
         $status_msg = $reg->status === 'confirmed' ? 'You are confirmed! See you on the track.' : 'Your entry is <strong>pending approval</strong>. We will notify you once confirmed.';
 
         $body = "
-        <p>Hi {$reg->user_name},</p>
-        <p>Thank you for registering for <strong>{$reg->event_name}</strong>.</p>
+        <p>Hi {$user_name},</p>
+        <p>Thank you for registering for <strong>{$event_name}</strong>.</p>
         <table style='width:100%;border-collapse:collapse;margin:20px 0;background:#fdfdfd'>
-            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Event</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$reg->event_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Event</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$event_name}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Date</td><td style='padding:10px;border:1px solid #f1f1f1'>{$date_str}</td></tr>
-            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Vehicle</td><td style='padding:10px;border:1px solid #f1f1f1'>{$reg->vehicle_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Vehicle</td><td style='padding:10px;border:1px solid #f1f1f1'>{$vehicle_name}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Entry Fee</td><td style='padding:10px;border:1px solid #f1f1f1'>{$fee_str}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Indemnity</td><td style='padding:10px;border:1px solid #f1f1f1'>" . ($reg->indemnity_method==='signed'?'✓ Digitally signed':'Will bring physical copy') . "</td></tr>
         </table>
         <p style='margin:20px 0'>$status_msg</p>
-        <p style='text-align:center;margin:30px 0'><a href='".home_url('/my-account/')."' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
-        <p>See you at the track!<br>The " . get_bloginfo('name') . " team</p>";
+        <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
+        <p>See you at the track!<br>The {$site_name} team</p>";
 
         // Attachments
         $attachments = array();
@@ -81,38 +97,40 @@ class MSC_Emails {
             }
         }
 
-        wp_mail( $reg->user_email, "Registration Received — {$reg->event_name}", self::wrap("Registration Received", $body), array('Content-Type: text/html; charset=UTF-8'), $attachments );
+        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+
+        self::send_mail( $reg->user_email, "Registration Received — {$reg->event_name}", self::wrap("Registration Received", $body), $headers, $attachments );
 
         // Notify admin
-        wp_mail( get_option('admin_email'), "New Registration: {$reg->event_name} — {$reg->user_name}",
-            self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>"),
-            array('Content-Type: text/html; charset=UTF-8'),
-            $attachments
-        );
+        $admin_body = "<p>New registration from <strong>{$user_name}</strong> for <strong>{$event_name}</strong>.</p><p><a href='" . esc_url( admin_url('admin.php?page=msc-registrations') ) . "'>View in admin dashboard →</a></p>";
+        self::send_mail( get_option('admin_email'), "New Registration: {$reg->event_name} — {$reg->user_name}", self::wrap("New Registration", $admin_body), $headers, $attachments );
 
         // Notify event author if different from admin
         $event_author_id = get_post_field('post_author', $reg->event_id);
         $event_author = get_user_by('id', $event_author_id);
         if ( $event_author && $event_author->user_email !== get_option('admin_email') ) {
-            wp_mail( $event_author->user_email, "New Registration: {$reg->event_name} — {$reg->user_name}",
-                self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>"),
-                array('Content-Type: text/html; charset=UTF-8'),
-                $attachments
-            );
+            self::send_mail( $event_author->user_email, "New Registration: {$reg->event_name} — {$reg->user_name}", self::wrap("New Registration", $admin_body), $headers, $attachments );
         }
     }
 
     public static function send_confirmation( $reg_id ) {
         $reg = self::get_reg($reg_id);
         if ( ! $reg ) return;
-        $pdf_link = add_query_arg('msc_indemnity_pdf', $reg_id, home_url());
+
+        $user_name  = esc_html( $reg->user_name );
+        $event_name = esc_html( $reg->event_name );
+        $site_name  = esc_html( get_bloginfo( 'name' ) );
+        $pdf_link   = esc_url( add_query_arg( 'msc_indemnity_pdf', $reg_id, home_url() ) );
+
         $body = "
-        <p>Hi {$reg->user_name},</p>
-        <p>Great news — your entry for <strong>{$reg->event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
+        <p>Hi {$user_name},</p>
+        <p>Great news — your entry for <strong>{$event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
         <p>Entry No: <strong>#{$reg->id}</strong></p>
         " . ($reg->indemnity_method==='bring' ? "<p><strong>Note:</strong> You selected to bring a physical indemnity form. Please ensure it is printed and signed before arrival.</p><p style='text-align:center;margin:25px 0'><a href='{$pdf_link}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Download Indemnity Form</a></p>" : "<p><a href='{$pdf_link}' style='color:#2d3436;font-weight:bold;text-decoration:underline'>Download your signed indemnity form (PDF)</a></p>") . "
         <p>We look forward to seeing you at the event!</p>
-        <p>Best regards,<br>" . get_bloginfo('name') . "</p>";
-        wp_mail( $reg->user_email, "Entry Confirmed — {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body) );
+        <p>Best regards,<br>{$site_name}</p>";
+
+        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+        self::send_mail( $reg->user_email, "Entry Confirmed — {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
     }
 }

@@ -90,7 +90,11 @@ class MSC_Results {
         ) return;
 
         if ( isset( $_POST['msc_event_status'] ) ) {
-            update_post_meta( $post_id, '_msc_event_status', sanitize_text_field( $_POST['msc_event_status'] ) );
+            $allowed_statuses = array( 'open', 'closed' );
+            $status = sanitize_text_field( $_POST['msc_event_status'] );
+            if ( in_array( $status, $allowed_statuses, true ) ) {
+                update_post_meta( $post_id, '_msc_event_status', $status );
+            }
         }
     }
 

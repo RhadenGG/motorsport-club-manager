@@ -75,6 +75,7 @@ class MSC_Shortcodes {
     }
 
     public static function events_list( $atts = array() ) {
+        global $wpdb;
         $atts = shortcode_atts( array( 'count' => 10, 'show_past' => 0 ), $atts );
         $args = array(
             'post_type'      => 'msc_event',
@@ -103,7 +104,6 @@ class MSC_Shortcodes {
             $fee      = floatval(get_post_meta($e->ID,'_msc_entry_fee',true));
             $terms    = get_the_terms($e->ID,'msc_vehicle_class');
             $closed   = MSC_Results::is_closed( $e->ID );
-            global $wpdb;
             $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$e->ID));
             $capacity  = get_post_meta($e->ID,'_msc_capacity',true);
             $full      = $capacity && $reg_count >= $capacity;
@@ -156,7 +156,7 @@ class MSC_Shortcodes {
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
         $now       = current_time('timestamp');
-        $indemnity = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
+        $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
         $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
         $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
 
@@ -171,10 +171,9 @@ class MSC_Shortcodes {
         $birthday = get_user_meta($user_id, 'msc_birthday', true);
 
         if ( ! $birthday ) {
-            $profile_url = add_query_arg('msc_tab', 'profile', home_url('/my-account/'));
             return '<div class="msc-notice msc-notice-warning">
                 <p><strong>Profile Incomplete:</strong> Your Date of Birth is required to register for events.</p>
-                <a href="' . esc_url($profile_url) . '" class="msc-btn msc-btn-sm">Complete My Profile →</a>
+                <a href="' . esc_url( msc_get_account_url( 'profile' ) ) . '" class="msc-btn msc-btn-sm">Complete My Profile →</a>
             </div>';
         }
 
@@ -185,8 +184,7 @@ class MSC_Shortcodes {
         $is_minor = ($age < 18);
 
         if (MSC_Registration::user_is_registered($user_id, $event_id)) {
-            $regs_url = add_query_arg('msc_tab', 'registrations', home_url('/my-account/'));
-            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="' . esc_url($regs_url) . '">View your registration</a></div>';
+            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="' . esc_url( msc_get_account_url( 'registrations' ) ) . '">View your registration</a></div>';
         }
 
         global $wpdb;
@@ -213,8 +211,7 @@ class MSC_Shortcodes {
                     <div id="msc-vehicles-list" style="display:none"></div>
                     <div id="msc-vehicles-empty" style="display:none">
                         <p>No eligible vehicles found in your garage for this event's classes.</p>
-                        <?php $garage_url = add_query_arg('msc_tab', 'garage', home_url('/my-account/')); ?>
-                        <a href="<?php echo esc_url($garage_url); ?>" class="msc-btn msc-btn-outline">Add a Vehicle</a>
+                        <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-outline">Add a Vehicle</a>
                     </div>
                     <div style="margin-top:12px">
                         <label style="font-weight:600;display:block;margin-bottom:4px">Additional Notes (optional)</label>

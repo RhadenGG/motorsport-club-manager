@@ -51,7 +51,7 @@ class MSC_Registration {
         $is_minor   = 0;
         if ($birthday) {
             $dob_ts = strtotime($birthday);
-            $now_ts = current_time('timestamp');
+            $now_ts = time();
             $age    = date('Y', $now_ts) - date('Y', $dob_ts);
             if ( date('md', $now_ts) < date('md', $dob_ts) ) $age--;
             if ( $age < 18 ) $is_minor = 1;
@@ -87,7 +87,7 @@ class MSC_Registration {
         // Check registration window
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
-        $now       = current_time('timestamp');
+        $now       = time();
         if ( $reg_open  && strtotime($reg_open)  > $now ) wp_send_json_error(array('message'=>'Registration has not opened yet.'));
         if ( $reg_close && strtotime($reg_close) < $now ) wp_send_json_error(array('message'=>'Registration is closed.'));
 
@@ -124,10 +124,10 @@ class MSC_Registration {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
 
-            // Verify it's a PDF
-            $file_type = wp_check_filetype($_FILES['pop_file']['name']);
-            if ($file_type['ext'] !== 'pdf') {
-                wp_send_json_error(array('message' => 'Proof of Payment must be a PDF file.'));
+            // Verify it's a PDF using server-side type detection (not client-supplied MIME)
+            $check = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+            if ( $check['ext'] !== 'pdf' || $check['type'] !== 'application/pdf' ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF file.' ) );
             }
 
             $attachment_id = media_handle_upload( 'pop_file', 0 ); 
@@ -163,7 +163,7 @@ class MSC_Registration {
 
         if ( false === $inserted ) {
             error_log('MSC Registration Error: ' . $wpdb->last_error);
-            wp_send_json_error(array('message' => 'Failed to save registration. Please contact the administrator. Database error: ' . $wpdb->last_error));
+            wp_send_json_error(array('message' => 'Failed to save registration. Please contact the administrator.'));
         }
 
         $reg_id = $wpdb->insert_id;

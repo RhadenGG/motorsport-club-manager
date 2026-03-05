@@ -523,6 +523,7 @@ class MSC_Account {
             'post_author' => $user_id,
         ) );
         if ( is_wp_error( $post_id ) ) wp_send_json_error( array( 'message' => $post_id->get_error_message() ) );
+        if ( ! $post_id ) wp_send_json_error( array( 'message' => 'Could not create vehicle record.' ) );
 
         foreach ( array( 'type', 'make', 'model', 'year', 'color', 'reg_number' ) as $f ) {
             if ( isset( $_POST[ $f ] ) ) {
@@ -543,14 +544,16 @@ class MSC_Account {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
 
-            $allowed = array( 'image/jpeg', 'image/png', 'image/webp' );
-            if ( ! in_array( $_FILES['photo']['type'], $allowed ) ) {
-                wp_delete_post( $post_id, true );
-                wp_send_json_error( array( 'message' => 'Invalid file type. JPG, PNG or WebP only.' ) );
-            }
             if ( $_FILES['photo']['size'] > 5 * 1024 * 1024 ) {
                 wp_delete_post( $post_id, true );
                 wp_send_json_error( array( 'message' => 'Photo must be under 5MB.' ) );
+            }
+            // Validate using server-side type detection, not client-supplied MIME
+            $check         = wp_check_filetype_and_ext( $_FILES['photo']['tmp_name'], $_FILES['photo']['name'] );
+            $allowed_exts  = array( 'jpg', 'jpeg', 'png', 'webp' );
+            if ( ! $check['ext'] || ! in_array( $check['ext'], $allowed_exts, true ) ) {
+                wp_delete_post( $post_id, true );
+                wp_send_json_error( array( 'message' => 'Invalid file type. JPG, PNG or WebP only.' ) );
             }
             $_FILES['photo']['name'] = sanitize_file_name( $_FILES['photo']['name'] );
             $attachment_id = media_handle_upload( 'photo', $post_id );
@@ -599,12 +602,14 @@ class MSC_Account {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
 
-            $allowed = array( 'image/jpeg', 'image/png', 'image/webp' );
-            if ( ! in_array( $_FILES['photo']['type'], $allowed ) ) {
-                wp_send_json_error( array( 'message' => 'Invalid file type. JPG, PNG or WebP only.' ) );
-            }
             if ( $_FILES['photo']['size'] > 5 * 1024 * 1024 ) {
                 wp_send_json_error( array( 'message' => 'Photo must be under 5MB.' ) );
+            }
+            // Validate using server-side type detection, not client-supplied MIME
+            $check        = wp_check_filetype_and_ext( $_FILES['photo']['tmp_name'], $_FILES['photo']['name'] );
+            $allowed_exts = array( 'jpg', 'jpeg', 'png', 'webp' );
+            if ( ! $check['ext'] || ! in_array( $check['ext'], $allowed_exts, true ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid file type. JPG, PNG or WebP only.' ) );
             }
             // Remove old thumbnail
             $old_thumb = get_post_thumbnail_id( $post_id );
