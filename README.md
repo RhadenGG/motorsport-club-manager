@@ -121,7 +121,7 @@ Single event pages (`msc_event` post type) automatically display event details, 
 - Delete registrations
 
 ### Vehicle Classes
-Vehicle types and classes are defined in `includes/class-taxonomies.php`. Events select which types and classes are allowed, and only matching vehicles from a member's garage appear during registration.
+Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a Vehicle Type (Car or Motorcycle). Events select which types and classes are allowed, and only matching vehicles from a member's garage appear during registration. A set of default classes is created on first activation — add, rename, or remove them to suit your club.
 
 ### Settings
 - **Account Page URL** — full URL of the page containing `[msc_my_account]`
@@ -148,7 +148,7 @@ Access is restricted to the participant, the event author, and administrators.
 3. **Results published** — displayed on the frontend event page
 
 ### Centralised Classification
-`MSC_Taxonomies` is the single source of truth for vehicle types and classes. This ensures consistency between the admin garage, event configuration, and frontend registration filtering.
+`MSC_Taxonomies` is the single source of truth for vehicle types and classes, backed by the `msc_vehicle_class` taxonomy with `msc_vehicle_type` term meta. Classes are managed entirely through the WordPress admin UI, ensuring consistency between the admin garage, event configuration, and frontend registration filtering.
 
 ---
 
@@ -157,7 +157,7 @@ Access is restricted to the participant, the event author, and administrators.
 | File | Purpose |
 |---|---|
 | `motorsport-club.php` | Plugin entry point, constants, class loading |
-| `includes/class-taxonomies.php` | Vehicle types and class definitions |
+| `includes/class-taxonomies.php` | Taxonomy registration, term meta UI, and class queries |
 | `includes/class-registration.php` | AJAX registration logic and validation |
 | `includes/class-account.php` | Frontend member dashboard |
 | `includes/class-indemnity.php` | PDF generation and email delivery |
