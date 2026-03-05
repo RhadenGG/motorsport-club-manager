@@ -3,7 +3,7 @@
  * Plugin Name: Motorsport Club Manager
  * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
- * Version:     0.2.2
+ * Version:     0.2.3
  * Author:      Trevor Botha
  * Author URI:  https://trevorbotha.net
  * Text Domain: motorsport-club
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '0.2.2' );
+define( 'MSC_VERSION',  '0.2.3' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
@@ -37,14 +37,6 @@ register_deactivation_hook( __FILE__, array( 'MSC_Activator', 'deactivate' ) );
 
 add_action( 'plugins_loaded', 'msc_init' );
 function msc_init() {
-    // Migration check to ensure DB is up to date
-    if ( get_option('msc_db_version') !== MSC_VERSION ) {
-        MSC_Activator::activate();
-        MSC_Post_Types::register_all();
-        flush_rewrite_rules();
-        update_option('msc_db_version', MSC_VERSION);
-    }
-    
     MSC_Post_Types::init();
     MSC_Taxonomies::init();
     MSC_Admin_Events::init();
@@ -56,4 +48,17 @@ function msc_init() {
     MSC_Account::init();
     MSC_Security::init();
     MSC_Results::init();
+}
+
+/**
+ * Migration check to ensure DB and rewrites are up to date.
+ * Runs on 'init' to ensure $wp_rewrite is available.
+ */
+add_action( 'init', 'msc_run_migration', 20 );
+function msc_run_migration() {
+    if ( get_option('msc_db_version') !== MSC_VERSION ) {
+        MSC_Activator::activate();
+        flush_rewrite_rules();
+        update_option('msc_db_version', MSC_VERSION);
+    }
 }
