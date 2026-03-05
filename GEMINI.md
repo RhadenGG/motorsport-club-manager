@@ -28,11 +28,14 @@ A WordPress plugin developed for **kznrrc.co.za** to manage motorsport events, p
 ## Recent Major Changes
 - **Automated Age Verification:** Integrated a mandatory **Date of Birth** field into the WordPress user profile and the frontend dashboard. The system now automatically calculates age and enforces parent/guardian signatures for participants under 18.
 - **Enhanced Profile Management:** Added a dedicated "My Profile" tab to the member dashboard, allowing users to manage personal details, emergency contacts, and passwords.
+- **EFT & Proof of Payment Workflow:** Implemented a new payment system where admins set banking details and participants must upload a PDF Proof of Payment (PoP) for events with fees.
+- **Real-time Form Validation:** Added frontend logic to the registration form to disable the submit button until all mandatory fields (Emergency contacts, parent info, signatures, and PoP) are validly completed.
 - **Legal Compliance:** Added dual-signature capability for minors. Mandatory emergency contact fields are now captured and saved to the user profile.
 - **Security:** Restricted PDF indemnity access to only administrators, event organizers, and the specific participant.
 - **Dynamic Branding:** Refactored PDF and email generation to dynamically pull the **WordPress Site Logo** and **Site Title**.
+- **Automated Migration:** Added a version-controlled migration system that handles database updates and rewrite rule flushing on the `init` hook (v0.2.x+).
 - **Restructuring:** Flattened the project structure by moving all source files to the root.
-- **Bug Fixes:** Resolved database column update issues and fixed relative URL redirects for profile management.
+- **Bug Fixes:** Resolved critical errors related to early rewrite rule flushing, fixed `mbstring` and `iconv` dependencies in the PDF library, and resolved relative URL redirects for profile management.
 
 ## Key Files
 - `motorsport-club.php`: Main initialization and inclusion of core classes.

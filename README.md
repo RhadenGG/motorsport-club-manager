@@ -10,9 +10,11 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 - **Member Garage** — Users can manage their own fleet of vehicles (Cars & Motorcycles) within their WordPress profile.
 - **Intelligent Registration** — Members register for events using vehicles from their garage. The system automatically filters eligible vehicles based on the event's allowed classes.
 - **Digital Indemnity** — Integrated electronic signature support (via `signature_pad`) for indemnity forms. Supports parent/guardian signatures for minors.
+- **EFT & Proof of Payment** — Integrated offline payment workflow. Admins can set banking details in the settings page. Members are required to upload a PDF Proof of Payment (PoP) during registration for events with entry fees.
+- **Real-time Form Validation** — Enhanced frontend registration form with real-time validation. The "Submit Registration" button is only enabled once all required fields (Emergency Contacts, Parent/Guardian, Indemnity, and PoP) are completed.
 - **Dynamic PDF Branding** — Automatically pulls the WordPress site logo and title into the generated PDF and email templates.
 - **Age Verification** — Mandatory Date of Birth field in user profiles. The system automatically calculates age and enforces parent/guardian signatures for participants under 18.
-- **Participant Safety** — Mandatory emergency contact fields saved to the user profile and pre-filled during registration.
+- **Participant Safety** — Mandatory emergency contact fields saved to the user profile and pre-filled during registration. All contact fields are mandatory for submission.
 - **Automated PDFs** — Generates A4 PDF indemnity forms with participant details, emergency contacts, and dual signatures where applicable.
 - **Shortcode Powered** — Easy integration into any WordPress theme using a suite of shortcodes for lists, registrations, and account management.
 
@@ -23,12 +25,12 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 - **PHP / WordPress Plugin API**
 - **Custom Post Types:** `msc_event` (Events), `msc_vehicle` (Member Vehicles)
 - **Custom Database Tables:**
-    - `{prefix}msc_registrations`: Stores entrant details, vehicle selection, emergency contacts, and indemnity signatures.
+    - `{prefix}msc_registrations`: Stores entrant details, vehicle selection, emergency contacts, indemnity signatures, and Proof of Payment references.
     - `{prefix}msc_event_results`: Stores lap times and finishing positions.
 - **Frontend:** Vanilla CSS (`msc-` prefixed) and jQuery.
 - **Libraries:**
     - `signature_pad` (CDN) for electronic signatures.
-    - `MSC_PDF` (Custom lib) for A4 PDF generation.
+    - `MSC_PDF` (Custom lib) for A4 PDF generation (no external PHP extensions required).
 
 ---
 
@@ -36,10 +38,11 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 
 1. **Upload:** Move the plugin folder to your `/wp-content/plugins/` directory.
 2. **Activate:** Enable the plugin through the **Plugins** menu in WordPress.
-3. **Configure Account Page:** Create a new WordPress page, add the `[msc_my_account]` shortcode, and link to it in your site menu.
-4. **Create Events:** Start adding events under the **Motorsport Club → Events** menu.
+3. **Configure Banking:** Go to **Motorsport Club → Settings** and enter your EFT banking details.
+4. **Configure Account Page:** Create a new WordPress page, add the `[msc_my_account]` shortcode, and link to it in your site menu.
+5. **Create Events:** Start adding events under the **Motorsport Club → Events** menu.
 
-> **Note:** For existing installations, if you encounter database errors when registering, please deactivate and reactivate the plugin once to ensure the new columns (`emergency_phone`, `parent_sig`, etc.) are created.
+> **Note:** For existing installations, the plugin automatically handles database migrations and rewrite rule flushing upon version updates.
 
 ### Detailed Setup Steps
 
@@ -59,8 +62,6 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 | `[msc_my_account]` | The member dashboard (Garage + Registrations + Profile). |
 | `[msc_register_event event_id="X"]` | Manual embed for a specific event registration form. |
 
-> **Note:** The registration form automatically collects the participant's display name and age status from their profile.
-
 ---
 
 ## 🔧 Admin Usage
@@ -68,6 +69,8 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 ### Registrations Management
 Navigate to **Motorsport Club → Registrations** to:
 - Filter entries by event or status (Pending, Confirmed, Rejected).
+- View and download **Proof of Payment (PoP)** PDFs uploaded by participants.
+- Toggle **Paid** status for each registration.
 - Confirming a registration automatically triggers the confirmation email to the member.
 - View and download signed indemnity forms as printable PDFs.
 
@@ -80,8 +83,9 @@ Once an event's registration is closed (via the event editor), you can record la
 
 | Trigger | Recipient | Content |
 |---|---|---|
-| New Registration | Member + Admin | Submission receipt, emergency details, and status. |
+| New Registration | Member + Admin | Submission receipt, emergency details, and **PoP attachment**. |
 | Status Confirmed | Member | Official confirmation with PDF indemnity attachment. |
+| Signed Indemnity | Member + Admin + Author | Copy of the signed indemnity PDF and **PoP attachment**. |
 
 ### Indemnity PDF
 Access formatted indemnity PDFs via:
