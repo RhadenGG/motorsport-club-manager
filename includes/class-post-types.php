@@ -21,7 +21,7 @@ class MSC_Post_Types {
 
         // ── Vehicle (Garage) ─────────────────────────────────────────
         register_post_type( 'msc_vehicle', array(
-            'labels'        => self::labels( 'Vehicle', 'Vehicles / Garage' ),
+            'labels'        => self::labels( 'Vehicle', 'Vehicles' ),
             'public'        => false,
             'show_ui'       => true,
             'show_in_menu'  => 'motorsport-club',

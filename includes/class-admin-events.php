@@ -5,6 +5,7 @@ class MSC_Admin_Events {
 
     public static function init() {
         add_action( 'admin_menu',            array( __CLASS__, 'add_menu' ) );
+        add_action( 'admin_menu',            array( __CLASS__, 'reorder_submenu' ), 999 );
         add_action( 'add_meta_boxes',        array( __CLASS__, 'add_meta_boxes' ) );
         add_action( 'save_post_msc_event',   array( __CLASS__, 'save_meta' ) );
         add_action( 'admin_enqueue_scripts',  array( __CLASS__, 'enqueue_media' ) );
@@ -23,6 +24,37 @@ class MSC_Admin_Events {
         add_submenu_page( 'motorsport-club', 'Registrations','Registrations','manage_options','msc-registrations', array( __CLASS__, 'registrations_page' ) );
         add_submenu_page( 'motorsport-club', 'Vehicle Classes','Vehicle Classes','manage_options','edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle' );
         add_submenu_page( 'motorsport-club', 'Settings',      'Settings',     'manage_options','msc-settings',      array( __CLASS__, 'settings_page' ) );
+    }
+
+    public static function reorder_submenu() {
+        global $submenu;
+        if ( ! isset( $submenu['motorsport-club'] ) ) return;
+
+        $order = array(
+            'motorsport-club',                                                  // Dashboard
+            'edit.php?post_type=msc_event',                                     // Racing Events
+            'msc-registrations',                                                // Registrations
+            'edit.php?post_type=msc_vehicle',                                   // Vehicles
+            'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle',   // Vehicle Classes
+            'msc-settings',                                                     // Settings
+        );
+
+        $sorted = array();
+        foreach ( $order as $slug ) {
+            foreach ( $submenu['motorsport-club'] as $key => $item ) {
+                if ( $item[2] === $slug ) {
+                    $sorted[] = $item;
+                    break;
+                }
+            }
+        }
+        // Append any items not in our order list
+        foreach ( $submenu['motorsport-club'] as $item ) {
+            if ( ! in_array( $item[2], $order, true ) ) {
+                $sorted[] = $item;
+            }
+        }
+        $submenu['motorsport-club'] = $sorted;
     }
 
     public static function enqueue_media( $hook ) {
