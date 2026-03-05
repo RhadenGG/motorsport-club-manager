@@ -71,6 +71,9 @@ class MSC_Registration {
         if ( ! $event_id || ! $vehicle_id || ! $em_name || ! $em_phone ) {
             wp_send_json_error(array('message'=>'Please complete all required emergency contact fields.'));
         }
+        if ( $ind_method !== 'signed' || ! $ind_sig ) {
+            wp_send_json_error(array('message'=>'Electronic signature is required to complete the indemnity.'));
+        }
         if ( $is_minor ) {
             if ( ! $parent ) wp_send_json_error(array('message'=>'Please provide the parent/guardian name for a minor.'));
             if ( $ind_method === 'signed' && ! $parent_sig ) wp_send_json_error(array('message'=>'Please provide the parent/guardian signature.'));

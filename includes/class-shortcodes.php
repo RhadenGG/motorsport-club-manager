@@ -234,12 +234,9 @@ class MSC_Shortcodes {
                         <div class="msc-indemnity-text" style="margin-bottom:12px;"><?php echo nl2br(esc_html($indemnity)) ?></div>
                         
                         <div style="margin-top:16px">
-                            <label style="font-weight:700;display:block;margin-bottom:10px">How would you like to complete the indemnity?</label>
+                            <label style="font-weight:700;display:block;margin-bottom:10px">Indemnity Confirmation</label>
                             <label class="msc-radio-option" id="opt-sign">
-                                <input type="radio" name="msc_ind_method" value="sign"> ✍️ Sign electronically now
-                            </label>
-                            <label class="msc-radio-option" id="opt-bring">
-                                <input type="radio" name="msc_ind_method" value="bring"> 📄 I will download, print, sign and bring on the day
+                                <input type="radio" name="msc_ind_method" value="sign" checked> ✍️ Sign electronically now
                             </label>
                         </div>
                     </div>

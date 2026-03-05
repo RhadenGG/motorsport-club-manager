@@ -91,22 +91,6 @@ jQuery(function ($) {
                 msc.checkRegValidity();
             });
 
-            $('input[name="msc_ind_method"]').on('change', function () {
-                if ($(this).val() === 'sign') {
-                    $('#msc-sig-panel').show();
-                    if ($('#msc-reg-wrap').data('minor') == 1) {
-                        $('#msc-parent-sig-panel').show();
-                    }
-                    $('#msc-bring-panel').hide();
-                    setTimeout(function() { msc.initSignaturePads(); }, 100);
-                } else {
-                    $('#msc-sig-panel').hide();
-                    $('#msc-parent-sig-panel').hide();
-                    $('#msc-bring-panel').show();
-                }
-                msc.checkRegValidity();
-            });
-
             $('input[name="msc_sig_type"]').on('change', function () {
                 msc.sigType = $(this).val();
                 if (msc.sigType === 'draw') {
@@ -147,32 +131,27 @@ jQuery(function ($) {
             });
 
             $('#msc-submit-reg').on('click', function () {
-                var method = $('input[name="msc_ind_method"]:checked').val();
-                if (!method) { msc.showError('Please select an indemnity option.'); return; }
-                
                 var sig = '';
                 var parentSig = '';
                 var isMinor = $('#msc-reg-wrap').data('minor') == 1;
 
-                if (method === 'sign') {
-                    // Participant Sig
-                    if (msc.sigType === 'draw') {
-                        if (!msc.sigPad || msc.sigPad.isEmpty()) { msc.showError('Please draw your signature.'); return; }
-                        sig = msc.sigPad.toDataURL();
-                    } else {
-                        sig = $('#msc-sig-typed').val().trim();
-                        if (!sig) { msc.showError('Please type your name as a signature.'); return; }
-                    }
+                // Participant Sig
+                if (msc.sigType === 'draw') {
+                    if (!msc.sigPad || msc.sigPad.isEmpty()) { msc.showError('Please draw your signature.'); return; }
+                    sig = msc.sigPad.toDataURL();
+                } else {
+                    sig = $('#msc-sig-typed').val().trim();
+                    if (!sig) { msc.showError('Please type your name as a signature.'); return; }
+                }
 
-                    // Parent Sig
-                    if (isMinor) {
-                        if (msc.parentSigType === 'draw') {
-                            if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) { msc.showError('Please draw the Parent/Guardian signature.'); return; }
-                            parentSig = msc.parentSigPad.toDataURL();
-                        } else {
-                            parentSig = $('#msc-parent-sig-typed').val().trim();
-                            if (!parentSig) { msc.showError('Please type the Parent/Guardian name as a signature.'); return; }
-                        }
+                // Parent Sig
+                if (isMinor) {
+                    if (msc.parentSigType === 'draw') {
+                        if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) { msc.showError('Please draw the Parent/Guardian signature.'); return; }
+                        parentSig = msc.parentSigPad.toDataURL();
+                    } else {
+                        parentSig = $('#msc-parent-sig-typed').val().trim();
+                        if (!parentSig) { msc.showError('Please type the Parent/Guardian name as a signature.'); return; }
                     }
                 }
 
@@ -191,7 +170,7 @@ jQuery(function ($) {
                 fd.append('nonce',            mscData.nonce);
                 fd.append('event_id',         msc.eventId);
                 fd.append('vehicle_id',       msc.vehicleId);
-                fd.append('indemnity_method', method === 'sign' ? 'signed' : 'bring');
+                fd.append('indemnity_method', 'signed');
                 fd.append('indemnity_sig',    sig);
                 fd.append('parent_sig',       parentSig);
                 fd.append('is_minor',         isMinor ? 1 : 0);
@@ -263,25 +242,19 @@ jQuery(function ($) {
             // Minor Check
             if (isMinor && !$('#msc-parent-name').val().trim()) isValid = false;
 
-            // Indemnity Method
-            var method = $('input[name="msc_ind_method"]:checked').val();
-            if (!method) {
-                isValid = false;
-            } else if (method === 'sign') {
-                // Participant Sig
-                if (msc.sigType === 'draw') {
-                    if (!msc.sigPad || msc.sigPad.isEmpty()) isValid = false;
-                } else {
-                    if (!$('#msc-sig-typed').val().trim()) isValid = false;
-                }
+            // Participant Sig
+            if (msc.sigType === 'draw') {
+                if (!msc.sigPad || msc.sigPad.isEmpty()) isValid = false;
+            } else {
+                if (!$('#msc-sig-typed').val().trim()) isValid = false;
+            }
 
-                // Parent Sig
-                if (isMinor) {
-                    if (msc.parentSigType === 'draw') {
-                        if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) isValid = false;
-                    } else {
-                        if (!$('#msc-parent-sig-typed').val().trim()) isValid = false;
-                    }
+            // Parent Sig
+            if (isMinor) {
+                if (msc.parentSigType === 'draw') {
+                    if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) isValid = false;
+                } else {
+                    if (!$('#msc-parent-sig-typed').val().trim()) isValid = false;
                 }
             }
 
