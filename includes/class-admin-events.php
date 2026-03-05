@@ -158,6 +158,13 @@ class MSC_Admin_Events {
         <label><input type="radio" name="msc_approval" value="manual"  <?php checked($d['approval'],'manual'); ?>>  Requires admin approval</label>
         </td>
         </tr>
+        <tr>
+        <th><label for="msc_indemnity_text">Indemnity Text</label></th>
+        <td colspan="3">
+        <textarea name="msc_indemnity_text" id="msc_indemnity_text" rows="6" class="large-text"><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
+        <p class="description">Overrides the global default indemnity text for this event only. Leave unchanged to use the site-wide default.</p>
+        </td>
+        </tr>
         </table>
         <?php
     }
@@ -167,7 +174,7 @@ class MSC_Admin_Events {
 
         $saved_type    = get_post_meta( $post->ID, '_msc_event_vehicle_type', true ) ?: 'Both';
         $saved_classes = get_post_meta( $post->ID, '_msc_event_classes', true );
-        $saved_classes = $saved_classes ? (array) $saved_classes : array();
+        $saved_classes = array_map( 'intval', $saved_classes ? (array) $saved_classes : array() );
         ?>
         <p class="description" style="margin-top:0">Select which vehicle types and classes can enter this event.</p>
         <p style="margin-bottom:8px">
@@ -184,12 +191,12 @@ class MSC_Admin_Events {
         ?>
         <div class="msc-class-group" data-type="<?php echo $type; ?>" style="<?php echo $show; ?>margin-bottom:10px">
         <strong style="display:block;margin-bottom:4px;color:#1d2327"><?php echo $type === 'Car' ? '🚗 Car Classes' : '🏍 Motorcycle Classes'; ?></strong>
-        <?php foreach ( $classes as $class ) :
-        $checked = in_array( $class, $saved_classes ) ? 'checked' : '';
+        <?php foreach ( $classes as $term_id => $class_name ) :
+        $checked = in_array( $term_id, $saved_classes ) ? 'checked' : '';
         ?>
         <label style="display:block;margin:3px 0;padding:4px 0">
-        <input type="checkbox" name="msc_event_classes[]" value="<?php echo esc_attr($class); ?>" <?php echo $checked; ?>>
-        <?php echo esc_html($class); ?>
+        <input type="checkbox" name="msc_event_classes[]" value="<?php echo esc_attr($term_id); ?>" <?php echo $checked; ?>>
+        <?php echo esc_html($class_name); ?>
         </label>
         <?php endforeach; ?>
         <a href="#" class="msc-select-all"   data-type="<?php echo $type; ?>" style="font-size:11px">Select all</a> &middot;
@@ -227,6 +234,9 @@ class MSC_Admin_Events {
         foreach ( $fields as $f ) {
             if ( isset($_POST[$f]) ) update_post_meta( $post_id, '_' . $f, sanitize_text_field($_POST[$f]) );
         }
+        if ( isset($_POST['msc_indemnity_text']) ) {
+            update_post_meta( $post_id, '_msc_indemnity_text', sanitize_textarea_field(wp_unslash($_POST['msc_indemnity_text'])) );
+        }
         if ( isset($_POST['msc_indemnity_pdf_id']) ) {
             $pdf_id = intval($_POST['msc_indemnity_pdf_id']);
             if ($pdf_id) update_post_meta( $post_id, '_msc_indemnity_pdf_id', $pdf_id );
@@ -236,7 +246,7 @@ class MSC_Admin_Events {
         $vehicle_type = isset($_POST['msc_event_vehicle_type']) ? sanitize_text_field($_POST['msc_event_vehicle_type']) : 'Both';
         update_post_meta( $post_id, '_msc_event_vehicle_type', $vehicle_type );
 
-        $event_classes = isset($_POST['msc_event_classes']) ? array_map('sanitize_text_field', $_POST['msc_event_classes']) : array();
+        $event_classes = isset($_POST['msc_event_classes']) ? array_map('intval', $_POST['msc_event_classes']) : array();
         update_post_meta( $post_id, '_msc_event_classes', $event_classes );
         wp_set_post_terms( $post_id, $event_classes, 'msc_vehicle_class' );
     }
@@ -364,6 +374,7 @@ class MSC_Admin_Events {
         <th>Email</th>
         <th>Event</th>
         <th>Vehicle</th>
+        <th>Class</th>
         <th>Entry Fee</th>
         <th>PoP</th>
         <th>Paid</th>
@@ -388,6 +399,14 @@ class MSC_Admin_Events {
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
         <td><?php echo esc_html($r->vehicle_name) ?></td>
+        <td><?php 
+            if ( ! empty( $r->class_id ) ) {
+                $term = get_term( $r->class_id, 'msc_vehicle_class' );
+                echo esc_html( ( $term && ! is_wp_error( $term ) ) ? $term->name : '—' );
+            } else {
+                echo '<span style="color:#aaa">—</span>';
+            }
+        ?></td>
         <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
         <td><?php 
             if ($r->pop_file_id) {

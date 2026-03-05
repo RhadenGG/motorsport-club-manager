@@ -66,6 +66,16 @@ class MSC_Emails {
         $user_name    = esc_html( $reg->user_name );
         $event_name   = esc_html( $reg->event_name );
         $vehicle_name = esc_html( $reg->vehicle_name );
+        
+        $class_name   = '—';
+        if ( ! empty( $reg->class_id ) ) {
+            $term = get_term( $reg->class_id, 'msc_vehicle_class' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $class_name = $term->name;
+            }
+        }
+        $class_name   = esc_html( $class_name );
+
         $site_name    = esc_html( get_bloginfo( 'name' ) );
         $account_url  = esc_url( msc_get_account_url( 'registrations' ) );
 
@@ -81,6 +91,7 @@ class MSC_Emails {
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Event</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$event_name}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Date</td><td style='padding:10px;border:1px solid #f1f1f1'>{$date_str}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Vehicle</td><td style='padding:10px;border:1px solid #f1f1f1'>{$vehicle_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Class</td><td style='padding:10px;border:1px solid #f1f1f1'>{$class_name}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Entry Fee</td><td style='padding:10px;border:1px solid #f1f1f1'>{$fee_str}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Indemnity</td><td style='padding:10px;border:1px solid #f1f1f1'>" . ($reg->indemnity_method==='signed'?'✓ Digitally signed':'Will bring physical copy') . "</td></tr>
         </table>

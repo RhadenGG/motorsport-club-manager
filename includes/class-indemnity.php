@@ -61,7 +61,12 @@ class MSC_Indemnity {
         $event      = get_post( $reg->event_id );
         $vehicle    = get_post( $reg->vehicle_id );
         $user       = get_user_by( 'id', $reg->user_id );
-        $indem      = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
+        
+        $indem = get_post_meta( $reg->event_id, '_msc_indemnity_text', true );
+        if ( ! $indem ) {
+            $indem = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
+        }
+
         $event_date = get_post_meta( $reg->event_id, '_msc_event_date', true );
         $location   = get_post_meta( $reg->event_id, '_msc_event_location', true );
         $site_name  = get_bloginfo( 'name' );
@@ -120,8 +125,15 @@ class MSC_Indemnity {
         $model = get_post_meta( $vehicle->ID, '_msc_model',      true );
         $year  = get_post_meta( $vehicle->ID, '_msc_year',       true );
         $regn  = get_post_meta( $vehicle->ID, '_msc_reg_number', true );
-        $terms = wp_get_post_terms( $vehicle->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
-        $class = ! empty( $terms ) ? implode( ', ', $terms ) : '—';
+
+        // Use the class stored at registration time if available
+        if ( ! empty( $reg->class_id ) ) {
+            $term  = get_term( $reg->class_id, 'msc_vehicle_class' );
+            $class = ( $term && ! is_wp_error( $term ) ) ? $term->name : '—';
+        } else {
+            $terms = wp_get_post_terms( $vehicle->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
+            $class = ! empty( $terms ) ? implode( ', ', $terms ) : '—';
+        }
 
         $rows = array(
             'Event Date'   => $event_date ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $event_date ) ) : '—',

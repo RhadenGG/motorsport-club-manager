@@ -19,7 +19,7 @@ class MSC_Shortcodes {
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => wp_login_url(),
             'loggedIn' => is_user_logged_in(),
-            'classes'  => MSC_Taxonomies::get_classes_by_type(),
+            'classes'  => array_map( 'array_values', MSC_Taxonomies::get_classes_by_type() ),
         ) );
     }
 
@@ -156,7 +156,10 @@ class MSC_Shortcodes {
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
         $now       = time();
-        $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
+        $indemnity = get_post_meta( $event_id, '_msc_indemnity_text', true );
+        if ( ! $indemnity ) {
+            $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
+        }
         $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
         $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
 

@@ -38,7 +38,7 @@ jQuery(function ($) {
                 $.each(res.data, function (i, v) {
                     var icons = {Car:'🚗',Bike:'🚲',Motorcycle:'🏍',Quad:'🛻',Kart:'🏎',Truck:'🚚',Other:'🚙'};
                     var parts = v.label.split(' — ');
-                    var $card = $('<div>').addClass('msc-vehicle-card').attr('data-id', v.id);
+                    var $card = $('<div>').addClass('msc-vehicle-card').attr('data-id', v.id).attr('data-class_id', v.class_id);
                     $card.append($('<div>').addClass('msc-vehicle-card-icon').text(icons[parts[1]] || '🚗'));
                     $card.append($('<div>').addClass('msc-vehicle-card-title').text(v.title));
                     $card.append($('<div>').addClass('msc-vehicle-card-sub').text(parts[0]));
@@ -55,6 +55,7 @@ jQuery(function ($) {
                 $('.msc-vehicle-card').removeClass('selected');
                 $(this).addClass('selected');
                 msc.vehicleId = $(this).data('id');
+                msc.classId   = $(this).data('class_id');
                 $('#msc-step1-next').prop('disabled', false);
             });
 
@@ -167,6 +168,7 @@ jQuery(function ($) {
                 fd.append('nonce',            mscData.nonce);
                 fd.append('event_id',         msc.eventId);
                 fd.append('vehicle_id',       msc.vehicleId);
+                fd.append('class_id',         msc.classId || 0);
                 fd.append('indemnity_method', 'signed');
                 fd.append('indemnity_sig',    sig);
                 fd.append('parent_sig',       parentSig);

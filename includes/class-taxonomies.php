@@ -138,7 +138,7 @@ class MSC_Taxonomies {
             if ( ! isset( $result[ $type ] ) ) {
                 $result[ $type ] = array();
             }
-            $result[ $type ][] = $term->name;
+            $result[ $type ][ $term->term_id ] = $term->name;
         }
 
         return $result;

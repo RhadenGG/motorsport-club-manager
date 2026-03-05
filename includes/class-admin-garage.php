@@ -157,13 +157,13 @@ class MSC_Admin_Garage {
             );
         }
 
-        // Filter by class name if classes are set
+        // Filter by class if classes are set
         if ( ! empty( $allowed_classes ) ) {
             $args['tax_query'] = array(
                 array(
                     'taxonomy' => 'msc_vehicle_class',
-                    'field'    => 'name',
-                    'terms'    => $allowed_classes,
+                    'field'    => 'term_id',
+                    'terms'    => array_map( 'intval', $allowed_classes ),
                 ),
             );
         }

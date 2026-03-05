@@ -25,13 +25,16 @@ class MSC_Registration {
             $year  = get_post_meta($v->ID,'_msc_year',true);
             $type  = get_post_meta($v->ID,'_msc_type',true);
             $reg   = get_post_meta($v->ID,'_msc_reg_number',true);
-            $terms = wp_get_post_terms($v->ID,'msc_vehicle_class',array('fields'=>'names'));
-            $class = !empty($terms) ? implode(', ',$terms) : 'Unclassified';
+            $terms    = wp_get_post_terms($v->ID, 'msc_vehicle_class', array('fields' => 'ids'));
+            $class_id = !empty($terms) ? intval($terms[0]) : 0;
+            $class_name = $class_id ? get_term($class_id)->name : 'Unclassified';
+            
             $out[] = array(
                 'id'    => $v->ID,
                 'title' => $v->post_title,
-                'label' => trim("$year $make $model") . ($reg ? " ($reg)" : '') . " — $type — $class",
-                'class' => $class,
+                'label' => trim("$year $make $model") . ($reg ? " ($reg)" : '') . " — $type — $class_name",
+                'class' => $class_name,
+                'class_id' => $class_id,
             );
         }
         wp_send_json_success($out);
@@ -44,6 +47,7 @@ class MSC_Registration {
         $user_id    = get_current_user_id();
         $event_id   = intval($_POST['event_id']);
         $vehicle_id = intval($_POST['vehicle_id']);
+        $class_id   = intval($_POST['class_id'] ?? 0);
         $ind_method = sanitize_key($_POST['indemnity_method'] ?? '');
         $ind_sig    = sanitize_textarea_field($_POST['indemnity_sig'] ?? '');
         
@@ -158,8 +162,9 @@ class MSC_Registration {
             'indemnity_date'   => ($ind_method==='signed') ? gmdate('Y-m-d H:i:s') : null,
             'notes'            => $notes,
             'pop_file_id'      => $pop_file_id,
+            'class_id'         => $class_id,
             'created_at'       => gmdate('Y-m-d H:i:s'),
-        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s' ));
+        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ));
 
         if ( false === $inserted ) {
             error_log('MSC Registration Error: ' . $wpdb->last_error);

@@ -114,7 +114,7 @@ class MSC_Results {
         $res_table = $wpdb->prefix . 'msc_event_results';
 
         $registrations = $wpdb->get_results( $wpdb->prepare(
-            "SELECT r.id, u.display_name as member_name, v.post_title as vehicle_name
+            "SELECT r.id, r.class_id, u.display_name as member_name, v.post_title as vehicle_name
              FROM $reg_table r
              LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
              LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
@@ -151,19 +151,25 @@ class MSC_Results {
         <table class="widefat fixed striped" style="margin-top:8px;">
             <thead>
                 <tr>
-                    <th style="width:17%;">Driver</th>
-                    <th style="width:17%;">Vehicle</th>
+                    <th style="width:16%;">Driver</th>
+                    <th style="width:16%;">Vehicle</th>
+                    <th style="width:14%;">Class</th>
                     <th style="width:7%;">Pos</th>
                     <th style="width:8%;">Laps</th>
-                    <th style="width:13%;">Best Lap <small style="font-weight:400;">(m:ss.ms)</small></th>
-                    <th style="width:13%;">Total Time <small style="font-weight:400;">(h:mm:ss)</small></th>
-                    <th style="width:11%;">Status</th>
+                    <th style="width:12%;">Best Lap <small style="font-weight:400;">(m:ss.ms)</small></th>
+                    <th style="width:12%;">Total Time <small style="font-weight:400;">(h:mm:ss)</small></th>
+                    <th style="width:10%;">Status</th>
                     <th>Notes</th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ( $registrations as $reg ) :
                 $r = $results_by_reg[ $reg->id ] ?? null;
+                $class_name = '—';
+                if ( ! empty( $reg->class_id ) ) {
+                    $term = get_term( $reg->class_id, 'msc_vehicle_class' );
+                    if ( $term && ! is_wp_error( $term ) ) $class_name = $term->name;
+                }
             ?>
                 <tr>
                     <td>
@@ -173,6 +179,7 @@ class MSC_Results {
                                value="<?php echo $reg->id; ?>">
                     </td>
                     <td style="color:#555;font-size:12px;"><?php echo esc_html( $reg->vehicle_name ?: '—' ); ?></td>
+                    <td style="color:#555;font-size:12px;"><?php echo esc_html( $class_name ); ?></td>
                     <td>
                         <input type="number"
                                name="msc_results[<?php echo $reg->id; ?>][position]"
@@ -286,6 +293,7 @@ class MSC_Results {
 
         $results = $wpdb->get_results( $wpdb->prepare(
             "SELECT res.*,
+                    reg.class_id,
                     u.display_name AS member_name,
                     v.post_title   AS vehicle_name
              FROM $res_table res
@@ -334,9 +342,17 @@ class MSC_Results {
                 <div class="msc-podium-card">
                     <div class="msc-podium-medal"><?php echo $medals[ $i ]; ?></div>
                     <div class="msc-podium-name"><?php echo esc_html( $p->member_name ); ?></div>
-                    <?php if ( $p->vehicle_name ) : ?>
-                    <div class="msc-podium-vehicle"><?php echo esc_html( $p->vehicle_name ); ?></div>
-                    <?php endif; ?>
+                    <div class="msc-podium-vehicle">
+                        <?php 
+                        echo esc_html( $p->vehicle_name ?: '—' );
+                        if ( ! empty( $p->class_id ) ) {
+                            $term = get_term( $p->class_id, 'msc_vehicle_class' );
+                            if ( $term && ! is_wp_error( $term ) ) {
+                                echo ' <span class="msc-podium-class">(' . esc_html( $term->name ) . ')</span>';
+                            }
+                        }
+                        ?>
+                    </div>
                     <?php if ( $p->total_race_time ) : ?>
                     <div class="msc-podium-stat">⏱ <?php echo esc_html( $p->total_race_time ); ?></div>
                     <?php endif; ?>
@@ -356,6 +372,7 @@ class MSC_Results {
                             <th class="msc-col-pos">Pos</th>
                             <th class="msc-col-driver">Driver</th>
                             <th class="msc-col-vehicle">Vehicle</th>
+                            <th class="msc-col-class">Class</th>
                             <th class="msc-col-status">Status</th>
                             <th class="msc-col-laps">Laps</th>
                             <th class="msc-col-time">Best Lap</th>
@@ -374,6 +391,16 @@ class MSC_Results {
                             </td>
                             <td class="msc-col-driver"><?php echo esc_html( $r->member_name ); ?></td>
                             <td class="msc-col-vehicle"><?php echo esc_html( $r->vehicle_name ?: '—' ); ?></td>
+                            <td class="msc-col-class">
+                                <?php 
+                                if ( ! empty( $r->class_id ) ) {
+                                    $term = get_term( $r->class_id, 'msc_vehicle_class' );
+                                    echo ( $term && ! is_wp_error( $term ) ) ? esc_html( $term->name ) : '—';
+                                } else {
+                                    echo '—';
+                                }
+                                ?>
+                            </td>
                             <td class="msc-col-status">
                                 <span class="msc-result-badge" style="background:<?php echo $bc; ?>;">
                                     <?php echo esc_html( $r->status ); ?>
