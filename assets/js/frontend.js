@@ -34,19 +34,18 @@ jQuery(function ($) {
                     $('#msc-vehicles-empty').show();
                     return;
                 }
-                var html = '<div class="msc-vehicle-cards">';
+                var $cards = $('<div>').addClass('msc-vehicle-cards');
                 $.each(res.data, function (i, v) {
                     var icons = {Car:'🚗',Bike:'🚲',Motorcycle:'🏍',Quad:'🛻',Kart:'🏎',Truck:'🚚',Other:'🚙'};
                     var parts = v.label.split(' — ');
-                    html += '<div class="msc-vehicle-card" data-id="' + v.id + '">' +
-                        '<div class="msc-vehicle-card-icon">' + (icons[parts[1]] || '🚗') + '</div>' +
-                        '<div class="msc-vehicle-card-title">' + v.title + '</div>' +
-                        '<div class="msc-vehicle-card-sub">' + parts[0] + '</div>' +
-                        '<span class="msc-vehicle-card-class">' + v.class + '</span>' +
-                        '</div>';
+                    var $card = $('<div>').addClass('msc-vehicle-card').attr('data-id', v.id);
+                    $card.append($('<div>').addClass('msc-vehicle-card-icon').text(icons[parts[1]] || '🚗'));
+                    $card.append($('<div>').addClass('msc-vehicle-card-title').text(v.title));
+                    $card.append($('<div>').addClass('msc-vehicle-card-sub').text(parts[0]));
+                    $card.append($('<span>').addClass('msc-vehicle-card-class').text(v.class));
+                    $cards.append($card);
                 });
-                html += '</div>';
-                $('#msc-vehicles-list').html(html).show();
+                $('#msc-vehicles-list').empty().append($cards).show();
             });
         },
 
@@ -65,13 +64,11 @@ jQuery(function ($) {
                 var vname = card.find('.msc-vehicle-card-title').text();
                 var vsub  = card.find('.msc-vehicle-card-sub').text();
                 var vcls  = card.find('.msc-vehicle-card-class').text();
-                $('#msc-summary').html(
-                    '<table>' +
-                    '<tr><td>Vehicle</td><td><strong>' + vname + '</strong></td></tr>' +
-                    '<tr><td>Details</td><td>' + vsub + '</td></tr>' +
-                    '<tr><td>Class</td><td>' + vcls + '</td></tr>' +
-                    '</table>'
-                );
+                var $table = $('<table>');
+                $table.append($('<tr>').append($('<td>').text('Vehicle'), $('<td>').append($('<strong>').text(vname))));
+                $table.append($('<tr>').append($('<td>').text('Details'), $('<td>').text(vsub)));
+                $table.append($('<tr>').append($('<td>').text('Class'), $('<td>').text(vcls)));
+                $('#msc-summary').empty().append($table);
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
                 // Initialize button state
@@ -389,8 +386,9 @@ jQuery(function ($) {
             }
             $select.append('<option value="">Select class…</option>').prop('disabled', false);
             $.each(classes, function(i, name) {
-                var selected = (name === selectedClass) ? ' selected' : '';
-                $select.append('<option value="' + name + '"' + selected + '>' + name + '</option>');
+                var $opt = $('<option>').val(name).text(name);
+                if (name === selectedClass) $opt.prop('selected', true);
+                $select.append($opt);
             });
         }
 

@@ -170,7 +170,7 @@ class MSC_Account {
                             <select id="v_type">
                                 <option value="">Select type…</option>
                                 <?php foreach ( MSC_Taxonomies::get_vehicle_types() as $vt ) : ?>
-                                <option value="<?php echo $vt; ?>"><?php echo $vt; ?></option>
+                                <option value="<?php echo esc_attr( $vt ); ?>"><?php echo esc_html( $vt ); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -303,7 +303,7 @@ class MSC_Account {
                                     <select class="edit-v_type" data-id="<?php echo $v->ID; ?>">
                                         <option value="">Select type…</option>
                                         <?php foreach ( MSC_Taxonomies::get_vehicle_types() as $vt ) : ?>
-                                        <option value="<?php echo $vt; ?>" <?php selected( $type, $vt ); ?>><?php echo $vt; ?></option>
+                                        <option value="<?php echo esc_attr( $vt ); ?>" <?php selected( $type, $vt ); ?>><?php echo esc_html( $vt ); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
@@ -700,7 +700,7 @@ class MSC_Account {
         $user_id = get_current_user_id();
         $post_id = intval( $_POST['vehicle_id'] );
         $post    = get_post( $post_id );
-        if ( ! $post || $post->post_author != $user_id ) {
+        if ( ! $post || (int) $post->post_author !== $user_id ) {
             wp_send_json_error( array( 'message' => 'Vehicle not found.' ) );
         }
 
@@ -759,7 +759,7 @@ class MSC_Account {
         check_ajax_referer( 'msc_nonce', 'nonce' );
         $post_id = intval( $_POST['vehicle_id'] );
         $post    = get_post( $post_id );
-        if ( ! $post || $post->post_author != get_current_user_id() ) {
+        if ( ! $post || (int) $post->post_author !== get_current_user_id() ) {
             wp_send_json_error( array( 'message' => 'Not found.' ) );
         }
         $thumb_id = get_post_thumbnail_id( $post_id );

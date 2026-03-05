@@ -109,7 +109,7 @@ class MSC_Registration {
 
         // Check vehicle belongs to user
         $vehicle = get_post($vehicle_id);
-        if ( ! $vehicle || $vehicle->post_author != $user_id ) {
+        if ( ! $vehicle || (int) $vehicle->post_author !== $user_id ) {
             wp_send_json_error(array('message'=>'Invalid vehicle selection.'));
         }
 
@@ -159,7 +159,7 @@ class MSC_Registration {
             'notes'            => $notes,
             'pop_file_id'      => $pop_file_id,
             'created_at'       => gmdate('Y-m-d H:i:s'),
-        ));
+        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s' ));
 
         if ( false === $inserted ) {
             error_log('MSC Registration Error: ' . $wpdb->last_error);
@@ -190,7 +190,7 @@ class MSC_Registration {
         $user_id = get_current_user_id();
         $reg = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id=%d AND user_id=%d",$reg_id,$user_id));
         if ( ! $reg ) wp_send_json_error(array('message'=>'Registration not found.'));
-        $wpdb->update("{$wpdb->prefix}msc_registrations",array('status'=>'cancelled'),array('id'=>$reg_id));
+        $wpdb->update("{$wpdb->prefix}msc_registrations",array('status'=>'cancelled'),array('id'=>$reg_id),array('%s'),array('%d'));
         wp_send_json_success(array('message'=>'Registration cancelled.'));
     }
 

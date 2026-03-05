@@ -238,6 +238,9 @@ class MSC_Admin_Events {
     }
 
     public static function registrations_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Unauthorized access.' );
+        }
         global $wpdb;
         $table = $wpdb->prefix . 'msc_registrations';
 
@@ -261,7 +264,7 @@ class MSC_Admin_Events {
             $reg_id   = intval( $_POST['reg_id'] );
             $status   = sanitize_key( $_POST['new_status'] );
             $fee_paid = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
-            $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ) );
+            $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ), array( '%s', '%d' ), array( '%d' ) );
             if ( $status === 'confirmed' ) MSC_Emails::send_confirmation( $reg_id );
             echo '<div class="updated notice is-dismissible"><p>Registration updated.</p></div>';
         }
@@ -398,7 +401,7 @@ class MSC_Admin_Events {
     public static function settings_page() {
         if ( isset($_POST['msc_save_settings']) ) {
             check_admin_referer('msc_save_settings');
-            update_option('msc_banking_details', wp_kses_post($_POST['msc_banking_details']));
+            update_option('msc_banking_details', wp_kses_post(wp_unslash($_POST['msc_banking_details'])));
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
             update_option('msc_account_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url'] ?? ''))));
             echo '<div class="updated"><p>Settings saved.</p></div>';

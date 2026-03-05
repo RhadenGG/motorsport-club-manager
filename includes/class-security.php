@@ -122,7 +122,7 @@ class MSC_Security {
         if ( user_can( $user, 'manage_options' ) ) return $user;
 
         if ( get_user_meta( $user->ID, 'msc_email_verified', true ) === '0' ) {
-            $resend_url = esc_url( add_query_arg( 'msc_resend', $user->ID, wp_login_url() ) );
+            $resend_url = esc_url( wp_nonce_url( add_query_arg( 'msc_resend', $user->ID, wp_login_url() ), 'msc_resend_verify' ) );
             return new WP_Error(
                 'email_not_verified',
                 'Your email address has not been verified yet. Please check your inbox for the verification link. ' .
@@ -168,8 +168,12 @@ class MSC_Security {
             exit;
         }
 
-        // Resend verification email
+        // Resend verification email (requires nonce to prevent enumeration/spam)
         if ( isset( $_GET['msc_resend'] ) ) {
+            if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'msc_resend_verify' ) ) {
+                wp_safe_redirect( wp_login_url() );
+                exit;
+            }
             $user_id = absint( $_GET['msc_resend'] );
             if ( $user_id && get_user_meta( $user_id, 'msc_email_verified', true ) === '0' ) {
                 $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );

@@ -35,7 +35,7 @@ class MSC_Admin_Garage {
                 <td>
                     <select name="msc_type">
                         <?php foreach($types as $t): ?>
-                        <option value="<?php echo $t ?>" <?php selected($d['type'],$t) ?>><?php echo $t ?></option>
+                        <option value="<?php echo esc_attr($t) ?>" <?php selected($d['type'],$t) ?>><?php echo esc_html($t) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </td>
@@ -65,7 +65,7 @@ class MSC_Admin_Garage {
                     } else {
                         foreach($all as $id => $name) {
                             $checked = in_array($id, $current_classes) ? 'checked' : '';
-                            echo "<label style='margin-right:12px'><input type='checkbox' name='msc_vehicle_class[]' value='$id' $checked> ".esc_html($name)."</label>";
+                            echo "<label style='margin-right:12px'><input type='checkbox' name='msc_vehicle_class[]' value='".esc_attr($id)."' $checked> ".esc_html($name)."</label>";
                         }
                     }
                     ?>
