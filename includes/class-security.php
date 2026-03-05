@@ -8,6 +8,29 @@ class MSC_Security {
         add_action( 'edit_user_profile', array( __CLASS__, 'add_birthdate_field' ) );
         add_action( 'personal_options_update', array( __CLASS__, 'save_birthdate_field' ) );
         add_action( 'edit_user_profile_update', array( __CLASS__, 'save_birthdate_field' ) );
+        add_filter( 'login_redirect', array( __CLASS__, 'onboarding_redirect' ), 10, 3 );
+    }
+
+    public static function onboarding_redirect( $redirect_to, $requested, $user ) {
+        if ( is_wp_error( $user ) || ! ( $user instanceof WP_User ) ) {
+            return $redirect_to;
+        }
+
+        // Only trigger once per user
+        if ( get_user_meta( $user->ID, 'msc_onboarding_prompted', true ) ) {
+            return $redirect_to;
+        }
+        update_user_meta( $user->ID, 'msc_onboarding_prompted', 1 );
+
+        // Only redirect if required profile fields are missing
+        $required = array( 'msc_birthday', 'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_gender' );
+        foreach ( $required as $key ) {
+            if ( ! get_user_meta( $user->ID, $key, true ) ) {
+                return add_query_arg( 'msc_onboarding', '1', msc_get_account_url( 'profile' ) );
+            }
+        }
+
+        return $redirect_to;
     }
 
     public static function add_birthdate_field( $user ) {

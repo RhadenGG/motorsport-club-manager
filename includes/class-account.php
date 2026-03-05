@@ -80,6 +80,35 @@ class MSC_Account {
                 <?php endforeach; ?>
             </div>
 
+            <!-- ── ONBOARDING BANNER ── -->
+            <?php if ( isset( $_GET['msc_onboarding'] ) && $_GET['msc_onboarding'] === '1' ) : ?>
+            <div class="msc-onboarding-banner">
+                <div class="msc-onboarding-icon">👋</div>
+                <div class="msc-onboarding-body">
+                    <h3>Welcome to <?php echo esc_html( get_bloginfo( 'name' ) ); ?>!</h3>
+                    <p>To register for events you need to do two things first:</p>
+                    <div class="msc-onboarding-steps">
+                        <div class="msc-onboarding-step">
+                            <span class="msc-onboarding-num">1</span>
+                            <div>
+                                <strong>Complete your profile</strong>
+                                <p>Add your date of birth, competition number, MSA licence, medical aid details and gender.</p>
+                                <a href="<?php echo esc_url( msc_get_account_url( 'profile' ) ); ?>" class="msc-btn msc-btn-sm">Go to My Profile →</a>
+                            </div>
+                        </div>
+                        <div class="msc-onboarding-step">
+                            <span class="msc-onboarding-num">2</span>
+                            <div>
+                                <strong>Add your vehicle</strong>
+                                <p>Add your motorcycle or car to your garage so it can be selected when registering.</p>
+                                <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline">Go to My Garage →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- ── GARAGE TAB ── -->
             <?php if ( $tab === 'garage' ) : ?>
             <div class="msc-tab-content">

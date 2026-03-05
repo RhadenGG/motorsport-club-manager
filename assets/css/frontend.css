@@ -717,3 +717,69 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
     .msc-col-vehicle,
     .msc-col-notes { display: none; }
 }
+
+/* ── Onboarding Banner ─────────────────────────────────────────────────────── */
+.msc-onboarding-banner {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d3436 100%);
+    color: #fff;
+    border-radius: 10px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+}
+.msc-onboarding-icon {
+    font-size: 2.4em;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.msc-onboarding-body h3 {
+    margin: 0 0 6px;
+    font-size: 1.3em;
+    color: #fff;
+}
+.msc-onboarding-body > p {
+    margin: 0 0 20px;
+    opacity: .85;
+}
+.msc-onboarding-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.msc-onboarding-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: rgba(255,255,255,.07);
+    border-radius: 8px;
+    padding: 16px;
+}
+.msc-onboarding-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--msc-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: .9em;
+}
+.msc-onboarding-step strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #fff;
+}
+.msc-onboarding-step p {
+    margin: 0 0 12px;
+    font-size: .88em;
+    opacity: .8;
+}
+@media (max-width: 640px) {
+    .msc-onboarding-banner { flex-direction: column; }
+    .msc-onboarding-steps  { grid-template-columns: 1fr; }
+}
