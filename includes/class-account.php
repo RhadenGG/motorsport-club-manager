@@ -402,6 +402,34 @@ class MSC_Account {
                         </div>
                     </div>
 
+                    <div class="msc-form-section-title" style="margin-top:20px">Motorsport Details</div>
+                    <div class="msc-form-grid">
+                        <div class="msc-field">
+                            <label>Competition Number <span class="msc-required">*</span></label>
+                            <input type="text" id="pe_comp_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_comp_number', true)); ?>" placeholder="Motorcycle / Car competition number">
+                        </div>
+                        <div class="msc-field">
+                            <label>MSA License Number <span class="msc-required">*</span></label>
+                            <input type="text" id="pe_msa_licence" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_msa_licence', true)); ?>" placeholder="MSA Licence No.">
+                        </div>
+                        <div class="msc-field">
+                            <label>Medical Aid Provider <span class="msc-required">*</span></label>
+                            <input type="text" id="pe_medical_aid" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_medical_aid', true)); ?>" placeholder="e.g. Discovery, Momentum">
+                        </div>
+                        <div class="msc-field">
+                            <label>Medical Aid Number <span class="msc-required">*</span></label>
+                            <input type="text" id="pe_medical_aid_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_medical_aid_number', true)); ?>" placeholder="Member number">
+                        </div>
+                        <div class="msc-field">
+                            <label>Gender <span class="msc-required">*</span></label>
+                            <select id="pe_gender">
+                                <option value="">— Select —</option>
+                                <option value="male"   <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'male'); ?>>Male</option>
+                                <option value="female" <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'female'); ?>>Female</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="msc-form-section-title" style="margin-top:20px">Address</div>
                     <div class="msc-form-grid">
                         <div class="msc-field msc-field-full">
@@ -496,6 +524,7 @@ class MSC_Account {
         // Meta fields
         $meta_fields = array(
             'phone', 'msc_licence', 'msc_birthday',
+            'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
         );
@@ -503,6 +532,9 @@ class MSC_Account {
             if ( isset($_POST[$key]) ) {
                 update_user_meta( $user_id, $key, sanitize_text_field($_POST[$key]) );
             }
+        }
+        if ( isset($_POST['msc_gender']) && in_array( $_POST['msc_gender'], array( 'male', 'female', '' ), true ) ) {
+            update_user_meta( $user_id, 'msc_gender', $_POST['msc_gender'] );
         }
 
         wp_send_json_success( array('message' => 'Profile updated successfully!') );

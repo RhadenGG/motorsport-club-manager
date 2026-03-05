@@ -544,6 +544,11 @@ jQuery(function ($) {
                 fd.append('msc_birthday', $('#pe_birthday').val());
                 fd.append('phone',        $('#pe_phone').val());
                 fd.append('msc_licence',  $('#pe_licence').val());
+                fd.append('msc_comp_number',        $('#pe_comp_number').val());
+                fd.append('msc_msa_licence',        $('#pe_msa_licence').val());
+                fd.append('msc_medical_aid',        $('#pe_medical_aid').val());
+                fd.append('msc_medical_aid_number', $('#pe_medical_aid_number').val());
+                fd.append('msc_gender',             $('#pe_gender').val());
                 fd.append('msc_address1', $('#pe_address1').val());
                 fd.append('msc_city',     $('#pe_city').val());
                 fd.append('msc_province', $('#pe_province').val());

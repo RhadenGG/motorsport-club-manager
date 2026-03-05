@@ -167,15 +167,30 @@ class MSC_Shortcodes {
             return '<div class="msc-notice msc-notice-info"><p>You must be logged in to register for this event.</p><a href="'.wp_login_url(get_permalink()).'" class="msc-btn">Log In</a> <a href="'.wp_registration_url().'" class="msc-btn msc-btn-outline">Register Account</a></div>';
         }
 
-        $user_id  = get_current_user_id();
-        $birthday = get_user_meta($user_id, 'msc_birthday', true);
+        $user_id = get_current_user_id();
 
-        if ( ! $birthday ) {
+        $required_fields = array(
+            'msc_birthday'           => 'Date of Birth',
+            'msc_comp_number'        => 'Competition Number',
+            'msc_msa_licence'        => 'MSA License Number',
+            'msc_medical_aid'        => 'Medical Aid Provider',
+            'msc_medical_aid_number' => 'Medical Aid Number',
+            'msc_gender'             => 'Gender',
+        );
+        $missing = array();
+        foreach ( $required_fields as $key => $label ) {
+            if ( ! get_user_meta( $user_id, $key, true ) ) {
+                $missing[] = $label;
+            }
+        }
+        if ( $missing ) {
             return '<div class="msc-notice msc-notice-warning">
-                <p><strong>Profile Incomplete:</strong> Your Date of Birth is required to register for events.</p>
+                <p><strong>Profile Incomplete:</strong> The following fields are required before you can register: <strong>' . esc_html( implode( ', ', $missing ) ) . '</strong>.</p>
                 <a href="' . esc_url( msc_get_account_url( 'profile' ) ) . '" class="msc-btn msc-btn-sm">Complete My Profile →</a>
             </div>';
         }
+
+        $birthday = get_user_meta( $user_id, 'msc_birthday', true );
 
         // Calculate age
         $dob = new DateTime($birthday);
