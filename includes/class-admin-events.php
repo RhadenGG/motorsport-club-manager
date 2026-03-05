@@ -6,6 +6,7 @@ class MSC_Admin_Events {
     public static function init() {
         add_action( 'admin_menu',            array( __CLASS__, 'add_menu' ) );
         add_action( 'admin_menu',            array( __CLASS__, 'reorder_submenu' ), 999 );
+        add_action( 'admin_notices',         array( __CLASS__, 'account_page_notice' ) );
         add_action( 'add_meta_boxes',        array( __CLASS__, 'add_meta_boxes' ) );
         add_action( 'save_post_msc_event',   array( __CLASS__, 'save_meta' ) );
         add_action( 'admin_enqueue_scripts',  array( __CLASS__, 'enqueue_media' ) );
@@ -55,6 +56,18 @@ class MSC_Admin_Events {
             }
         }
         $submenu['motorsport-club'] = $sorted;
+    }
+
+    public static function account_page_notice() {
+        if ( ! current_user_can( 'manage_options' ) ) return;
+        if ( get_option( 'msc_account_page_url', '' ) ) return;
+
+        $settings_url = admin_url( 'admin.php?page=msc-settings' );
+        echo '<div class="notice notice-warning is-dismissible"><p>';
+        echo '<strong>Motorsport Club Manager:</strong> ';
+        echo 'You need to create a page with the <code>[msc_my_account]</code> shortcode, then set its URL in ';
+        echo '<a href="' . esc_url( $settings_url ) . '">Motorsport Club → Settings → Account Page URL</a>.';
+        echo '</p></div>';
     }
 
     public static function enqueue_media( $hook ) {
@@ -441,7 +454,7 @@ class MSC_Admin_Events {
 
         $banking     = get_option('msc_banking_details', '');
         $indemnity   = get_option('msc_default_indemnity', msc_get_default_indemnity());
-        $account_url = get_option('msc_account_page_url', home_url('/my-account/'));
+        $account_url = get_option('msc_account_page_url', '');
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
@@ -451,7 +464,7 @@ class MSC_Admin_Events {
                     <tr>
                         <th scope="row"><label for="msc_account_page_url">Account Page URL</label></th>
                         <td>
-                            <input type="url" name="msc_account_page_url" id="msc_account_page_url" value="<?php echo esc_attr($account_url); ?>" class="large-text" placeholder="<?php echo esc_attr(home_url('/my-account/')); ?>">
+                            <input type="url" name="msc_account_page_url" id="msc_account_page_url" value="<?php echo esc_attr($account_url); ?>" class="large-text" placeholder="https://yoursite.com/my-account/">
                             <p class="description">Full URL of the page containing the <code>[msc_my_account]</code> shortcode. Used in registration emails and on-page links.</p>
                         </td>
                     </tr>
