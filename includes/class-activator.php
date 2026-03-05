@@ -38,10 +38,6 @@ class MSC_Activator {
 
         // Results table
         MSC_Results::create_table();
-
-        // Flush rewrite rules
-        MSC_Post_Types::register_all();
-        flush_rewrite_rules();
     }
 
     public static function deactivate() {
