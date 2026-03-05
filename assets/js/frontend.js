@@ -541,11 +541,8 @@ jQuery(function ($) {
                     msg.text('Photo must be under 5MB.').css('color', 'red');
                     return;
                 }
-                // Immediate preview
                 var reader = new FileReader();
-                reader.onload = function (e) {
-                    $('#msc-profile-photo-preview, #msc-header-avatar').attr('src', e.target.result);
-                };
+                reader.onload = function (e) { $('#msc-header-avatar').attr('src', e.target.result); };
                 reader.readAsDataURL(file);
 
                 msg.text('Uploading…').css('color', '#888');
@@ -558,14 +555,30 @@ jQuery(function ($) {
                     processData: false, contentType: false,
                     success: function (res) {
                         if (res.success) {
-                            msg.text('Photo updated!').css('color', 'green');
-                            $('#msc-profile-photo-preview, #msc-header-avatar').attr('src', res.data.url);
+                            msg.text('✓ Photo updated').css('color', 'green');
+                            $('#msc-header-avatar').attr('src', res.data.url);
+                            $('#msc-remove-profile-photo').show();
                         } else {
                             msg.text(res.data.message || 'Upload failed.').css('color', 'red');
                         }
                     },
                     error: function () { msg.text('Network error.').css('color', 'red'); }
                 });
+            });
+
+            $('#msc-remove-profile-photo').on('click', function () {
+                var btn = $(this);
+                btn.prop('disabled', true).text('Removing…');
+                $.post(mscData.ajaxUrl, { action: 'msc_remove_profile_photo', nonce: mscData.nonce },
+                    function (res) {
+                        if (res.success) {
+                            location.reload();
+                        } else {
+                            btn.prop('disabled', false).text('Remove photo');
+                            $('#msc-profile-photo-msg').text('Failed to remove photo.').css('color', 'red');
+                        }
+                    }
+                );
             });
 
             $('#msc-save-profile').on('click', function (e) {

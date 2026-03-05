@@ -13,7 +13,8 @@ class MSC_Account {
         add_action( 'wp_ajax_msc_update_vehicle',  array( __CLASS__, 'ajax_update_vehicle' ) );
         add_action( 'wp_ajax_msc_delete_vehicle',  array( __CLASS__, 'ajax_delete_vehicle' ) );
         add_action( 'wp_ajax_msc_update_profile',       array( __CLASS__, 'ajax_update_profile' ) );
-        add_action( 'wp_ajax_msc_upload_profile_photo', array( __CLASS__, 'ajax_upload_profile_photo' ) );
+        add_action( 'wp_ajax_msc_upload_profile_photo',  array( __CLASS__, 'ajax_upload_profile_photo' ) );
+        add_action( 'wp_ajax_msc_remove_profile_photo',  array( __CLASS__, 'ajax_remove_profile_photo' ) );
     }
 
     public static function render() {
@@ -51,11 +52,21 @@ class MSC_Account {
             <!-- Profile Header -->
             <div class="msc-profile-header">
                 <div class="msc-profile-avatar">
-                    <?php if ( $profile_photo_url ) : ?>
-                        <img src="<?php echo esc_url( $profile_photo_url ); ?>" alt="<?php echo esc_attr( $user->display_name ); ?>" class="msc-avatar-img" id="msc-header-avatar">
-                    <?php else : ?>
-                        <?php echo get_avatar( $user->ID, 72, '', '', array( 'class' => 'msc-avatar-img', 'extra_attr' => 'id="msc-header-avatar"' ) ); ?>
+                    <div class="msc-avatar-upload-wrap">
+                        <label for="msc-profile-photo-input" class="msc-avatar-upload-label" title="Change photo">
+                            <?php if ( $profile_photo_url ) : ?>
+                                <img src="<?php echo esc_url( $profile_photo_url ); ?>" alt="<?php echo esc_attr( $user->display_name ); ?>" class="msc-avatar-img" id="msc-header-avatar">
+                            <?php else : ?>
+                                <?php echo get_avatar( $user->ID, 72, '', '', array( 'class' => 'msc-avatar-img', 'extra_attr' => 'id="msc-header-avatar"' ) ); ?>
+                            <?php endif; ?>
+                            <span class="msc-avatar-overlay">📷</span>
+                        </label>
+                        <input type="file" id="msc-profile-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+                    </div>
+                    <?php if ( $profile_photo_id ) : ?>
+                    <button type="button" id="msc-remove-profile-photo" class="msc-avatar-remove">Remove photo</button>
                     <?php endif; ?>
+                    <div id="msc-profile-photo-msg"></div>
                 </div>
                 <div class="msc-profile-info">
                     <h2 class="msc-profile-name"><?php echo esc_html( $user->display_name ); ?></h2>
@@ -409,23 +420,6 @@ class MSC_Account {
                 <div class="msc-profile-edit-form">
                     <div id="msc-profile-msg" class="msc-field-msg" style="margin-bottom:12px"></div>
 
-                    <div class="msc-form-section-title">Profile Photo</div>
-                    <div class="msc-profile-photo-section">
-                        <div class="msc-profile-photo-current">
-                            <?php if ( $profile_photo_url ) : ?>
-                                <img id="msc-profile-photo-preview" src="<?php echo esc_url( $profile_photo_url ); ?>" alt="Profile photo">
-                            <?php else : ?>
-                                <?php echo get_avatar( $user->ID, 96, '', '', array( 'class' => '', 'extra_attr' => 'id="msc-profile-photo-preview"' ) ); ?>
-                            <?php endif; ?>
-                        </div>
-                        <div class="msc-profile-photo-actions">
-                            <label for="msc-profile-photo-input" class="msc-btn msc-btn-sm" style="cursor:pointer">Upload Photo</label>
-                            <input type="file" id="msc-profile-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none">
-                            <p class="msc-photo-hint" style="margin-top:8px">JPG, PNG or WebP · max 5MB</p>
-                            <div id="msc-profile-photo-msg" style="font-size:13px;margin-top:6px"></div>
-                        </div>
-                    </div>
-
                     <div class="msc-form-section-title">Personal Details</div>
                     <div class="msc-form-grid">
                         <div class="msc-field">
@@ -624,6 +618,20 @@ class MSC_Account {
         $url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
 
         wp_send_json_success( array( 'url' => $url ) );
+    }
+
+    public static function ajax_remove_profile_photo() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+
+        $photo_id = get_user_meta( $user_id, 'msc_profile_photo', true );
+        if ( $photo_id ) {
+            wp_delete_attachment( $photo_id, true );
+            delete_user_meta( $user_id, 'msc_profile_photo' );
+        }
+
+        wp_send_json_success();
     }
 
     public static function ajax_add_vehicle() {

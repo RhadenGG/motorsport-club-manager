@@ -718,23 +718,58 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
     .msc-col-notes { display: none; }
 }
 
-/* ── Profile Photo ─────────────────────────────────────────────────────────── */
-.msc-profile-photo-section {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding: 16px 0 24px;
+/* ── Profile Avatar Upload ──────────────────────────────────────────────────── */
+.msc-avatar-upload-wrap {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
 }
-.msc-profile-photo-current img {
-    width: 96px;
-    height: 96px;
+.msc-avatar-upload-label {
+    display: block;
+    cursor: pointer;
     border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid var(--msc-border);
+    overflow: hidden;
+    line-height: 0;
+}
+.msc-avatar-upload-label .msc-avatar-img {
     display: block;
 }
-@media (max-width: 480px) {
-    .msc-profile-photo-section { flex-direction: column; align-items: flex-start; }
+.msc-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+}
+.msc-avatar-upload-wrap:hover .msc-avatar-overlay {
+    opacity: 1;
+}
+.msc-avatar-remove {
+    display: block;
+    margin: 5px auto 0;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.7);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-align: center;
+    width: 100%;
+}
+.msc-avatar-remove:hover { color: #fff; }
+#msc-profile-photo-msg {
+    font-size: 11px;
+    text-align: center;
+    margin-top: 4px;
+    min-height: 16px;
+    color: rgba(255,255,255,.8);
 }
 
 /* ── Onboarding Banner ─────────────────────────────────────────────────────── */
