@@ -155,7 +155,7 @@ class MSC_Shortcodes {
 
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
-        $now       = current_time('timestamp');
+        $now       = time();
         $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
         $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
         $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';

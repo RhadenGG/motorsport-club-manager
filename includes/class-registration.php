@@ -155,10 +155,10 @@ class MSC_Registration {
             'emergency_name'   => $em_name,
             'emergency_phone'  => $em_phone,
             'indemnity_sig'    => $ind_sig,
-            'indemnity_date'   => ($ind_method==='signed') ? current_time('mysql') : null,
+            'indemnity_date'   => ($ind_method==='signed') ? gmdate('Y-m-d H:i:s') : null,
             'notes'            => $notes,
             'pop_file_id'      => $pop_file_id,
-            'created_at'       => current_time('mysql'),
+            'created_at'       => gmdate('Y-m-d H:i:s'),
         ));
 
         if ( false === $inserted ) {

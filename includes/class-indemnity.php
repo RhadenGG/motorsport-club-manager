@@ -141,7 +141,7 @@ class MSC_Indemnity {
         self::section_header( $pdf, $lm, $rw, 'INDEMNITY DECLARATION' );
 
         $pdf->set_text_color( 45, 52, 54 );
-        $pdf->set_font_size( 9, 13 ); // Condensed line height
+        $pdf->set_font_size( 9, 13 ); // 9pt font, 13pt line-height (condensed for indemnity block)
         $start_y = $pdf->get_y();
         $pdf->write( $lm + 10, $indem, $rw - 20, 9, 13 );
         $end_y   = $pdf->get_y();
@@ -250,7 +250,7 @@ class MSC_Indemnity {
                 $pdf->set_y( $sy + 35 );
                 $sy = $pdf->get_y();
                 $pdf->set_text_color( 45, 52, 54 );
-                $pdf->set_font_size( 9, null, true );
+                $pdf->set_font_size( 9 );
                 $pdf->write( $lm, 'FOR MINORS (Parent/Guardian to complete):', $rw, 9, 14, true );
                 
                 $pdf->set_font_size( 9 );

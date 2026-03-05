@@ -65,7 +65,13 @@ class MSC_Security {
      * We send our own verification email; a fresh reset key is generated
      * at the moment the user verifies, so no need to capture it here.
      */
-    public static function intercept_wp_notification_email( $email_data, $user, $blogname ) {
+    public static function intercept_wp_notification_email( $email_data, $user, $_blogname ) {
+        // Only suppress the WP email for self-registered users going through our
+        // verification flow. Admin-created users (no msc_email_token) still need
+        // the standard WP credential email so they can set their password.
+        if ( ! get_user_meta( $user->ID, 'msc_email_token', true ) ) {
+            return $email_data;
+        }
         $email_data['to'] = '';
         return $email_data;
     }

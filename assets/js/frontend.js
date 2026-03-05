@@ -595,7 +595,6 @@ jQuery(function ($) {
                 fd.append('email',        $('#pe_email').val());
                 fd.append('msc_birthday', $('#pe_birthday').val());
                 fd.append('phone',        $('#pe_phone').val());
-                fd.append('msc_licence',  $('#pe_licence').val());
                 fd.append('msc_comp_number',        $('#pe_comp_number').val());
                 fd.append('msc_msa_licence',        $('#pe_msa_licence').val());
                 fd.append('msc_medical_aid',        $('#pe_medical_aid').val());

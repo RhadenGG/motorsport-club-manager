@@ -569,7 +569,7 @@ class MSC_Account {
 
         // Meta fields
         $meta_fields = array(
-            'phone', 'msc_licence', 'msc_birthday',
+            'phone', 'msc_birthday',
             'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
@@ -598,6 +598,10 @@ class MSC_Account {
         require_once ABSPATH . 'wp-admin/includes/image.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        if ( $_FILES['photo']['size'] > 5 * 1024 * 1024 ) {
+            wp_send_json_error( array( 'message' => 'Photo must be under 5MB.' ) );
+        }
 
         $check = wp_check_filetype_and_ext( $_FILES['photo']['tmp_name'], $_FILES['photo']['name'] );
         if ( ! in_array( $check['ext'], array( 'jpg', 'jpeg', 'png', 'webp' ), true ) ) {
