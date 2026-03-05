@@ -23,8 +23,10 @@ class MSC_Account {
                     <div class="msc-login-icon">🏁</div>
                     <h3>Members Area</h3>
                     <p>Please log in to access your account, manage your vehicles and view your registrations.</p>
-                    <a href="' . wp_login_url( get_permalink() ) . '" class="msc-btn">Log In to Your Account</a>
-                    <a href="' . wp_registration_url() . '" class="msc-btn msc-btn-outline">Create an Account</a>
+                    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                        <a href="' . wp_login_url( get_permalink() ) . '" class="msc-btn">Log In to Your Account</a>
+                        <a href="' . wp_registration_url() . '" class="msc-btn">Create an Account</a>
+                    </div>
                 </div>
             </div>';
         }
