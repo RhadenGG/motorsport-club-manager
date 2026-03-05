@@ -61,7 +61,7 @@ class MSC_Indemnity {
         $event      = get_post( $reg->event_id );
         $vehicle    = get_post( $reg->vehicle_id );
         $user       = get_user_by( 'id', $reg->user_id );
-        $indem      = get_post_meta( $reg->event_id, '_msc_indemnity_text', true );
+        $indem      = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
         $event_date = get_post_meta( $reg->event_id, '_msc_event_date', true );
         $location   = get_post_meta( $reg->event_id, '_msc_event_location', true );
         $site_name  = get_bloginfo( 'name' );

@@ -114,11 +114,6 @@ class MSC_Admin_Events {
         <label><input type="radio" name="msc_approval" value="manual"  <?php checked($d['approval'],'manual'); ?>>  Requires admin approval</label>
         </td>
         </tr>
-        <tr>
-        <th><label>Indemnity Text</label></th>
-        <td colspan="3"><textarea name="msc_indemnity_text" rows="5" class="large-text"><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
-        <p class="description">This text appears on the signed PDF sent to participants.</p></td>
-        </tr>
         </table>
         <?php
     }
@@ -187,9 +182,6 @@ class MSC_Admin_Events {
         $fields = array('msc_event_date','msc_event_end_date','msc_event_location','msc_entry_fee','msc_capacity','msc_reg_open','msc_reg_close','msc_approval');
         foreach ( $fields as $f ) {
             if ( isset($_POST[$f]) ) update_post_meta( $post_id, '_' . $f, sanitize_text_field($_POST[$f]) );
-        }
-        if ( isset($_POST['msc_indemnity_text']) ) {
-            update_post_meta( $post_id, '_msc_indemnity_text', wp_kses_post( wp_unslash($_POST['msc_indemnity_text']) ) );
         }
         if ( isset($_POST['msc_indemnity_pdf_id']) ) {
             $pdf_id = intval($_POST['msc_indemnity_pdf_id']);
@@ -408,10 +400,12 @@ class MSC_Admin_Events {
         if ( isset($_POST['msc_save_settings']) ) {
             check_admin_referer('msc_save_settings');
             update_option('msc_banking_details', wp_kses_post($_POST['msc_banking_details']));
+            update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
             echo '<div class="updated"><p>Settings saved.</p></div>';
         }
 
-        $banking = get_option('msc_banking_details', '');
+        $banking   = get_option('msc_banking_details', '');
+        $indemnity = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
@@ -423,6 +417,13 @@ class MSC_Admin_Events {
                         <td>
                             <textarea name="msc_banking_details" id="msc_banking_details" rows="6" class="large-text" placeholder="Enter banking details for EFT payments..."><?php echo esc_textarea($banking); ?></textarea>
                             <p class="description">These details will be shown to users when they register for an event with an entry fee.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_default_indemnity">Default Indemnity Text</label></th>
+                        <td>
+                            <textarea name="msc_default_indemnity" id="msc_default_indemnity" rows="10" class="large-text" placeholder="Enter default indemnity text..."><?php echo esc_textarea($indemnity); ?></textarea>
+                            <p class="description">This text will be used for all events and will appear on the signed PDF.</p>
                         </td>
                     </tr>
                 </table>

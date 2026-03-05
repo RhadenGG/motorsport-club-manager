@@ -156,7 +156,7 @@ class MSC_Shortcodes {
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
         $now       = current_time('timestamp');
-        $indemnity = get_post_meta($event_id,'_msc_indemnity_text',true);
+        $indemnity = get_option('msc_default_indemnity', "I, the undersigned, acknowledge that motorsport activities carry inherent risks including serious injury or death. I voluntarily participate and release the organiser, officials, and venue from any liability arising from my participation. I confirm my vehicle is roadworthy and I hold appropriate licences and insurance.");
         $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
         $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
 
