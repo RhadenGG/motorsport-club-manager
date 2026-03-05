@@ -55,7 +55,7 @@ class MSC_Emails {
         $event    = get_post($reg->event_id);
         $event_dt = get_post_meta($reg->event_id,'_msc_event_date',true);
         $date_str = $event_dt ? date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), strtotime($event_dt)) : 'TBC';
-        $fee_str  = $reg->entry_fee > 0 ? get_woocommerce_currency_symbol() . ' ' . number_format($reg->entry_fee,2) : 'Free';
+        $fee_str  = $reg->entry_fee > 0 ? 'R ' . number_format($reg->entry_fee,2) : 'Free';
         $status_msg = $reg->status === 'confirmed' ? 'You are confirmed! See you on the track.' : 'Your entry is <strong>pending approval</strong>. We will notify you once confirmed.';
 
         $body = "

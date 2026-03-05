@@ -109,7 +109,7 @@ class MSC_PDF {
                 // Better width estimation: 0.54 for bold, 0.48 for normal
                 $char_w = ($bold ? 0.54 : 0.48);
                 $test = $line === '' ? $word : $line . ' ' . $word;
-                $test_w = mb_strlen($test) * ($sz * $char_w);
+                $test_w = strlen($test) * ($sz * $char_w);
 
                 if ($test_w > $max_w && $line !== '') {
                     $this->check_page_break($lh);
@@ -135,7 +135,7 @@ class MSC_PDF {
         $str = $this->esc($text);
         
         $char_w = ($bold ? 0.54 : 0.48);
-        $est_w = mb_strlen($text) * ($sz * $char_w);
+        $est_w = strlen($text) * ($sz * $char_w);
         $dx = 0;
         if ($align === 'C') $dx = ($max_w - $est_w) / 2;
         if ($align === 'R') $dx = ($max_w - $est_w);
