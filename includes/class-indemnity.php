@@ -229,7 +229,20 @@ class MSC_Indemnity {
             
             $pdf->set_text_color( 99, 110, 114 );
             $pdf->set_font_size( 8 );
-            $pdf->write( $lm, 'This document was electronically signed. By signing, the participant (and guardian where applicable) acknowledges all terms of the indemnity declaration and MSA\'s Safe Guarding Policy.', $rw, 8, 12 );
+            
+            $acknowledgement = "This document was electronically signed. By signing, the participant (and guardian where applicable) acknowledges all terms of the indemnity declaration";
+            $custom_decs = get_option('msc_custom_declarations', '');
+            if ( $custom_decs ) {
+                $lines = array_filter( array_map( 'trim', explode( "\n", $custom_decs ) ) );
+                foreach ( $lines as $line ) {
+                    // Strip HTML tags for PDF
+                    $clean_line = wp_strip_all_tags( $line );
+                    $acknowledgement .= " and " . $clean_line;
+                }
+            }
+            $acknowledgement .= ".";
+
+            $pdf->write( $lm, $acknowledgement, $rw, 8, 12 );
 
         } else {
             // Blank lines for physical signature

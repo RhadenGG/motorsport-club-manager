@@ -468,12 +468,14 @@ class MSC_Admin_Events {
             update_option('msc_banking_details', wp_kses_post(wp_unslash($_POST['msc_banking_details'])));
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
             update_option('msc_account_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url'] ?? ''))));
+            update_option('msc_custom_declarations', wp_kses_post(wp_unslash($_POST['msc_custom_declarations'] ?? '')));
             echo '<div class="updated"><p>Settings saved.</p></div>';
         }
 
-        $banking     = get_option('msc_banking_details', '');
-        $indemnity   = get_option('msc_default_indemnity', msc_get_default_indemnity());
-        $account_url = get_option('msc_account_page_url', '');
+        $banking      = get_option('msc_banking_details', '');
+        $indemnity    = get_option('msc_default_indemnity', msc_get_default_indemnity());
+        $account_url  = get_option('msc_account_page_url', '');
+        $declarations = get_option('msc_custom_declarations', '');
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
@@ -499,6 +501,13 @@ class MSC_Admin_Events {
                         <td>
                             <textarea name="msc_default_indemnity" id="msc_default_indemnity" rows="10" class="large-text" placeholder="Enter default indemnity text..."><?php echo esc_textarea($indemnity); ?></textarea>
                             <p class="description">This text will be used for all events and will appear on the signed PDF.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_custom_declarations">Custom Registration Declarations</label></th>
+                        <td>
+                            <textarea name="msc_custom_declarations" id="msc_custom_declarations" rows="6" class="large-text" placeholder="I accept the Safe Guarding Policy..."><?php echo esc_textarea($declarations); ?></textarea>
+                            <p class="description">Add additional mandatory checkboxes to the registration form. <strong>One per line.</strong> HTML (like links) is allowed. If empty, no extra checkboxes will be shown.</p>
                         </td>
                     </tr>
                 </table>

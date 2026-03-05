@@ -290,16 +290,22 @@ class MSC_Shortcodes {
                     </div>
                     <?php endif ?>
 
-                    <div class="msc-declaration-section" style="margin:20px 0; padding:15px; background:#fffbf0; border:1px solid #ffeeba; border-radius:4px;">
+                    <?php 
+                    $custom_decs = get_option('msc_custom_declarations', '');
+                    if ( $custom_decs ) :
+                        $lines = array_filter( array_map( 'trim', explode( "\n", $custom_decs ) ) );
+                        foreach ( $lines as $i => $line ) :
+                    ?>
+                    <div class="msc-declaration-section" style="margin:10px 0; padding:12px; background:#fffbf0; border:1px solid #ffeeba; border-radius:4px;">
                         <label style="display:flex; align-items:flex-start; cursor:pointer; font-weight:600; line-height:1.4;">
-                            <input type="checkbox" id="msc-safeguarding-policy" style="margin-top:4px; margin-right:10px;">
+                            <input type="checkbox" name="msc_custom_declaration" class="msc-custom-declaration" style="margin-top:4px; margin-right:10px;">
                             <span>
-                                I accept the declaration and MSA's Safe Guarding Policy. 
-                                <a href="https://drive.google.com/file/d/1_rWQ2w1Ik9tlwqqioTWZef8JlVG5CyDR/view?usp=sharing" target="_blank" style="text-decoration:underline;">Click here to read the MSA Safe Guarding Policy</a>.
+                                <?php echo wp_kses_post( $line ); ?>
                                 <span style="color:red">*</span>
                             </span>
                         </label>
                     </div>
+                    <?php endforeach; endif; ?>
 
                     <div class="msc-signature-controls-wrap">
                         <!-- E-signature panel -->

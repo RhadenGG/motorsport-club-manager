@@ -85,7 +85,7 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, #msc-safeguarding-policy', function() {
+            $(document).on('input change', '#msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
                 msc.checkRegValidity();
             });
 
@@ -262,8 +262,10 @@ jQuery(function ($) {
                 if (!$('#msc-pop-file')[0].files[0]) isValid = false;
             }
 
-            // Safe Guarding Policy
-            if (!$('#msc-safeguarding-policy').is(':checked')) isValid = false;
+            // Custom Declarations (Mandatory Checkboxes)
+            $('.msc-custom-declaration').each(function() {
+                if (!$(this).is(':checked')) isValid = false;
+            });
 
             $('#msc-submit-reg').prop('disabled', !isValid);
         },
