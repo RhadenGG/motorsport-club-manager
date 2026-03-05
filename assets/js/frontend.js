@@ -84,23 +84,10 @@ jQuery(function ($) {
                 $('#msc-reg-error').hide();
             });
 
-            $('#msc-is-minor').on('change', function(){
-                if($(this).is(':checked')) {
-                    $('.msc-minor-only').show();
-                    if ($('input[name="msc_ind_method"]:checked').val() === 'sign') {
-                        $('#msc-parent-sig-panel').show();
-                        setTimeout(function() { msc.initSignaturePads(); }, 100);
-                    }
-                } else {
-                    $('.msc-minor-only').hide();
-                    $('#msc-parent-sig-panel').hide();
-                }
-            });
-
             $('input[name="msc_ind_method"]').on('change', function () {
                 if ($(this).val() === 'sign') {
                     $('#msc-sig-panel').show();
-                    if ($('#msc-is-minor').is(':checked')) {
+                    if ($('#msc-reg-wrap').data('minor') == 1) {
                         $('#msc-parent-sig-panel').show();
                     }
                     $('#msc-bring-panel').hide();
@@ -150,7 +137,7 @@ jQuery(function ($) {
                 
                 var sig = '';
                 var parentSig = '';
-                var isMinor = $('#msc-is-minor').is(':checked');
+                var isMinor = $('#msc-reg-wrap').data('minor') == 1;
 
                 if (method === 'sign') {
                     // Participant Sig
@@ -477,7 +464,7 @@ jQuery(function ($) {
             });
         },
 
-        // ─── Registrations ────────────────────────────────────────────
+        // ─── Registrations & Profile ──────────────────────────────────
         bindAccount: function () {
             $(document).on('click', '.msc-cancel-reg', function (e) {
                 e.preventDefault();
@@ -490,6 +477,54 @@ jQuery(function ($) {
                 }, function (res) {
                     if (res.success) location.reload();
                     else alert(res.data.message || 'Error cancelling.');
+                });
+            });
+
+            $('#msc-save-profile').on('click', function (e) {
+                e.preventDefault();
+                var btn = $(this);
+                btn.prop('disabled', true).text('Saving…');
+
+                var fd = new FormData();
+                fd.append('action',       'msc_update_profile');
+                fd.append('nonce',        mscData.nonce);
+                fd.append('first_name',   $('#pe_first_name').val());
+                fd.append('last_name',    $('#pe_last_name').val());
+                fd.append('display_name', $('#pe_display_name').val());
+                fd.append('email',        $('#pe_email').val());
+                fd.append('msc_birthday', $('#pe_birthday').val());
+                fd.append('phone',        $('#pe_phone').val());
+                fd.append('msc_licence',  $('#pe_licence').val());
+                fd.append('msc_address1', $('#pe_address1').val());
+                fd.append('msc_city',     $('#pe_city').val());
+                fd.append('msc_province', $('#pe_province').val());
+                fd.append('msc_postcode', $('#pe_postcode').val());
+                fd.append('msc_emergency_name',  $('#pe_emergency_name').val());
+                fd.append('msc_emergency_phone', $('#pe_emergency_phone').val());
+                fd.append('msc_emergency_rel',   $('#pe_emergency_rel').val());
+                
+                if ($('#pe_password').val()) {
+                    fd.append('password',  $('#pe_password').val());
+                    fd.append('password2', $('#pe_password2').val());
+                }
+
+                $.ajax({
+                    url:         mscData.ajaxUrl,
+                    type:        'POST',
+                    data:        fd,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        $('#msc-profile-msg').text(res.data.message).css('color', res.success ? 'green' : 'red').show();
+                        btn.prop('disabled', false).text('Save Changes');
+                        if (res.success) {
+                            setTimeout(function(){ location.reload(); }, 1500);
+                        }
+                    },
+                    error: function () {
+                        $('#msc-profile-msg').text('Network error.').css('color', 'red').show();
+                        btn.prop('disabled', false).text('Save Changes');
+                    }
                 });
             });
         }

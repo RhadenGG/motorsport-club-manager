@@ -46,7 +46,17 @@ class MSC_Registration {
         $vehicle_id = intval($_POST['vehicle_id']);
         $ind_method = sanitize_key($_POST['indemnity_method'] ?? '');
         $ind_sig    = sanitize_textarea_field($_POST['indemnity_sig'] ?? '');
-        $is_minor   = !empty($_POST['is_minor']) ? 1 : 0;
+        
+        $birthday   = get_user_meta($user_id, 'msc_birthday', true);
+        $is_minor   = 0;
+        if ($birthday) {
+            $dob = new DateTime($birthday);
+            $now_dt = new DateTime();
+            if ($now_dt->diff($dob)->y < 18) {
+                $is_minor = 1;
+            }
+        }
+
         $parent     = sanitize_text_field($_POST['parent_name'] ?? '');
         $parent_sig = sanitize_textarea_field($_POST['parent_sig'] ?? '');
         $em_name    = sanitize_text_field($_POST['emergency_name'] ?? '');

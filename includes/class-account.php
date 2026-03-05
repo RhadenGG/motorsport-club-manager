@@ -389,6 +389,10 @@ class MSC_Account {
                             <input type="email" id="pe_email" value="<?php echo esc_attr($user->user_email); ?>">
                         </div>
                         <div class="msc-field">
+                            <label>Date of Birth <span class="msc-required">*</span></label>
+                            <input type="date" id="pe_birthday" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_birthday', true)); ?>">
+                        </div>
+                        <div class="msc-field">
                             <label>Phone Number</label>
                             <input type="tel" id="pe_phone" value="<?php echo esc_attr(get_user_meta($user->ID, 'phone', true)); ?>" placeholder="+27 82 000 0000">
                         </div>
@@ -491,7 +495,7 @@ class MSC_Account {
 
         // Meta fields
         $meta_fields = array(
-            'phone', 'msc_licence',
+            'phone', 'msc_licence', 'msc_birthday',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
         );

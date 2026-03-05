@@ -167,7 +167,21 @@ class MSC_Shortcodes {
             return '<div class="msc-notice msc-notice-info"><p>You must be logged in to register for this event.</p><a href="'.wp_login_url(get_permalink()).'" class="msc-btn">Log In</a> <a href="'.wp_registration_url().'" class="msc-btn msc-btn-outline">Register Account</a></div>';
         }
 
-        $user_id = get_current_user_id();
+        $user_id  = get_current_user_id();
+        $birthday = get_user_meta($user_id, 'msc_birthday', true);
+
+        if ( ! $birthday ) {
+            return '<div class="msc-notice msc-notice-warning">
+                <p><strong>Profile Incomplete:</strong> Your Date of Birth is required to register for events.</p>
+                <a href="?msc_tab=profile" class="msc-btn msc-btn-sm">Complete My Profile →</a>
+            </div>';
+        }
+
+        // Calculate age
+        $dob = new DateTime($birthday);
+        $now_dt = new DateTime();
+        $age = $now_dt->diff($dob)->y;
+        $is_minor = ($age < 18);
 
         if (MSC_Registration::user_is_registered($user_id, $event_id)) {
             return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="?msc_tab=registrations">View your registration</a></div>';
@@ -182,7 +196,7 @@ class MSC_Shortcodes {
 
         ob_start();
         ?>
-        <div id="msc-reg-wrap" class="msc-registration-wrap" data-event="<?php echo $event_id ?>">
+        <div id="msc-reg-wrap" class="msc-registration-wrap" data-event="<?php echo $event_id ?>" data-minor="<?php echo $is_minor ? '1' : '0'; ?>">
             <h3 class="msc-section-title">Register for this Event</h3>
 
             <?php if($approval==='manual'): ?>
@@ -228,24 +242,20 @@ class MSC_Shortcodes {
                     </div>
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
-                        <div class="msc-field-group" style="display:flex;align-items:center;padding-top:5px;">
-                            <label style="cursor:pointer;font-weight:600;"><input type="checkbox" id="msc-is-minor"> I am under 18 and never married</label>
-                        </div>
-                        <div class="msc-field-group">
-                            <!-- Empty spacer for grid alignment -->
-                        </div>
                         <div class="msc-field-group">
                             <label>Emergency Contact Name</label>
-                            <input type="text" id="msc-emergency-name" placeholder="Contact person name">
+                            <input type="text" id="msc-emergency-name" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_name', true)); ?>" placeholder="Contact person name">
                         </div>
                         <div class="msc-field-group">
                             <label>Emergency Contact Number</label>
-                            <input type="text" id="msc-emergency-phone" placeholder="Contact phone number">
+                            <input type="text" id="msc-emergency-phone" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_phone', true)); ?>" placeholder="Contact phone number">
                         </div>
-                        <div class="msc-field-group msc-minor-only" style="display:none;grid-column: span 2;">
+                        <?php if ($is_minor) : ?>
+                        <div class="msc-field-group" style="grid-column: span 2;">
                             <label>Parent/Guardian Full Name</label>
                             <input type="text" id="msc-parent-name" placeholder="Parent or legal guardian name">
                         </div>
+                        <?php endif; ?>
                     </div>
 
                     <div id="msc-summary" class="msc-summary-box"></div>
