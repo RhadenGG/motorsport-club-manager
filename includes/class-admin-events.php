@@ -118,7 +118,7 @@ class MSC_Admin_Events {
     }
 
     public static function meta_box_classes( $post ) {
-        $vehicle_types = MSC_Taxonomies::get_hardcoded_classes();
+        $vehicle_types = MSC_Taxonomies::get_classes_by_type();
 
         $saved_type    = get_post_meta( $post->ID, '_msc_event_vehicle_type', true ) ?: 'Both';
         $saved_classes = get_post_meta( $post->ID, '_msc_event_classes', true );

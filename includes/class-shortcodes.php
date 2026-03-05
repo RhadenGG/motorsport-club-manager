@@ -19,7 +19,7 @@ class MSC_Shortcodes {
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => wp_login_url(),
             'loggedIn' => is_user_logged_in(),
-            'classes'  => MSC_Taxonomies::get_hardcoded_classes(),
+            'classes'  => MSC_Taxonomies::get_classes_by_type(),
         ) );
     }
 
