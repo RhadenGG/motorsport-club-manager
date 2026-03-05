@@ -160,33 +160,51 @@ jQuery(function ($) {
                         }
                     }
                 }
+
+                // Proof of Payment
+                var popFile = $('#msc-pop-file')[0] ? $('#msc-pop-file')[0].files[0] : null;
+                if ($('#msc-pop-file').length && !popFile) {
+                    msc.showError('Please upload your Proof of Payment PDF.');
+                    return;
+                }
                 
                 var btn = $(this);
                 btn.prop('disabled', true).text('Submitting…');
-                $.post(mscData.ajaxUrl, {
-                    action:           'msc_submit_registration',
-                    nonce:            mscData.nonce,
-                    event_id:         msc.eventId,
-                    vehicle_id:       msc.vehicleId,
-                    indemnity_method: method === 'sign' ? 'signed' : 'bring',
-                    indemnity_sig:    sig,
-                    parent_sig:       parentSig,
-                    is_minor:         isMinor ? 1 : 0,
-                    parent_name:      $('#msc-parent-name').val(),
-                    emergency_name:   $('#msc-emergency-name').val(),
-                    emergency_phone:  $('#msc-emergency-phone').val(),
-                    notes:            $('#msc-notes').val()
-                }, function (res) {
-                    if (res.success) {
-                        var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
-                        $('#msc-reg-wrap').html('<div class="msc-notice msc-notice-success msc-success-big">' + icon + ' ' + res.data.message + '</div>');
-                    } else {
-                        msc.showError(res.data.message || 'An error occurred. Please try again.');
+
+                var fd = new FormData();
+                fd.append('action',           'msc_submit_registration');
+                fd.append('nonce',            mscData.nonce);
+                fd.append('event_id',         msc.eventId);
+                fd.append('vehicle_id',       msc.vehicleId);
+                fd.append('indemnity_method', method === 'sign' ? 'signed' : 'bring');
+                fd.append('indemnity_sig',    sig);
+                fd.append('parent_sig',       parentSig);
+                fd.append('is_minor',         isMinor ? 1 : 0);
+                fd.append('parent_name',      $('#msc-parent-name').val());
+                fd.append('emergency_name',   $('#msc-emergency-name').val());
+                fd.append('emergency_phone',  $('#msc-emergency-phone').val());
+                fd.append('notes',            $('#msc-notes').val());
+                if (popFile) fd.append('pop_file', popFile);
+
+                $.ajax({
+                    url:         mscData.ajaxUrl,
+                    type:        'POST',
+                    data:        fd,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        if (res.success) {
+                            var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
+                            $('#msc-reg-wrap').html('<div class="msc-notice msc-notice-success msc-success-big">' + icon + ' ' + res.data.message + '</div>');
+                        } else {
+                            msc.showError(res.data.message || 'An error occurred. Please try again.');
+                            btn.prop('disabled', false).text('Submit Registration');
+                        }
+                    },
+                    error: function () {
+                        msc.showError('Network error. Please try again.');
                         btn.prop('disabled', false).text('Submit Registration');
                     }
-                }).fail(function () {
-                    msc.showError('Network error. Please try again.');
-                    btn.prop('disabled', false).text('Submit Registration');
                 });
             });
         },

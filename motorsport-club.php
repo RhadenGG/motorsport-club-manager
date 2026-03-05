@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '0.1.0' );
+define( 'MSC_VERSION',  '0.2.0' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
@@ -37,6 +37,12 @@ register_deactivation_hook( __FILE__, array( 'MSC_Activator', 'deactivate' ) );
 
 add_action( 'plugins_loaded', 'msc_init' );
 function msc_init() {
+    // Migration check to ensure DB is up to date
+    if ( get_option('msc_db_version') !== MSC_VERSION ) {
+        MSC_Activator::activate();
+        update_option('msc_db_version', MSC_VERSION);
+    }
+    
     MSC_Post_Types::init();
     MSC_Taxonomies::init();
     MSC_Admin_Events::init();

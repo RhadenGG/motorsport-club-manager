@@ -99,18 +99,21 @@ class MSC_PDF {
         $lh     = $lh ?: $this->line_h;
         $max_w  = $max_w ?: ( $this->w - $x - $this->mr );
         $font   = $bold ? '/F2' : '/F1';
-        $cpl    = max(1, (int)( $max_w / ($sz * 0.52) ));
-
+        
         // Split into lines first (honour \n)
         $paragraphs = explode("\n", (string)$str);
         foreach ($paragraphs as $para) {
             $words = preg_split('/\s+/', trim($para));
             $line  = '';
             foreach ($words as $word) {
+                // Better width estimation: 0.54 for bold, 0.48 for normal
+                $char_w = ($bold ? 0.54 : 0.48);
                 $test = $line === '' ? $word : $line . ' ' . $word;
-                if (mb_strlen($test) > $cpl && $line !== '') {
+                $test_w = mb_strlen($test) * ($sz * $char_w);
+
+                if ($test_w > $max_w && $line !== '') {
                     $this->check_page_break($lh);
-                    $this->render_line($line, $x, $max_w, $font, $sz, $align);
+                    $this->render_line($line, $x, $max_w, $font, $sz, $align, $bold);
                     $this->cur_y += $lh;
                     $line = $word;
                 } else {
@@ -119,20 +122,20 @@ class MSC_PDF {
             }
             if ($line !== '') {
                 $this->check_page_break($lh);
-                $this->render_line($line, $x, $max_w, $font, $sz, $align);
+                $this->render_line($line, $x, $max_w, $font, $sz, $align, $bold);
                 $this->cur_y += $lh;
             }
-            if (count($paragraphs) > 1) $this->cur_y += $lh * 0.3;
+            if (count($paragraphs) > 1) $this->cur_y += $lh * 0.2;
         }
         return $this->cur_y;
     }
 
-    private function render_line($text, $x, $max_w, $font, $sz, $align) {
+    private function render_line($text, $x, $max_w, $font, $sz, $align, $bold = false) {
         $r = $this->text_r; $g = $this->text_g; $b = $this->text_b;
         $str = $this->esc($text);
         
-        // Simple width estimate: avg char is 0.52em
-        $est_w = mb_strlen($text) * ($sz * 0.52);
+        $char_w = ($bold ? 0.54 : 0.48);
+        $est_w = mb_strlen($text) * ($sz * $char_w);
         $dx = 0;
         if ($align === 'C') $dx = ($max_w - $est_w) / 2;
         if ($align === 'R') $dx = ($max_w - $est_w);

@@ -342,6 +342,14 @@ class MSC_Indemnity {
         $headers  = array( 'Content-Type: text/html; charset=UTF-8' );
         $attachments = array( $tmp );
 
+        // Add Proof of Payment if exists
+        if ($reg->pop_file_id) {
+            $pop_path = get_attached_file($reg->pop_file_id);
+            if ($pop_path && file_exists($pop_path)) {
+                $attachments[] = $pop_path;
+            }
+        }
+
         // Send to participant
         wp_mail( $reg->user_email, $subject, MSC_Emails::wrap("Signed Indemnity Form", $message), $headers, $attachments );
 

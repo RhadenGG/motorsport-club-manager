@@ -114,6 +114,29 @@ class MSC_Registration {
         $status    = ($approval === 'manual') ? 'pending' : 'confirmed';
         $entry_fee = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
 
+        // Handle Proof of Payment Upload
+        $pop_file_id = null;
+        if ( ! empty( $_FILES['pop_file'] ) ) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+
+            // Verify it's a PDF
+            $file_type = wp_check_filetype($_FILES['pop_file']['name']);
+            if ($file_type['ext'] !== 'pdf') {
+                wp_send_json_error(array('message' => 'Proof of Payment must be a PDF file.'));
+            }
+
+            $attachment_id = media_handle_upload( 'pop_file', 0 ); 
+
+            if ( is_wp_error( $attachment_id ) ) {
+                wp_send_json_error( array( 'message' => 'Failed to upload Proof of Payment: ' . $attachment_id->get_error_message() ) );
+            }
+            $pop_file_id = $attachment_id;
+        } elseif ( $entry_fee > 0 ) {
+            wp_send_json_error( array( 'message' => 'Proof of Payment is required for this event.' ) );
+        }
+
         $inserted = $wpdb->insert("{$wpdb->prefix}msc_registrations", array(
             'event_id'         => $event_id,
             'user_id'          => $user_id,
@@ -131,6 +154,7 @@ class MSC_Registration {
             'indemnity_sig'    => $ind_sig,
             'indemnity_date'   => ($ind_method==='signed') ? current_time('mysql') : null,
             'notes'            => $notes,
+            'pop_file_id'      => $pop_file_id,
             'created_at'       => current_time('mysql'),
         ));
 

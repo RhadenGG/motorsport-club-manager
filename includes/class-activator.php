@@ -27,6 +27,7 @@ class MSC_Activator {
             indemnity_date datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             notes text DEFAULT '',
+            pop_file_id bigint(20) unsigned DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY idx_event (event_id),
             KEY idx_user (user_id)

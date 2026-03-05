@@ -22,6 +22,7 @@ class MSC_Admin_Events {
         add_submenu_page( 'motorsport-club', 'Garage',      'All Vehicles','manage_options', 'edit.php?post_type=msc_vehicle' );
         add_submenu_page( 'motorsport-club', 'Registrations','Registrations','manage_options','msc-registrations', array( __CLASS__, 'registrations_page' ) );
         add_submenu_page( 'motorsport-club', 'Vehicle Classes','Vehicle Classes','manage_options','edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle' );
+        add_submenu_page( 'motorsport-club', 'Settings',      'Settings',     'manage_options','msc-settings',      array( __CLASS__, 'settings_page' ) );
     }
 
     public static function enqueue_media( $hook ) {
@@ -266,9 +267,10 @@ class MSC_Admin_Events {
             isset( $_POST['_wpnonce'] ) &&
             wp_verify_nonce( $_POST['_wpnonce'], 'msc_reg_action' )
         ) {
-            $reg_id = intval( $_POST['reg_id'] );
-            $status = sanitize_key( $_POST['new_status'] );
-            $wpdb->update( $table, array( 'status' => $status ), array( 'id' => $reg_id ) );
+            $reg_id   = intval( $_POST['reg_id'] );
+            $status   = sanitize_key( $_POST['new_status'] );
+            $fee_paid = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
+            $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ) );
             if ( $status === 'confirmed' ) MSC_Emails::send_confirmation( $reg_id );
             echo '<div class="updated notice is-dismissible"><p>Registration updated.</p></div>';
         }
@@ -324,6 +326,7 @@ class MSC_Admin_Events {
         <th>Event</th>
         <th>Vehicle</th>
         <th>Entry Fee</th>
+        <th>PoP</th>
         <th>Paid</th>
         <th>Indemnity</th>
         <th>Status</th>
@@ -333,7 +336,7 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="11">No registrations found.</td></tr>
+        <tr><td colspan="12">No registrations found.</td></tr>
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
@@ -347,7 +350,15 @@ class MSC_Admin_Events {
         <td><?php echo esc_html($r->event_name) ?></td>
         <td><?php echo esc_html($r->vehicle_name) ?></td>
         <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free' ?></td>
-        <td><?php echo $r->fee_paid ? '<span style="color:green">✓</span>' : '<span style="color:#aaa">—</span>' ?></td>
+        <td><?php 
+            if ($r->pop_file_id) {
+                $url = wp_get_attachment_url($r->pop_file_id);
+                echo '<a href="'.esc_url($url).'" target="_blank" title="View Proof of Payment" style="text-decoration:none">📄 View</a>';
+            } else {
+                echo '<span style="color:#aaa">—</span>';
+            }
+        ?></td>
+        <td><?php echo $r->fee_paid ? '<span style="color:green">✓ Paid</span>' : '<span style="color:#aaa">—</span>' ?></td>
         <td><?php
         if ($r->indemnity_method === 'signed') echo '<span style="color:green" title="'.esc_attr($r->indemnity_date).'">✓ Signed</span>';
         elseif ($r->indemnity_method === 'bring') echo '<span style="color:#856404">📄 Will bring</span>';
@@ -369,6 +380,9 @@ class MSC_Admin_Events {
         <option value="<?php echo $s ?>" <?php selected($r->status,$s) ?>><?php echo ucfirst($s) ?></option>
         <?php endforeach; ?>
         </select>
+        <label title="Mark as Paid" style="display:flex;align-items:center;background:#eee;padding:2px 6px;border-radius:4px;cursor:pointer">
+            <input type="checkbox" name="new_fee_paid" value="1" <?php checked($r->fee_paid,1) ?>> $
+        </label>
         <button type="submit" name="msc_update_status" class="button button-small">Update</button>
         <?php if ($r->indemnity_method === 'signed' && $r->indemnity_sig): ?>
         <a href="<?php echo add_query_arg(array('msc_indemnity_pdf'=>$r->id), home_url()) ?>"
@@ -386,6 +400,36 @@ class MSC_Admin_Events {
         <?php endforeach; endif; ?>
         </tbody>
         </table>
+        </div>
+        <?php
+    }
+
+    public static function settings_page() {
+        if ( isset($_POST['msc_save_settings']) ) {
+            check_admin_referer('msc_save_settings');
+            update_option('msc_banking_details', wp_kses_post($_POST['msc_banking_details']));
+            echo '<div class="updated"><p>Settings saved.</p></div>';
+        }
+
+        $banking = get_option('msc_banking_details', '');
+        ?>
+        <div class="wrap">
+            <h1>⚙️ Motorsport Club — Settings</h1>
+            <form method="post">
+                <?php wp_nonce_field('msc_save_settings'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="msc_banking_details">Banking Details</label></th>
+                        <td>
+                            <textarea name="msc_banking_details" id="msc_banking_details" rows="6" class="large-text" placeholder="Enter banking details for EFT payments..."><?php echo esc_textarea($banking); ?></textarea>
+                            <p class="description">These details will be shown to users when they register for an event with an entry fee.</p>
+                        </td>
+                    </tr>
+                </table>
+                <p class="submit">
+                    <button type="submit" name="msc_save_settings" class="button button-primary">Save Settings</button>
+                </p>
+            </form>
         </div>
         <?php
     }

@@ -264,8 +264,24 @@ class MSC_Shortcodes {
                     <div id="msc-summary" class="msc-summary-box"></div>
 
                     <?php if($fee > 0): ?>
-                    <div class="msc-notice msc-notice-info" style="margin:16px 0">
-                        💰 Entry fee: <strong>R <?php echo number_format($fee,2) ?></strong>. This is recorded but payment is handled separately at the event.
+                    <div class="msc-payment-section" style="margin:20px 0; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
+                        <h4 style="margin-top:0">💰 Payment Information</h4>
+                        <p>Entry fee: <strong>R <?php echo number_format($fee, 2); ?></strong></p>
+                        
+                        <?php 
+                        $banking = get_option('msc_banking_details', '');
+                        if($banking): ?>
+                        <div class="msc-banking-details" style="margin-bottom:15px; padding:10px; background:#fff; border-left:4px solid #2271b1;">
+                            <strong>Banking Details for EFT:</strong><br>
+                            <?php echo nl2br(wp_kses_post($banking)); ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="msc-field-group">
+                            <label style="font-weight:700">Upload Proof of Payment (PDF only) <span style="color:red">*</span></label>
+                            <input type="file" id="msc-pop-file" accept="application/pdf" style="width:100%; padding:10px; background:#fff; border:1px solid #ccc; border-radius:4px;">
+                            <p class="description" style="font-size:0.85em; margin-top:4px;">Please upload your EFT confirmation PDF to complete your registration.</p>
+                        </div>
                     </div>
                     <?php endif ?>
 

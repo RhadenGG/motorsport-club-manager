@@ -72,12 +72,34 @@ class MSC_Emails {
         <p style='text-align:center;margin:30px 0'><a href='".home_url('/my-account/')."' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
         <p>See you at the track!<br>The " . get_bloginfo('name') . " team</p>";
 
-        wp_mail( $reg->user_email, "Registration Received — {$reg->event_name}", self::wrap("Registration Received", $body) );
+        // Attachments
+        $attachments = array();
+        if ($reg->pop_file_id) {
+            $pop_path = get_attached_file($reg->pop_file_id);
+            if ($pop_path && file_exists($pop_path)) {
+                $attachments[] = $pop_path;
+            }
+        }
+
+        wp_mail( $reg->user_email, "Registration Received — {$reg->event_name}", self::wrap("Registration Received", $body), array('Content-Type: text/html; charset=UTF-8'), $attachments );
 
         // Notify admin
         wp_mail( get_option('admin_email'), "New Registration: {$reg->event_name} — {$reg->user_name}",
-            self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>")
+            self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>"),
+            array('Content-Type: text/html; charset=UTF-8'),
+            $attachments
         );
+
+        // Notify event author if different from admin
+        $event_author_id = get_post_field('post_author', $reg->event_id);
+        $event_author = get_user_by('id', $event_author_id);
+        if ( $event_author && $event_author->user_email !== get_option('admin_email') ) {
+            wp_mail( $event_author->user_email, "New Registration: {$reg->event_name} — {$reg->user_name}",
+                self::wrap("New Registration", "<p>New registration from <strong>{$reg->user_name}</strong> for <strong>{$reg->event_name}</strong>.</p><p><a href='".admin_url('admin.php?page=msc-registrations')."'>View in admin dashboard →</a></p>"),
+                array('Content-Type: text/html; charset=UTF-8'),
+                $attachments
+            );
+        }
     }
 
     public static function send_confirmation( $reg_id ) {
