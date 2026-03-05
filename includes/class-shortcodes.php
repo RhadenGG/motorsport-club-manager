@@ -171,9 +171,10 @@ class MSC_Shortcodes {
         $birthday = get_user_meta($user_id, 'msc_birthday', true);
 
         if ( ! $birthday ) {
+            $profile_url = add_query_arg('msc_tab', 'profile', home_url('/my-account/'));
             return '<div class="msc-notice msc-notice-warning">
                 <p><strong>Profile Incomplete:</strong> Your Date of Birth is required to register for events.</p>
-                <a href="?msc_tab=profile" class="msc-btn msc-btn-sm">Complete My Profile →</a>
+                <a href="' . esc_url($profile_url) . '" class="msc-btn msc-btn-sm">Complete My Profile →</a>
             </div>';
         }
 
@@ -184,7 +185,8 @@ class MSC_Shortcodes {
         $is_minor = ($age < 18);
 
         if (MSC_Registration::user_is_registered($user_id, $event_id)) {
-            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="?msc_tab=registrations">View your registration</a></div>';
+            $regs_url = add_query_arg('msc_tab', 'registrations', home_url('/my-account/'));
+            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="' . esc_url($regs_url) . '">View your registration</a></div>';
         }
 
         global $wpdb;
@@ -211,7 +213,8 @@ class MSC_Shortcodes {
                     <div id="msc-vehicles-list" style="display:none"></div>
                     <div id="msc-vehicles-empty" style="display:none">
                         <p>No eligible vehicles found in your garage for this event's classes.</p>
-                        <a href="?msc_tab=garage" class="msc-btn msc-btn-outline">Add a Vehicle</a>
+                        <?php $garage_url = add_query_arg('msc_tab', 'garage', home_url('/my-account/')); ?>
+                        <a href="<?php echo esc_url($garage_url); ?>" class="msc-btn msc-btn-outline">Add a Vehicle</a>
                     </div>
                     <div style="margin-top:12px">
                         <label style="font-weight:600;display:block;margin-bottom:4px">Additional Notes (optional)</label>
