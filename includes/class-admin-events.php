@@ -16,10 +16,10 @@ class MSC_Admin_Events {
         add_menu_page(
             'Motorsport Club', 'Motorsport Club', 'manage_options',
             'motorsport-club', array( __CLASS__, 'dashboard_page' ),
-                      'dashicons-flag', 30
+            'dashicons-flag', 30
         );
-        add_submenu_page( 'motorsport-club', 'Events',      'Events',      'manage_options', 'edit.php?post_type=msc_event' );
-        add_submenu_page( 'motorsport-club', 'Garage',      'All Vehicles','manage_options', 'edit.php?post_type=msc_vehicle' );
+        // Rename the auto-generated first submenu from "Motorsport Club" to "Dashboard"
+        add_submenu_page( 'motorsport-club', 'Dashboard', 'Dashboard', 'manage_options', 'motorsport-club' );
         add_submenu_page( 'motorsport-club', 'Registrations','Registrations','manage_options','msc-registrations', array( __CLASS__, 'registrations_page' ) );
         add_submenu_page( 'motorsport-club', 'Vehicle Classes','Vehicle Classes','manage_options','edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle' );
         add_submenu_page( 'motorsport-club', 'Settings',      'Settings',     'manage_options','msc-settings',      array( __CLASS__, 'settings_page' ) );

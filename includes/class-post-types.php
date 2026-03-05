@@ -15,7 +15,7 @@ class MSC_Post_Types {
             'has_archive'   => true,
             'rewrite'       => array( 'slug' => 'racing-events' ),
             'supports'      => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
-            'menu_icon'     => 'dashicons-flag',
+            'show_in_menu'  => 'motorsport-club',
             'show_in_rest'  => true,
         ) );
 
