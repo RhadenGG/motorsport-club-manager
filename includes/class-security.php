@@ -13,21 +13,38 @@ class MSC_Security {
         add_filter( 'login_redirect', array( __CLASS__, 'onboarding_redirect' ), 10, 3 );
 
         // Email verification
-        add_action( 'user_register',       array( __CLASS__, 'on_user_register' ) );
-        add_filter( 'wp_authenticate_user', array( __CLASS__, 'check_email_verified' ), 10, 2 );
-        add_action( 'init',                array( __CLASS__, 'handle_email_verification' ) );
-        add_filter( 'login_message',       array( __CLASS__, 'login_verification_notice' ) );
+        add_action( 'user_register',                    array( __CLASS__, 'on_user_register' ) );
+        add_filter( 'wp_new_user_notification_email',   array( __CLASS__, 'intercept_wp_notification_email' ), 10, 3 );
+        add_filter( 'wp_authenticate_user',             array( __CLASS__, 'check_email_verified' ), 10, 2 );
+        add_action( 'init',                             array( __CLASS__, 'handle_email_verification' ) );
+        add_filter( 'login_message',                    array( __CLASS__, 'login_verification_notice' ) );
     }
 
     // ── Email verification ───────────────────────────────────────────────────
+
+    /**
+     * Intercept WordPress's default "set your password" email, capture the
+     * reset key it contains, suppress the email (we'll send our own), and
+     * store the key so we can redirect to it after email verification.
+     */
+    public static function intercept_wp_notification_email( $email_data, $user, $blogname ) {
+        // Extract the password reset key and login from WP's message
+        if ( preg_match( '/action=rp&key=([^&\s]+)&login=([^\s\r\n]+)/', $email_data['message'], $m ) ) {
+            update_user_meta( $user->ID, 'msc_reset_key',   sanitize_text_field( urldecode( $m[1] ) ) );
+            update_user_meta( $user->ID, 'msc_reset_login', sanitize_text_field( urldecode( $m[2] ) ) );
+        }
+        // Suppress WP's email — we send our own verification email
+        $email_data['to'] = '';
+        return $email_data;
+    }
 
     public static function on_user_register( $user_id ) {
         // Skip if an admin is creating the user from wp-admin
         if ( current_user_can( 'create_users' ) ) return;
 
         $token = wp_generate_password( 32, false );
-        update_user_meta( $user_id, 'msc_email_token',     $token );
-        update_user_meta( $user_id, 'msc_email_verified',  '0' );
+        update_user_meta( $user_id, 'msc_email_token',      $token );
+        update_user_meta( $user_id, 'msc_email_verified',   '0' );
         update_user_meta( $user_id, 'msc_verify_last_sent', time() );
 
         self::send_verification_email( $user_id, $token );
@@ -45,9 +62,9 @@ class MSC_Security {
         $body = "
             <p>Hi {$name_esc},</p>
             <p>Thank you for creating an account with <strong>{$site_esc}</strong>.</p>
-            <p>Please click the button below to verify your email address. You won't be able to log in until your email has been verified.</p>
+            <p>Click the button below to verify your email address. You'll then be taken to set your password and complete your registration.</p>
             <p style='text-align:center;margin:30px 0'>
-                <a href='{$url_esc}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Verify My Email →</a>
+                <a href='{$url_esc}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Verify My Email &amp; Set Password →</a>
             </p>
             <p style='font-size:13px;color:#888'>If you didn't create this account you can safely ignore this email.</p>
         ";
@@ -96,7 +113,22 @@ class MSC_Security {
             update_user_meta( $user_id, 'msc_email_verified', '1' );
             delete_user_meta( $user_id, 'msc_email_token' );
 
-            wp_safe_redirect( add_query_arg( 'msc_verified', '1', wp_login_url() ) );
+            // Redirect to set-password page if we captured the WP reset key
+            $reset_key   = get_user_meta( $user_id, 'msc_reset_key',   true );
+            $reset_login = get_user_meta( $user_id, 'msc_reset_login', true );
+
+            if ( $reset_key && $reset_login ) {
+                delete_user_meta( $user_id, 'msc_reset_key' );
+                delete_user_meta( $user_id, 'msc_reset_login' );
+                $set_pw_url = add_query_arg( array(
+                    'action' => 'rp',
+                    'key'    => $reset_key,
+                    'login'  => rawurlencode( $reset_login ),
+                ), wp_login_url() );
+                wp_safe_redirect( $set_pw_url );
+            } else {
+                wp_safe_redirect( add_query_arg( 'msc_verified', '1', wp_login_url() ) );
+            }
             exit;
         }
 
@@ -106,6 +138,15 @@ class MSC_Security {
             if ( $user_id && get_user_meta( $user_id, 'msc_email_verified', true ) === '0' ) {
                 $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );
                 if ( ! $last || ( time() - $last ) > 120 ) {
+                    // Generate a fresh WP password reset key for the resend
+                    $user = get_userdata( $user_id );
+                    if ( $user ) {
+                        $reset_key = get_password_reset_key( $user );
+                        if ( ! is_wp_error( $reset_key ) ) {
+                            update_user_meta( $user_id, 'msc_reset_key',   $reset_key );
+                            update_user_meta( $user_id, 'msc_reset_login', $user->user_login );
+                        }
+                    }
                     $token = wp_generate_password( 32, false );
                     update_user_meta( $user_id, 'msc_email_token', $token );
                     update_user_meta( $user_id, 'msc_verify_last_sent', time() );
