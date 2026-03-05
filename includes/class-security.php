@@ -23,17 +23,11 @@ class MSC_Security {
     // ── Email verification ───────────────────────────────────────────────────
 
     /**
-     * Intercept WordPress's default "set your password" email, capture the
-     * reset key it contains, suppress the email (we'll send our own), and
-     * store the key so we can redirect to it after email verification.
+     * Suppress WordPress's default "set your password" email.
+     * We send our own verification email; a fresh reset key is generated
+     * at the moment the user verifies, so no need to capture it here.
      */
     public static function intercept_wp_notification_email( $email_data, $user, $blogname ) {
-        // Extract the password reset key and login from WP's message
-        if ( preg_match( '/action=rp&key=([^&\s]+)&login=([^\s\r\n]+)/', $email_data['message'], $m ) ) {
-            update_user_meta( $user->ID, 'msc_reset_key',   sanitize_text_field( urldecode( $m[1] ) ) );
-            update_user_meta( $user->ID, 'msc_reset_login', sanitize_text_field( urldecode( $m[2] ) ) );
-        }
-        // Suppress WP's email — we send our own verification email
         $email_data['to'] = '';
         return $email_data;
     }
@@ -113,17 +107,15 @@ class MSC_Security {
             update_user_meta( $user_id, 'msc_email_verified', '1' );
             delete_user_meta( $user_id, 'msc_email_token' );
 
-            // Redirect to set-password page if we captured the WP reset key
-            $reset_key   = get_user_meta( $user_id, 'msc_reset_key',   true );
-            $reset_login = get_user_meta( $user_id, 'msc_reset_login', true );
+            // Generate a fresh password reset key and send user to set-password page
+            $user      = get_userdata( $user_id );
+            $reset_key = $user ? get_password_reset_key( $user ) : new WP_Error();
 
-            if ( $reset_key && $reset_login ) {
-                delete_user_meta( $user_id, 'msc_reset_key' );
-                delete_user_meta( $user_id, 'msc_reset_login' );
+            if ( $user && ! is_wp_error( $reset_key ) ) {
                 $set_pw_url = add_query_arg( array(
                     'action' => 'rp',
                     'key'    => $reset_key,
-                    'login'  => rawurlencode( $reset_login ),
+                    'login'  => rawurlencode( $user->user_login ),
                 ), wp_login_url() );
                 wp_safe_redirect( $set_pw_url );
             } else {
@@ -138,15 +130,6 @@ class MSC_Security {
             if ( $user_id && get_user_meta( $user_id, 'msc_email_verified', true ) === '0' ) {
                 $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );
                 if ( ! $last || ( time() - $last ) > 120 ) {
-                    // Generate a fresh WP password reset key for the resend
-                    $user = get_userdata( $user_id );
-                    if ( $user ) {
-                        $reset_key = get_password_reset_key( $user );
-                        if ( ! is_wp_error( $reset_key ) ) {
-                            update_user_meta( $user_id, 'msc_reset_key',   $reset_key );
-                            update_user_meta( $user_id, 'msc_reset_login', $user->user_login );
-                        }
-                    }
                     $token = wp_generate_password( 32, false );
                     update_user_meta( $user_id, 'msc_email_token', $token );
                     update_user_meta( $user_id, 'msc_verify_last_sent', time() );
