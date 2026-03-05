@@ -232,13 +232,6 @@ class MSC_Shortcodes {
                     <div class="msc-indemnity-section" style="margin-top:0; margin-bottom:24px;">
                         <h4 style="margin-bottom:10px;">Indemnity Declaration</h4>
                         <div class="msc-indemnity-text" style="margin-bottom:12px;"><?php echo nl2br(esc_html($indemnity)) ?></div>
-                        
-                        <div style="margin-top:16px">
-                            <label style="font-weight:700;display:block;margin-bottom:10px">Indemnity Confirmation</label>
-                            <label class="msc-radio-option" id="opt-sign">
-                                <input type="radio" name="msc_ind_method" value="sign" checked> ✍️ Sign electronically now
-                            </label>
-                        </div>
                     </div>
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
@@ -284,7 +277,7 @@ class MSC_Shortcodes {
 
                     <div class="msc-signature-controls-wrap">
                         <!-- E-signature panel -->
-                        <div id="msc-sig-panel" style="display:none;margin-top:16px">
+                        <div id="msc-sig-panel" style="margin-top:16px">
                             <p style="margin-bottom:8px;font-weight:600">Participant Signature:</p>
                             <div style="margin-bottom:12px">
                                 <label><input type="radio" name="msc_sig_type" value="draw" checked> ✏️ Draw signature</label>
@@ -301,7 +294,8 @@ class MSC_Shortcodes {
                         </div>
 
                         <!-- Parent/Guardian Signature Panel (Minor Only) -->
-                        <div id="msc-parent-sig-panel" style="display:none;margin-top:24px;padding-top:24px;border-top:1px solid #eee">
+                        <?php if ($is_minor) : ?>
+                        <div id="msc-parent-sig-panel" style="margin-top:24px;padding-top:24px;border-top:1px solid #eee">
                             <p style="margin-bottom:8px;font-weight:600">Parent/Guardian Signature:</p>
                             <div style="margin-bottom:12px">
                                 <label><input type="radio" name="msc_parent_sig_type" value="draw" checked> ✏️ Draw signature</label>
@@ -316,13 +310,7 @@ class MSC_Shortcodes {
                                 <input type="text" id="msc-parent-sig-typed" placeholder="Parent/Guardian: Type your full name as signature" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-family:cursive;font-size:18px;box-sizing:border-box">
                             </div>
                         </div>
-
-                        <!-- Bring reminder panel -->
-                        <div id="msc-bring-panel" style="display:none;margin-top:16px">
-                            <div class="msc-notice msc-notice-warning">
-                                📋 Remember: You <strong>must</strong> bring your completed, signed indemnity form to the event. Entry may be refused without it.
-                            </div>
-                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <div id="msc-reg-error" class="msc-notice msc-notice-error" style="display:none;margin-top:12px"></div>
