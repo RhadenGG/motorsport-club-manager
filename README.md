@@ -11,9 +11,9 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 - **Intelligent Registration** — Members register for events using vehicles from their garage. The system automatically filters eligible vehicles based on the event's allowed classes.
 - **Digital Indemnity** — Integrated electronic signature support (via `signature_pad`) for indemnity forms. Supports parent/guardian signatures for minors.
 - **Dynamic PDF Branding** — Automatically pulls the WordPress site logo and title into the generated PDF and email templates.
-- **Participant Safety** — Mandatory emergency contact fields and conditional parent/guardian acknowledgement for entrants under 18.
+- **Age Verification** — Mandatory Date of Birth field in user profiles. The system automatically calculates age and enforces parent/guardian signatures for participants under 18.
+- **Participant Safety** — Mandatory emergency contact fields saved to the user profile and pre-filled during registration.
 - **Automated PDFs** — Generates A4 PDF indemnity forms with participant details, emergency contacts, and dual signatures where applicable.
-- **Race Results** — Record lap times and finishing positions for closed events.
 - **Shortcode Powered** — Easy integration into any WordPress theme using a suite of shortcodes for lists, registrations, and account management.
 
 ---
@@ -44,11 +44,10 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 ### Detailed Setup Steps
 
 1. **Classifications:** Vehicle Types and Classes are centralized in `includes/class-taxonomies.php`. 
-   - **Cars:** Modifieds, Super GT's, Retro Racing, Sports Cars, Porsche Challenge, Time Challenge.
-   - **Motorcycles:** Juniors, Motards, Powersport, CBR150, 300 Class, 600/1000, MiniGP.
-2. **Event Configuration:** When adding an event, you can set the registration window, entry fee, and allowed vehicle classes. If no classes are selected, all are allowed.
-3. **Indemnity Text:** Each event can have its own unique indemnity wording, which is pulled into the signed PDF.
+2. **Event Configuration:** Set registration windows, entry fees, and allowed classes per event.
+3. **Indemnity Text:** Unique indemnity wording can be set for each event.
 4. **Site Branding:** The plugin automatically pulls the **Custom Logo** (if set in Appearance → Customize) into the PDF and email headers.
+5. **Birthdate Enforcement:** Ensure users complete their Date of Birth in their profile to enable registration.
 
 ---
 
@@ -57,12 +56,10 @@ A comprehensive WordPress plugin for **kznrrc.co.za** to manage motorsport event
 | Shortcode | Purpose |
 |---|---|
 | `[msc_events_list]` | Displays a grid of upcoming racing events. |
-| `[msc_events_list count="5"]` | Limit number of events shown. |
-| `[msc_events_list show_past="1"]` | Include past events. |
-| `[msc_my_account]` | The member dashboard (Garages + Registrations). |
+| `[msc_my_account]` | The member dashboard (Garage + Registrations + Profile). |
 | `[msc_register_event event_id="X"]` | Manual embed for a specific event registration form. |
 
-> **Note:** The registration form automatically collects the participant's display name from their WordPress profile.
+> **Note:** The registration form automatically collects the participant's display name and age status from their profile.
 
 ---
 
