@@ -12,12 +12,50 @@ class MSC_Security {
         // Onboarding redirect on first login
         add_filter( 'login_redirect', array( __CLASS__, 'onboarding_redirect' ), 10, 3 );
 
+        // Login page branding
+        add_action( 'login_enqueue_scripts', array( __CLASS__, 'login_logo' ) );
+        add_filter( 'login_headerurl',       array( __CLASS__, 'login_logo_url' ) );
+        add_filter( 'login_headertext',      array( __CLASS__, 'login_logo_text' ) );
+
         // Email verification
         add_action( 'user_register',                    array( __CLASS__, 'on_user_register' ) );
         add_filter( 'wp_new_user_notification_email',   array( __CLASS__, 'intercept_wp_notification_email' ), 10, 3 );
         add_filter( 'wp_authenticate_user',             array( __CLASS__, 'check_email_verified' ), 10, 2 );
         add_action( 'init',                             array( __CLASS__, 'handle_email_verification' ) );
         add_filter( 'login_message',                    array( __CLASS__, 'login_verification_notice' ) );
+    }
+
+    // ── Login page branding ──────────────────────────────────────────────────
+
+    public static function login_logo() {
+        $logo_url = '';
+        $logo_id  = get_theme_mod( 'custom_logo' );
+        if ( $logo_id ) {
+            $src = wp_get_attachment_image_src( $logo_id, 'full' );
+            if ( $src ) $logo_url = $src[0];
+        }
+
+        if ( ! $logo_url ) return;
+
+        $logo_url_esc = esc_url( $logo_url );
+        echo "<style>
+            #login h1 a, .login h1 a {
+                background-image: url('{$logo_url_esc}');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center top;
+                width: 100%;
+                height: 80px;
+            }
+        </style>";
+    }
+
+    public static function login_logo_url() {
+        return home_url();
+    }
+
+    public static function login_logo_text() {
+        return get_bloginfo( 'name' );
     }
 
     // ── Email verification ───────────────────────────────────────────────────
