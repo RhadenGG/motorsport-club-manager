@@ -397,8 +397,12 @@ class MSC_Account {
                             <input type="tel" id="pe_phone" value="<?php echo esc_attr(get_user_meta($user->ID, 'phone', true)); ?>" placeholder="+27 82 000 0000">
                         </div>
                         <div class="msc-field">
-                            <label>ID / Licence Number</label>
-                            <input type="text" id="pe_licence" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_licence', true)); ?>" placeholder="MSA Licence or ID No.">
+                            <label>Gender <span class="msc-required">*</span></label>
+                            <select id="pe_gender">
+                                <option value="">— Select —</option>
+                                <option value="male"   <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'male'); ?>>Male</option>
+                                <option value="female" <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'female'); ?>>Female</option>
+                            </select>
                         </div>
                     </div>
 
@@ -419,14 +423,6 @@ class MSC_Account {
                         <div class="msc-field">
                             <label>Medical Aid Number <span class="msc-required">*</span></label>
                             <input type="text" id="pe_medical_aid_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_medical_aid_number', true)); ?>" placeholder="Member number">
-                        </div>
-                        <div class="msc-field">
-                            <label>Gender <span class="msc-required">*</span></label>
-                            <select id="pe_gender">
-                                <option value="">— Select —</option>
-                                <option value="male"   <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'male'); ?>>Male</option>
-                                <option value="female" <?php selected(get_user_meta($user->ID, 'msc_gender', true), 'female'); ?>>Female</option>
-                            </select>
                         </div>
                     </div>
 
