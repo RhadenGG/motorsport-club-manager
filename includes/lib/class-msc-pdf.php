@@ -211,8 +211,10 @@ class MSC_PDF {
 
     /* ── Helpers ───────────────────────────────────────────────────── */
     private function esc( $s ) {
-        $s = iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s);
-        return strtr($s, ['\\' => '\\\\', '(' => '\\(', ')' => '\\)']);
+        if ( function_exists('iconv') ) {
+            $s = iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', (string)$s);
+        }
+        return strtr((string)$s, ['\\' => '\\\\', '(' => '\\(', ')' => '\\)']);
     }
 
     private function check_page_break( $needed = 20 ) {

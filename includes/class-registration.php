@@ -50,11 +50,11 @@ class MSC_Registration {
         $birthday   = get_user_meta($user_id, 'msc_birthday', true);
         $is_minor   = 0;
         if ($birthday) {
-            $dob = new DateTime($birthday);
-            $now_dt = new DateTime();
-            if ($now_dt->diff($dob)->y < 18) {
-                $is_minor = 1;
-            }
+            $dob_ts = strtotime($birthday);
+            $now_ts = current_time('timestamp');
+            $age    = date('Y', $now_ts) - date('Y', $dob_ts);
+            if ( date('md', $now_ts) < date('md', $dob_ts) ) $age--;
+            if ( $age < 18 ) $is_minor = 1;
         }
 
         $parent     = sanitize_text_field($_POST['parent_name'] ?? '');
