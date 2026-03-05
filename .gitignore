@@ -25,4 +25,5 @@ yarn-debug.log*
 yarn-error.log*
 
 # Plugin specific
+GEMINI.md
 # (Optional: If you have any build-specific files or credentials, add them here)
