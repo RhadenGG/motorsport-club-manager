@@ -74,6 +74,8 @@ jQuery(function ($) {
                 );
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
+                // Initialize button state
+                msc.checkRegValidity();
                 // Wait for DOM to paint before sizing canvas
                 setTimeout(function() { msc.initSignaturePads(); }, 100);
             });
@@ -82,6 +84,11 @@ jQuery(function ($) {
                 $('#msc-step-2').hide();
                 $('#msc-step-1').show();
                 $('#msc-reg-error').hide();
+            });
+
+            // Input listeners for validation
+            $(document).on('input change', '#msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file', function() {
+                msc.checkRegValidity();
             });
 
             $('input[name="msc_ind_method"]').on('change', function () {
@@ -97,7 +104,7 @@ jQuery(function ($) {
                     $('#msc-parent-sig-panel').hide();
                     $('#msc-bring-panel').show();
                 }
-                $('#msc-submit-reg').prop('disabled', false);
+                msc.checkRegValidity();
             });
 
             $('input[name="msc_sig_type"]').on('change', function () {
@@ -109,6 +116,7 @@ jQuery(function ($) {
                     $('#msc-sig-draw-wrap').hide();
                     $('#msc-sig-type-wrap').show();
                 }
+                msc.checkRegValidity();
             });
 
             $('input[name="msc_parent_sig_type"]').on('change', function () {
@@ -120,15 +128,22 @@ jQuery(function ($) {
                     $('#msc-parent-sig-draw-wrap').hide();
                     $('#msc-parent-sig-type-wrap').show();
                 }
+                msc.checkRegValidity();
             });
 
             $('#msc-sig-clear').on('click', function () {
-                if (msc.sigPad) msc.sigPad.clear();
+                if (msc.sigPad) {
+                    msc.sigPad.clear();
+                    msc.checkRegValidity();
+                }
             });
 
             $('#msc-parent-sig-clear').on('click', function (e) {
                 e.preventDefault();
-                if (msc.parentSigPad) msc.parentSigPad.clear();
+                if (msc.parentSigPad) {
+                    msc.parentSigPad.clear();
+                    msc.checkRegValidity();
+                }
             });
 
             $('#msc-submit-reg').on('click', function () {
@@ -219,6 +234,7 @@ jQuery(function ($) {
                     canvas.width  = canvas.offsetWidth;
                     canvas.height = canvas.offsetHeight;
                     msc.sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                    msc.sigPad.onEnd = function() { msc.checkRegValidity(); };
                 }
             }
 
@@ -231,8 +247,50 @@ jQuery(function ($) {
                     pCanvas.width  = pCanvas.offsetWidth;
                     pCanvas.height = pCanvas.offsetHeight;
                     msc.parentSigPad = new SignaturePad(pCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
+                    msc.parentSigPad.onEnd = function() { msc.checkRegValidity(); };
                 }
             }
+        },
+
+        checkRegValidity: function() {
+            var isValid = true;
+            var isMinor = $('#msc-reg-wrap').data('minor') == 1;
+
+            // Emergency Contacts
+            if (!$('#msc-emergency-name').val().trim()) isValid = false;
+            if (!$('#msc-emergency-phone').val().trim()) isValid = false;
+
+            // Minor Check
+            if (isMinor && !$('#msc-parent-name').val().trim()) isValid = false;
+
+            // Indemnity Method
+            var method = $('input[name="msc_ind_method"]:checked').val();
+            if (!method) {
+                isValid = false;
+            } else if (method === 'sign') {
+                // Participant Sig
+                if (msc.sigType === 'draw') {
+                    if (!msc.sigPad || msc.sigPad.isEmpty()) isValid = false;
+                } else {
+                    if (!$('#msc-sig-typed').val().trim()) isValid = false;
+                }
+
+                // Parent Sig
+                if (isMinor) {
+                    if (msc.parentSigType === 'draw') {
+                        if (!msc.parentSigPad || msc.parentSigPad.isEmpty()) isValid = false;
+                    } else {
+                        if (!$('#msc-parent-sig-typed').val().trim()) isValid = false;
+                    }
+                }
+            }
+
+            // Proof of Payment (if field exists)
+            if ($('#msc-pop-file').length) {
+                if (!$('#msc-pop-file')[0].files[0]) isValid = false;
+            }
+
+            $('#msc-submit-reg').prop('disabled', !isValid);
         },
 
         showError: function (msg) {

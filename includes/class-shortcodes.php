@@ -246,16 +246,16 @@ class MSC_Shortcodes {
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
                         <div class="msc-field-group">
-                            <label>Emergency Contact Name</label>
+                            <label>Emergency Contact Name <span style="color:red">*</span></label>
                             <input type="text" id="msc-emergency-name" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_name', true)); ?>" placeholder="Contact person name">
                         </div>
                         <div class="msc-field-group">
-                            <label>Emergency Contact Number</label>
+                            <label>Emergency Contact Number <span style="color:red">*</span></label>
                             <input type="text" id="msc-emergency-phone" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_phone', true)); ?>" placeholder="Contact phone number">
                         </div>
                         <?php if ($is_minor) : ?>
                         <div class="msc-field-group" style="grid-column: span 2;">
-                            <label>Parent/Guardian Full Name</label>
+                            <label>Parent/Guardian Full Name <span style="color:red">*</span></label>
                             <input type="text" id="msc-parent-name" placeholder="Parent or legal guardian name">
                         </div>
                         <?php endif; ?>
