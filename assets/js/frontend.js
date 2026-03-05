@@ -213,7 +213,7 @@ jQuery(function ($) {
                     canvas.width  = canvas.offsetWidth;
                     canvas.height = canvas.offsetHeight;
                     msc.sigPad = new SignaturePad(canvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
-                    msc.sigPad.onEnd = function() { msc.checkRegValidity(); };
+                    msc.sigPad.addEventListener("endStroke", function() { msc.checkRegValidity(); });
                 }
             }
 
@@ -226,7 +226,7 @@ jQuery(function ($) {
                     pCanvas.width  = pCanvas.offsetWidth;
                     pCanvas.height = pCanvas.offsetHeight;
                     msc.parentSigPad = new SignaturePad(pCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: 'rgb(0,0,0)', minWidth: 1.5, maxWidth: 3 });
-                    msc.parentSigPad.onEnd = function() { msc.checkRegValidity(); };
+                    msc.parentSigPad.addEventListener("endStroke", function() { msc.checkRegValidity(); });
                 }
             }
         },
