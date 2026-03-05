@@ -290,6 +290,17 @@ class MSC_Shortcodes {
                     </div>
                     <?php endif ?>
 
+                    <div class="msc-declaration-section" style="margin:20px 0; padding:15px; background:#fffbf0; border:1px solid #ffeeba; border-radius:4px;">
+                        <label style="display:flex; align-items:flex-start; cursor:pointer; font-weight:600; line-height:1.4;">
+                            <input type="checkbox" id="msc-safeguarding-policy" style="margin-top:4px; margin-right:10px;">
+                            <span>
+                                I accept the declaration and MSA's Safe Guarding Policy. 
+                                <a href="https://drive.google.com/file/d/1_rWQ2w1Ik9tlwqqioTWZef8JlVG5CyDR/view?usp=sharing" target="_blank" style="text-decoration:underline;">Click here to read the MSA Safe Guarding Policy</a>.
+                                <span style="color:red">*</span>
+                            </span>
+                        </label>
+                    </div>
+
                     <div class="msc-signature-controls-wrap">
                         <!-- E-signature panel -->
                         <div id="msc-sig-panel" style="margin-top:16px">
