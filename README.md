@@ -26,6 +26,8 @@ Built for any motorsport club or racing organisation running their website on Wo
 - Automatic minor detection from date of birth — enforces parent/guardian name and signature
 - Mandatory emergency contact fields pre-filled from user profile
 - Submit button only enables when all required fields are complete
+- **Event-specific indemnity text** overrides the global default when set
+- **Custom mandatory declarations** (configurable via settings) appear as checkboxes
 
 ### Proof of Payment (EFT)
 - Configurable banking details shown to members during registration
@@ -33,9 +35,11 @@ Built for any motorsport club or racing organisation running their website on Wo
 - Admins can view uploaded PoP documents and toggle paid status
 
 ### PDF & Email Notifications
-- Auto-generated A4 indemnity PDFs with participant details, emergency contacts, and signatures
+- Auto-generated A4 indemnity PDFs with participant details, emergency contacts, signatures, and accepted declarations
 - Branded with your WordPress site logo and name
 - Emails sent on registration submission, confirmation, and indemnity signing
+- **Configurable SMTP settings** built-in — no separate SMTP plugin required
+- **Customizable sender details** (From Name and From Email address)
 - PDF and PoP attachments included in relevant emails
 
 ### Member Profiles
@@ -125,8 +129,11 @@ Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a V
 
 ### Settings
 - **Account Page URL** — full URL of the page containing `[msc_my_account]`
+- **Email Settings** — configure the "From" name and email address for automated messages
+- **SMTP Configuration** — built-in support for external SMTP servers
 - **Banking Details** — shown to members registering for paid events
 - **Default Indemnity Text** — used across all events and rendered in signed PDFs
+- **Custom Registration Declarations** — add mandatory checkboxes (one per line) to the registration form
 
 ---
 
