@@ -106,11 +106,12 @@ Database tables are created automatically on activation. Schema migrations run a
 
 | Shortcode | Purpose |
 |---|---|
-| `[msc_events_list]` | Grid of upcoming events with date, location, fee, and registration status |
+| `[msc_events_list]` | Grid of upcoming events with date, location, fee, and registration status. Accepts `count` (default 10) and `show_past` (default 0) attributes. Events are ordered newest first. |
+| `[msc_next_event]` | Compact card showing the next upcoming event — featured image, date, location, fee, and a link. Designed for sidebars and footers. |
 | `[msc_my_account]` | Member dashboard — garage, registrations, and profile management |
 | `[msc_register_event event_id="X"]` | Embed a registration form for a specific event |
 
-Single event pages (`msc_event` post type) automatically display event details, the registration form, and results via `the_content` filter.
+Single event pages (`msc_event` post type) automatically display the featured image alongside the description, event details, the registration form, and results via `the_content` filter. All date/time comparisons respect the timezone configured in **Settings → General**.
 
 ---
 
