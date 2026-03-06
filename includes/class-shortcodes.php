@@ -140,7 +140,7 @@ class MSC_Shortcodes {
         if ( $date )     $html .= '<p class="msc-next-event-meta">📅 ' . esc_html( date_i18n( 'D d F Y', strtotime( $date ) ) ) . '</p>';
         if ( $location ) $html .= '<p class="msc-next-event-meta">📍 ' . esc_html( $location ) . '</p>';
         $html .= '<p class="msc-next-event-meta">💰 ' . ( $fee > 0 ? 'R ' . number_format( $fee, 2 ) : 'Free' ) . '</p>';
-        $html .= '<a href="' . esc_url( $url ) . '" class="msc-btn msc-btn-sm" style="margin-top:10px;display:inline-block;">View &amp; Register</a>';
+        $html .= '<a href="' . esc_url( $url ) . '" class="msc-btn msc-btn-sm" style="margin-top:6px;display:inline-block;">View &amp; Register</a>';
         $html .= '</div>';
         $html .= '</div>';
 
