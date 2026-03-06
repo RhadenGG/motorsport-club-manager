@@ -136,6 +136,10 @@ Single event pages (`msc_event` post type) automatically display the featured im
 ### Event Manager Dashboard
 `[msc_event_dashboard]` is a unified frontend management shortcode for **administrators** and **Event Creators**. Place it on any page — access is restricted by role.
 
+Operational scope for Event Creators is configurable in **Motorsport Club → Settings**:
+- **Strict ownership** — creators manage only events they authored
+- **Shared ops** — any Event Creator can manage all events, registrations, and results
+
 | Tab | Features |
 |---|---|
 | **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form (including featured image picker and optional per-event indemnity text). Close or reopen events. |
@@ -160,6 +164,7 @@ Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a V
 
 ### Settings
 - **Account Page URL** — full URL of the page containing `[msc_my_account]`
+- **Dashboard Event Access Mode** — choose **Strict ownership** or **Shared ops** for Event Creator permissions in `[msc_event_dashboard]`
 - **Email Settings** — configure the "From" name and email address for automated messages
 - **SMTP Configuration** — built-in support for external SMTP servers
 - **Banking Details** — shown to members registering for paid events

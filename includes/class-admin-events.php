@@ -486,6 +486,11 @@ class MSC_Admin_Events {
             update_option('msc_custom_declarations', wp_kses_post(wp_unslash($_POST['msc_custom_declarations'] ?? '')));
             update_option('msc_email_from_name', sanitize_text_field(wp_unslash($_POST['msc_email_from_name'] ?? '')));
             update_option('msc_email_from_address', sanitize_email(wp_unslash($_POST['msc_email_from_address'] ?? '')));
+            $access_mode = sanitize_key( wp_unslash( $_POST['msc_dashboard_event_access_mode'] ?? 'strict' ) );
+            if ( ! in_array( $access_mode, array( 'strict', 'shared' ), true ) ) {
+                $access_mode = 'strict';
+            }
+            update_option( 'msc_dashboard_event_access_mode', $access_mode );
             
             update_option('msc_smtp_enabled', isset($_POST['msc_smtp_enabled']) ? 1 : 0);
             update_option('msc_smtp_host', sanitize_text_field(wp_unslash($_POST['msc_smtp_host'] ?? '')));
@@ -505,6 +510,7 @@ class MSC_Admin_Events {
         $declarations = get_option('msc_custom_declarations', '');
         $from_name    = get_option('msc_email_from_name', '');
         $from_address = get_option('msc_email_from_address', '');
+        $access_mode  = get_option('msc_dashboard_event_access_mode', 'strict');
 
         $smtp_enabled = get_option('msc_smtp_enabled', 0);
         $smtp_host    = get_option('msc_smtp_host', '');
@@ -536,6 +542,16 @@ class MSC_Admin_Events {
                                 <input type="email" name="msc_email_from_address" id="msc_email_from_address" value="<?php echo esc_attr($from_address); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                             </div>
                             <p class="description">Configure the sender details for all automated emails. Leave empty to use site defaults.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_dashboard_event_access_mode">Dashboard Event Access Mode</label></th>
+                        <td>
+                            <select name="msc_dashboard_event_access_mode" id="msc_dashboard_event_access_mode">
+                                <option value="strict" <?php selected( $access_mode, 'strict' ); ?>>Strict ownership (recommended)</option>
+                                <option value="shared" <?php selected( $access_mode, 'shared' ); ?>>Shared ops (all event creators can manage all events)</option>
+                            </select>
+                            <p class="description">Controls how Event Creators use the frontend Event Dashboard. In <strong>Strict</strong> mode, creators can only manage events they authored. In <strong>Shared ops</strong> mode, any Event Creator can manage all events, registrations, and results.</p>
                         </td>
                     </tr>
                     <tr>

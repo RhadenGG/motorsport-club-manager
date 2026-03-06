@@ -37,6 +37,11 @@ class MSC_Frontend_Dashboard {
         return $has_role || current_user_can( MSC_Admin_Participants::required_cap() );
     }
 
+    /** Event creator operational scope: strict ownership (default) or shared ops. */
+    private static function is_shared_ops_mode() {
+        return get_option( 'msc_dashboard_event_access_mode', 'strict' ) === 'shared';
+    }
+
     /**
      * Restrict event mutations: admins can manage all events, non-admins only their own.
      */
@@ -44,6 +49,7 @@ class MSC_Frontend_Dashboard {
         $event_id = absint( $event_id );
         if ( ! $event_id ) return false;
         if ( current_user_can( 'manage_options' ) ) return true;
+        if ( self::is_shared_ops_mode() ) return true;
         $post = get_post( $event_id );
         return ( $post && $post->post_type === 'msc_event' && (int) $post->post_author === get_current_user_id() );
     }
@@ -77,7 +83,7 @@ class MSC_Frontend_Dashboard {
             'meta_key'    => '_msc_event_date',
             'order'       => 'DESC',
         );
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
             $events_args['author'] = get_current_user_id();
         }
         $all_events   = get_posts( $events_args );
@@ -419,7 +425,7 @@ class MSC_Frontend_Dashboard {
 
         $conditions = array( '1=1' );
         $values     = array();
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
             $conditions[] = 'p.post_author = %d';
             $values[]     = get_current_user_id();
         }
@@ -1051,7 +1057,7 @@ class MSC_Frontend_Dashboard {
                 FROM {$wpdb->prefix}msc_registrations r";
         $where = " WHERE r.status NOT IN ('cancelled','rejected')";
 
-        if ( ! current_user_can( 'manage_options' ) ) {
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
             $sql .= " INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id";
             $where .= $wpdb->prepare( ' AND p.post_author = %d', get_current_user_id() );
         }
