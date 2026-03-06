@@ -45,6 +45,9 @@ class MSC_Activator {
 
         // Migrate existing terms: assign vehicle type meta if missing
         self::migrate_term_vehicle_types();
+
+        // Create the Event Creator role and assign capabilities
+        self::setup_roles();
     }
 
     /** One-time migration: assign msc_vehicle_type meta to existing terms */
@@ -62,6 +65,28 @@ class MSC_Activator {
             if ( get_term_meta( $term->term_id, 'msc_vehicle_type', true ) ) continue;
             $type = in_array( $term->name, $motorcycle_classes, true ) ? 'Motorcycle' : 'Car';
             update_term_meta( $term->term_id, 'msc_vehicle_type', $type );
+        }
+    }
+
+    private static function setup_roles() {
+        // Create the Event Creator role if it doesn't exist
+        if ( ! get_role( 'msc_event_creator' ) ) {
+            add_role( 'msc_event_creator', 'Event Creator', array(
+                'read'                  => true,
+                'edit_posts'            => true,
+                'publish_posts'         => true,
+                'edit_others_posts'     => true,
+                'msc_view_participants' => true,
+            ) );
+        } else {
+            // Ensure existing role has the capability
+            get_role( 'msc_event_creator' )->add_cap( 'msc_view_participants' );
+        }
+
+        // Ensure administrators have the capability
+        $admin = get_role( 'administrator' );
+        if ( $admin ) {
+            $admin->add_cap( 'msc_view_participants' );
         }
     }
 
