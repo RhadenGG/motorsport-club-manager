@@ -165,7 +165,6 @@ class MSC_Emails {
         $body = "
         <p>Hi {$user_name},</p>
         <p>Great news - your entry for <strong>{$event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
-        <p>Entry No: <strong>#{$reg->id}</strong></p>
         " . ($reg->indemnity_method==='bring' ? "<p><strong>Note:</strong> You selected to bring a physical indemnity form. Please ensure it is printed and signed before arrival.</p><p style='text-align:center;margin:25px 0'><a href='{$pdf_link}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Download Indemnity Form</a></p>" : "<p><a href='{$pdf_link}' style='color:#2d3436;font-weight:bold;text-decoration:underline'>Download your signed indemnity form (PDF)</a></p>") . "
         <p>We look forward to seeing you at the event!</p>
         <p>Best regards,<br>" . esc_html($site_name) . "</p>";

@@ -387,14 +387,14 @@ class MSC_Admin_Events {
         <tbody>
         <?php if ( empty($regs) ) : ?>
         <tr><td colspan="12">No registrations found.</td></tr>
-        <?php else : foreach($regs as $r) :
+        <?php else : $count = 1; foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
         $sc = $status_colors[$r->status] ?? '#333';
         $sb = $status_bg[$r->status]     ?? '#eee';
         ?>
         <tr>
-        <td><?php echo intval($r->id) ?></td>
+        <td><?php echo $count++ ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
@@ -430,7 +430,7 @@ class MSC_Admin_Events {
         <td><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
         <td>
         <form method="post" style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;"
-        onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration #<?php echo $r->id ?> for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
+        onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
         <?php wp_nonce_field('msc_reg_action') ?>
         <input type="hidden" name="reg_id" value="<?php echo $r->id ?>">
         <select name="new_status" style="height:28px;line-height:28px;">
@@ -448,8 +448,7 @@ class MSC_Admin_Events {
         <?php endif; ?>
         <button type="submit" name="msc_delete_reg"
         class="button button-small"
-        style="color:#d63638;border-color:#d63638;"
-        onclick="return confirm('Permanently delete registration #<?php echo $r->id ?> for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
+        style="color:#d63638;border-color:#d63638;">
         🗑 Delete
         </button>
         </form>

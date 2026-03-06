@@ -364,7 +364,7 @@ class MSC_Indemnity {
         $message  = "
             <p>Hi {$user_name},</p>
             <p>Please find attached your signed indemnity form for <strong>{$event_name}</strong>.</p>
-            <p>Please keep this for your records. Entry #<strong>{$reg->id}</strong>.</p>
+            <p>Please keep this for your records.</p>
             <p>See you at the track!<br>The " . esc_html($site_name) . " Team</p>";
 
         $headers  = MSC_Emails::get_headers();
