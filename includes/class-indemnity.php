@@ -349,49 +349,78 @@ class MSC_Indemnity {
         ) );
         if ( ! $reg ) return;
 
-        $pdf_data   = self::build_pdf( $reg );
-        $filename   = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg_id . '.pdf';
+        $pdf_data = self::build_pdf( $reg );
+        $filename = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg_id . '.pdf';
 
-        // Write to a temp file for wp_mail attachment
-        $tmp = wp_tempnam( $filename );
+        // Write to a temp file with the correct .pdf extension.
+        // wp_tempnam() always produces a .tmp file, so use get_temp_dir() directly.
+        $tmp_dir = get_temp_dir();
+        $tmp     = $tmp_dir . wp_unique_filename( $tmp_dir, $filename );
         file_put_contents( $tmp, $pdf_data );
 
         $user_name  = esc_html( $reg->user_name );
         $event_name = esc_html( $reg->event_name );
         $site_name  = get_bloginfo( 'name' );
+        $headers    = MSC_Emails::get_headers();
 
-        $subject  = 'Signed Indemnity Form - ' . $reg->event_name;
-        $message  = "
+        // ── Participant: signed indemnity PDF only ──────────────────────
+        $participant_message = "
             <p>Hi {$user_name},</p>
             <p>Please find attached your signed indemnity form for <strong>{$event_name}</strong>.</p>
             <p>Please keep this for your records.</p>
             <p>See you at the track!<br>The " . esc_html($site_name) . " Team</p>";
 
-        $headers  = MSC_Emails::get_headers();
-        $attachments = array( $tmp );
+        MSC_Emails::send_mail(
+            $reg->user_email,
+            'Signed Indemnity Form - ' . $reg->event_name,
+            MSC_Emails::wrap( 'Signed Indemnity Form', $participant_message ),
+            $headers,
+            array( $tmp )
+        );
 
-        // Add Proof of Payment if exists
-        if ( ! empty($reg->pop_file_id) ) {
-            $pop_path = get_attached_file($reg->pop_file_id);
-            if ($pop_path && file_exists($pop_path)) {
-                $attachments[] = $pop_path;
+        // ── Admin / Event Creator: indemnity PDF + PoP ──────────────────
+        $admin_attachments = array( $tmp );
+        $pop_file_id       = ! empty( $reg->pop_file_id ) ? (int) $reg->pop_file_id : 0;
+        if ( $pop_file_id ) {
+            $pop_path = get_attached_file( $pop_file_id );
+            if ( $pop_path && file_exists( $pop_path ) ) {
+                $admin_attachments[] = $pop_path;
             }
         }
 
-        // Send to participant
-        wp_mail( $reg->user_email, $subject, MSC_Emails::wrap("Signed Indemnity Form", $message), $headers, $attachments );
+        $admin_message = "
+            <p>A new registration has been received and the indemnity form has been signed.</p>
+            <p><strong>Participant:</strong> {$user_name}<br>
+            <strong>Event:</strong> {$event_name}</p>
+            <p>The signed indemnity form" . ( $pop_file_id ? ' and proof of payment are' : ' is' ) . " attached.</p>
+            <p><a href='" . esc_url( admin_url('admin.php?page=msc-registrations') ) . "'>View in admin dashboard &rarr;</a></p>";
 
-        // Send to admin
-        wp_mail( get_option( 'admin_email' ), 'Indemnity Signed: ' . $reg->event_name . ' - ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
+        $admin_subject = 'New Registration: ' . $reg->event_name . ' - ' . $reg->user_name;
 
-        // Send to event author if different from admin
-        $event_author = get_user_by( 'id', $reg->event_author );
-        if ( $event_author && $event_author->user_email && $event_author->user_email !== get_option( 'admin_email' ) ) {
-            wp_mail( $event_author->user_email, 'Indemnity Signed: ' . $reg->event_name . ' - ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
+        // Collect unique recipients (admin + event creator, deduplicated)
+        $admin_email     = get_option( 'admin_email' );
+        $recipients      = array( $admin_email );
+        $event_author    = get_user_by( 'id', $reg->event_author );
+        if ( $event_author && $event_author->user_email && $event_author->user_email !== $admin_email ) {
+            $recipients[] = $event_author->user_email;
         }
 
-        if ( ! unlink( $tmp ) ) {
-            error_log( 'MSC: Failed to delete temp PDF: ' . $tmp );
+        foreach ( $recipients as $recipient ) {
+            MSC_Emails::send_mail(
+                $recipient,
+                $admin_subject,
+                MSC_Emails::wrap( 'New Registration', $admin_message ),
+                $headers,
+                $admin_attachments
+            );
+        }
+
+        // ── Cleanup: delete temp files from server ──────────────────────
+        if ( ! @unlink( $tmp ) ) {
+            error_log( 'MSC: Failed to delete temp indemnity PDF: ' . $tmp );
+        }
+        if ( $pop_file_id ) {
+            wp_delete_attachment( $pop_file_id, true );
         }
     }
 }

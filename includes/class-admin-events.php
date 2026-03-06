@@ -419,10 +419,14 @@ class MSC_Admin_Events {
             }
         ?></td>
         <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
-        <td><?php 
-            if ($r->pop_file_id) {
-                $url = wp_get_attachment_url($r->pop_file_id);
-                echo '<a href="'.esc_url($url).'" target="_blank" title="View Proof of Payment" style="text-decoration:none">📄 View</a>';
+        <td><?php
+            if ( $r->pop_file_id ) {
+                $url = wp_get_attachment_url( $r->pop_file_id );
+                if ( $url ) {
+                    echo '<a href="' . esc_url($url) . '" target="_blank" title="View Proof of Payment" style="text-decoration:none">📄 View</a>';
+                } else {
+                    echo '<span style="color:#27ae60" title="PoP was emailed and removed from server">✓ Emailed</span>';
+                }
             } else {
                 echo '<span style="color:#aaa">—</span>';
             }

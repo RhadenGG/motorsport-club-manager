@@ -28,7 +28,7 @@ class MSC_Emails {
     }
 
     /** Wrapper for wp_mail() that logs failures. */
-    private static function send_mail( $to, $subject, $body, $headers = array(), $attachments = array() ) {
+    public static function send_mail( $to, $subject, $body, $headers = array(), $attachments = array() ) {
         $sent = wp_mail( $to, $subject, $body, $headers, $attachments );
         if ( ! $sent ) {
             error_log( 'MSC Email failed: To=' . $to . ' | Subject=' . $subject );
@@ -95,7 +95,7 @@ class MSC_Emails {
         $user_name    = esc_html( $reg->user_name );
         $event_name   = esc_html( $reg->event_name );
         $vehicle_name = esc_html( $reg->vehicle_name );
-        
+
         $class_name   = '—';
         if ( ! empty( $reg->class_id ) ) {
             $term = get_term( $reg->class_id, 'msc_vehicle_class' );
@@ -128,29 +128,12 @@ class MSC_Emails {
         <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
         <p>See you at the track!<br>The " . esc_html($site_name) . " team</p>";
 
-        // Attachments
-        $attachments = array();
-        if ( ! empty($reg->pop_file_id) ) {
-            $pop_path = get_attached_file($reg->pop_file_id);
-            if ($pop_path && file_exists($pop_path)) {
-                $attachments[] = $pop_path;
-            }
-        }
-
         $headers = self::get_headers();
 
-        self::send_mail( $reg->user_email, "Registration Received - {$reg->event_name}", self::wrap("Registration Received", $body), $headers, $attachments );
-
-        // Notify admin
-        $admin_body = "<p>New registration from <strong>{$user_name}</strong> for <strong>{$event_name}</strong>.</p><p><a href='" . esc_url( admin_url('admin.php?page=msc-registrations') ) . "'>View in admin dashboard &rarr;</a></p>";
-        self::send_mail( get_option('admin_email'), "New Registration: {$reg->event_name} - {$reg->user_name}", self::wrap("New Registration", $admin_body), $headers, $attachments );
-
-        // Notify event author if different from admin
-        $event_author_id = get_post_field('post_author', $reg->event_id);
-        $event_author = get_user_by('id', $event_author_id);
-        if ( $event_author && $event_author->user_email && $event_author->user_email !== get_option('admin_email') ) {
-            self::send_mail( $event_author->user_email, "New Registration: {$reg->event_name} - {$reg->user_name}", self::wrap("New Registration", $admin_body), $headers, $attachments );
-        }
+        // Participant confirmation only — no attachments.
+        // Admin/creator notification with signed indemnity + PoP is handled by
+        // MSC_Indemnity::email_signed_pdf() so they receive a single combined email.
+        self::send_mail( $reg->user_email, "Registration Received - {$reg->event_name}", self::wrap("Registration Received", $body), $headers );
     }
 
     public static function send_confirmation( $reg_id ) {
