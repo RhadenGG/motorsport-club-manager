@@ -188,7 +188,9 @@ jQuery(function ($) {
                     success: function (res) {
                         if (res.success) {
                             var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
-                            $('#msc-reg-wrap').html('<div class="msc-notice msc-notice-success msc-success-big">' + icon + ' ' + res.data.message + '</div>');
+                            $('#msc-reg-wrap').empty().append(
+                                $('<div>').addClass('msc-notice msc-notice-success msc-success-big').text(icon + ' ' + res.data.message)
+                            );
                         } else {
                             msc.showError(res.data.message || 'An error occurred. Please try again.');
                             btn.prop('disabled', false).text('Submit Registration');
@@ -384,41 +386,41 @@ jQuery(function ($) {
             });
 
         // ── Class filtering by vehicle type ──────────────────────────
-        function populateClassDropdown($select, vehicleType, selectedClass) {
+        function populateClassDropdown($select, vehicleType, selectedId) {
             var classes = (mscData.classes && mscData.classes[vehicleType]) ? mscData.classes[vehicleType] : [];
             $select.empty();
             if (!classes.length) {
-                $select.append('<option value="">No classes available</option>').prop('disabled', true);
+                $select.append($('<option>').val('').text('No classes available')).prop('disabled', true);
                 return;
             }
-            $select.append('<option value="">Select class…</option>').prop('disabled', false);
-            $.each(classes, function(i, name) {
-                var $opt = $('<option>').val(name).text(name);
-                if (name === selectedClass) $opt.prop('selected', true);
+            $select.append($('<option>').val('').text('Select class…')).prop('disabled', false);
+            $.each(classes, function(i, cls) {
+                var $opt = $('<option>').val(cls.id).text(cls.name);
+                if (selectedId && cls.id == selectedId) $opt.prop('selected', true);
                 $select.append($opt);
             });
         }
 
         // Add form — type change
         $(document).on('change', '#v_type', function() {
-            populateClassDropdown($('#v_class'), $(this).val(), '');
+            populateClassDropdown($('#v_class'), $(this).val(), 0);
         });
 
         // Edit form — type change
         $(document).on('change', '.edit-v_type', function() {
             var id = $(this).data('id');
             var $classSelect = $('.edit-v_class[data-id="' + id + '"]');
-            var currentClass = $classSelect.data('current') || '';
-            populateClassDropdown($classSelect, $(this).val(), currentClass);
+            var currentId = parseInt($classSelect.data('current'), 10) || 0;
+            populateClassDropdown($classSelect, $(this).val(), currentId);
         });
 
         // On page load, populate edit form class dropdowns for existing vehicles
         $('.edit-v_type').each(function() {
             var id = $(this).data('id');
             var $classSelect = $('.edit-v_class[data-id="' + id + '"]');
-            var currentClass = $classSelect.data('current') || '';
+            var currentId = parseInt($classSelect.data('current'), 10) || 0;
             if ($(this).val()) {
-                populateClassDropdown($classSelect, $(this).val(), currentClass);
+                populateClassDropdown($classSelect, $(this).val(), currentId);
             }
         });
 

@@ -14,12 +14,20 @@ class MSC_Shortcodes {
         wp_enqueue_style(  'msc-frontend', MSC_URL . 'assets/css/frontend.css', array(), MSC_VERSION );
         wp_enqueue_script( 'msc-signature', 'https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js', array(), null, true );
         wp_enqueue_script( 'msc-frontend',  MSC_URL . 'assets/js/frontend.js', array('jquery','msc-signature'), MSC_VERSION, true );
+        $classes_by_type = MSC_Taxonomies::get_classes_by_type();
+        $classes_for_js  = array();
+        foreach ( $classes_by_type as $type => $type_classes ) {
+            $classes_for_js[ $type ] = array();
+            foreach ( $type_classes as $term_id => $term_name ) {
+                $classes_for_js[ $type ][] = array( 'id' => $term_id, 'name' => $term_name );
+            }
+        }
         wp_localize_script( 'msc-frontend', 'mscData', array(
             'ajaxUrl'  => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => wp_login_url(),
             'loggedIn' => is_user_logged_in(),
-            'classes'  => array_map( 'array_values', MSC_Taxonomies::get_classes_by_type() ),
+            'classes'  => $classes_for_js,
         ) );
     }
 
@@ -120,18 +128,18 @@ class MSC_Shortcodes {
                     <?php elseif($full): ?>
                         <span class="msc-badge msc-badge-full">FULL</span>
                     <?php endif; ?>
-                    <h3 class="msc-event-title"><a href="<?php echo get_permalink($e->ID) ?>"><?php echo esc_html($e->post_title) ?></a></h3>
+                    <h3 class="msc-event-title"><a href="<?php echo esc_url( get_permalink($e->ID) ) ?>"><?php echo esc_html($e->post_title) ?></a></h3>
                     <?php if($date): ?><p class="msc-event-date">📅 <?php echo esc_html(date('D d F Y',strtotime($date))) ?></p><?php endif ?>
                     <?php if($location): ?><p class="msc-event-location">📍 <?php echo esc_html($location) ?></p><?php endif ?>
                     <?php if(!empty($terms) && !is_wp_error($terms)): ?>
                     <p class="msc-event-classes"><?php foreach($terms as $t) echo "<span class='msc-class-pill'>".esc_html($t->name)."</span> " ?></p>
                     <?php endif ?>
                     <div class="msc-event-footer">
-                        <span class="msc-event-fee"><?php echo $fee>0?'R '.number_format($fee,2):'Free' ?></span>
+                        <span class="msc-event-fee"><?php echo $fee>0 ? esc_html('R '.number_format($fee,2)) : 'Free' ?></span>
                         <?php if($closed): ?>
-                            <a href="<?php echo get_permalink($e->ID) ?>" class="msc-btn">View Results</a>
+                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn">View Results</a>
                         <?php else: ?>
-                            <a href="<?php echo get_permalink($e->ID) ?>" class="msc-btn <?php echo $full?'msc-btn-disabled':'' ?>"><?php echo $full?'View Event':'Register Now' ?></a>
+                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn <?php echo $full?'msc-btn-disabled':'' ?>"><?php echo $full?'View Event':'Register Now' ?></a>
                         <?php endif; ?>
                     </div>
                 </div>

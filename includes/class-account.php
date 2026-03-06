@@ -310,10 +310,10 @@ class MSC_Account {
                                 <div class="msc-field">
                                     <label>Vehicle Class</label>
                                     <?php
-                                    $current_terms = wp_get_post_terms( $v->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
-                                    $current_class_name = ! empty( $current_terms ) ? $current_terms[0] : '';
+                                    $current_term_ids   = wp_get_post_terms( $v->ID, 'msc_vehicle_class', array( 'fields' => 'ids' ) );
+                                    $current_class_id   = ! empty( $current_term_ids ) ? intval( $current_term_ids[0] ) : 0;
                                     ?>
-                                    <select class="edit-v_class" data-id="<?php echo $v->ID; ?>" data-current="<?php echo esc_attr( $current_class_name ); ?>" <?php echo $type ? '' : 'disabled'; ?>>
+                                    <select class="edit-v_class" data-id="<?php echo $v->ID; ?>" data-current="<?php echo esc_attr( $current_class_id ); ?>" <?php echo $type ? '' : 'disabled'; ?>>
                                         <?php if ( ! $type ) : ?>
                                         <option value="">Select type first…</option>
                                         <?php else : ?>
@@ -371,7 +371,7 @@ class MSC_Account {
                     <div class="msc-empty-icon">🏁</div>
                     <h4>No registrations yet</h4>
                     <p>You haven't registered for any events yet.</p>
-                    <a href="<?php echo get_post_type_archive_link( 'msc_event' ); ?>" class="msc-btn">Browse Events →</a>
+                    <a href="<?php echo esc_url( get_post_type_archive_link( 'msc_event' ) ); ?>" class="msc-btn">Browse Events →</a>
                 </div>
                 <?php else : ?>
                 <div class="msc-regs-list">
@@ -388,7 +388,7 @@ class MSC_Account {
                         <div class="msc-reg-card-icon">🏁</div>
                         <div class="msc-reg-card-body">
                             <div class="msc-reg-card-top">
-                                <h4><a href="<?php echo get_permalink( $r->event_id ); ?>"><?php echo esc_html( $r->event_name ); ?></a></h4>
+                                <h4><a href="<?php echo esc_url( get_permalink( $r->event_id ) ); ?>"><?php echo esc_html( $r->event_name ); ?></a></h4>
                                 <span class="msc-status-badge <?php echo $s['cls']; ?>"><?php echo $s['label']; ?></span>
                             </div>
                             <div class="msc-reg-meta">
@@ -398,7 +398,7 @@ class MSC_Account {
                             </div>
                         </div>
                         <div class="msc-reg-card-actions">
-                            <a href="<?php echo add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>
+                            <a href="<?php echo esc_url( add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ) ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>
                             <?php if ( in_array( $r->status, array( 'pending', 'confirmed' ) ) ) : ?>
                             <a href="#" class="msc-cancel-reg msc-danger-link" data-id="<?php echo $r->id; ?>">Cancel</a>
                             <?php endif; ?>
@@ -663,9 +663,9 @@ class MSC_Account {
         if ( ! empty( $_POST['notes'] ) ) {
             update_post_meta( $post_id, '_msc_notes', sanitize_textarea_field( $_POST['notes'] ) );
         }
-        if ( ! empty( $_POST['class_id'] ) ) {
-            update_post_meta( $post_id, '_msc_vehicle_class_name', sanitize_text_field( $_POST['class_id'] ) );
-            wp_set_post_terms( $post_id, array( sanitize_text_field( $_POST['class_id'] ) ), 'msc_vehicle_class' );
+        $class_term_id = absint( $_POST['class_id'] ?? 0 );
+        if ( $class_term_id ) {
+            wp_set_post_terms( $post_id, array( $class_term_id ), 'msc_vehicle_class' );
         }
 
         // Handle photo upload
@@ -717,11 +717,10 @@ class MSC_Account {
         update_post_meta( $post_id, '_msc_notes', sanitize_textarea_field( $_POST['notes'] ?? '' ) );
 
         if ( isset( $_POST['class_id'] ) ) {
-            if ( $_POST['class_id'] ) {
-                update_post_meta( $post_id, '_msc_vehicle_class_name', sanitize_text_field( $_POST['class_id'] ) );
-                wp_set_post_terms( $post_id, array( sanitize_text_field( $_POST['class_id'] ) ), 'msc_vehicle_class' );
+            $class_term_id = absint( $_POST['class_id'] );
+            if ( $class_term_id ) {
+                wp_set_post_terms( $post_id, array( $class_term_id ), 'msc_vehicle_class' );
             } else {
-                delete_post_meta( $post_id, '_msc_vehicle_class_name' );
                 wp_set_post_terms( $post_id, array(), 'msc_vehicle_class' );
             }
         }

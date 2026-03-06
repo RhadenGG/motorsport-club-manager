@@ -17,7 +17,7 @@ class MSC_Emails {
         $phpmailer->SMTPAuth   = true;
         $phpmailer->Port       = get_option( 'msc_smtp_port', 587 );
         $phpmailer->Username   = get_option( 'msc_smtp_user' );
-        $phpmailer->Password   = get_option( 'msc_smtp_pass' );
+        $phpmailer->Password   = defined( 'MSC_SMTP_PASSWORD' ) ? MSC_SMTP_PASSWORD : get_option( 'msc_smtp_pass' );
         $phpmailer->SMTPSecure = get_option( 'msc_smtp_encryption', 'tls' );
         
         // Ensure some servers don't complain about encryption being set to 'none'

@@ -101,8 +101,8 @@ class MSC_Admin_Events {
             <?php endforeach; ?>
             </div>
             <p style="margin-top:30px">
-            <a class="button button-primary" href="<?php echo admin_url('post-new.php?post_type=msc_event'); ?>">+ Add New Event</a>
-            <a class="button" href="<?php echo admin_url('admin.php?page=msc-registrations'); ?>" style="margin-left:8px">View All Registrations</a>
+            <a class="button button-primary" href="<?php echo esc_url( admin_url('post-new.php?post_type=msc_event') ); ?>">+ Add New Event</a>
+            <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=msc-registrations') ); ?>" style="margin-left:8px">View All Registrations</a>
             </p>
             </div>
             <?php
@@ -189,7 +189,7 @@ class MSC_Admin_Events {
         <?php foreach ( $vehicle_types as $type => $classes ) :
         $show = ( $saved_type === 'Both' || $saved_type === $type ) ? '' : 'display:none;';
         ?>
-        <div class="msc-class-group" data-type="<?php echo $type; ?>" style="<?php echo $show; ?>margin-bottom:10px">
+        <div class="msc-class-group" data-type="<?php echo esc_attr( $type ); ?>" style="<?php echo esc_attr( $show ); ?>margin-bottom:10px">
         <strong style="display:block;margin-bottom:4px;color:#1d2327"><?php echo $type === 'Car' ? '🚗 Car Classes' : '🏍 Motorcycle Classes'; ?></strong>
         <?php foreach ( $classes as $term_id => $class_name ) :
         $checked = in_array( $term_id, $saved_classes ) ? 'checked' : '';
@@ -199,8 +199,8 @@ class MSC_Admin_Events {
         <?php echo esc_html($class_name); ?>
         </label>
         <?php endforeach; ?>
-        <a href="#" class="msc-select-all"   data-type="<?php echo $type; ?>" style="font-size:11px">Select all</a> &middot;
-        <a href="#" class="msc-deselect-all" data-type="<?php echo $type; ?>" style="font-size:11px">Deselect all</a>
+        <a href="#" class="msc-select-all"   data-type="<?php echo esc_attr( $type ); ?>" style="font-size:11px">Select all</a> &middot;
+        <a href="#" class="msc-deselect-all" data-type="<?php echo esc_attr( $type ); ?>" style="font-size:11px">Deselect all</a>
         </div>
         <?php endforeach; ?>
         </div>
@@ -326,21 +326,32 @@ class MSC_Admin_Events {
 
         // ── Filters ────────────────────────────────────────────────────
         $event_filter  = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
-        $status_filter = isset( $_GET['status'] )   ? sanitize_key( $_GET['status'] ) : '';
+        $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
+        $status_filter  = isset( $_GET['status'] ) && in_array( $_GET['status'], $valid_statuses, true )
+            ? $_GET['status']
+            : '';
 
-        $where = '1=1';
-        if ( $event_filter )  $where .= $wpdb->prepare( ' AND r.event_id=%d', $event_filter );
-        if ( $status_filter ) $where .= $wpdb->prepare( ' AND r.status=%s', $status_filter );
-
-        $regs = $wpdb->get_results("
-        SELECT r.*, p.post_title as event_name, v.post_title as vehicle_name,
+        $conditions = array( '1=1' );
+        $values     = array();
+        if ( $event_filter ) {
+            $conditions[] = 'r.event_id = %d';
+            $values[]     = $event_filter;
+        }
+        if ( $status_filter ) {
+            $conditions[] = 'r.status = %s';
+            $values[]     = $status_filter;
+        }
+        $where_sql = implode( ' AND ', $conditions );
+        $sql = "SELECT r.*, p.post_title as event_name, v.post_title as vehicle_name,
         u.display_name as user_name, u.user_email
         FROM $table r
         LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
         LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
         LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
-        WHERE $where ORDER BY r.created_at DESC
-        ");
+        WHERE $where_sql ORDER BY r.created_at DESC";
+        $regs = $values
+            ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) )
+            : $wpdb->get_results( $sql );
 
         $events = get_posts(array('post_type'=>'msc_event','numberposts'=>-1,'post_status'=>'publish'));
         ?>
@@ -443,7 +454,7 @@ class MSC_Admin_Events {
         </label>
         <button type="submit" name="msc_update_status" class="button button-small">Update</button>
         <?php if ($r->indemnity_method === 'signed' && $r->indemnity_sig): ?>
-        <a href="<?php echo add_query_arg(array('msc_indemnity_pdf'=>$r->id), home_url()) ?>"
+        <a href="<?php echo esc_url( add_query_arg(array('msc_indemnity_pdf'=>$r->id), home_url()) ) ?>"
         class="button button-small" target="_blank">PDF</a>
         <?php endif; ?>
         <button type="submit" name="msc_delete_reg"
@@ -552,8 +563,16 @@ class MSC_Admin_Events {
                                 </div>
                                 <div>
                                     <label style="display:inline-block; width:120px;">Password:</label>
+                                    <?php if ( ! defined( 'MSC_SMTP_PASSWORD' ) ) : ?>
                                     <input type="password" name="msc_smtp_pass" value="" class="regular-text" placeholder="••••••••">
-                                    <?php if (get_option('msc_smtp_pass')): ?><span class="description" style="color:green; margin-left:10px;">✓ Password saved</span><?php endif; ?>
+                                    <?php if ( get_option( 'msc_smtp_pass' ) ) : ?>
+                                        <span class="description" style="color:green; margin-left:10px;">✓ Password saved</span>
+                                    <?php endif; ?>
+                                    <?php else : ?>
+                                    <input type="password" name="msc_smtp_pass" value="" class="regular-text" placeholder="••••••••" disabled>
+                                    <span class="description" style="color:green; margin-left:10px;">✓ Password set via <code>MSC_SMTP_PASSWORD</code> constant</span>
+                                    <?php endif; ?>
+                                    <p class="description">For security, define <code>define('MSC_SMTP_PASSWORD', '...');</code> in <code>wp-config.php</code> instead of saving here.</p>
                                 </div>
                             </div>
                             <script>
