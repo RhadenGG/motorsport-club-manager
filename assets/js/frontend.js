@@ -670,4 +670,16 @@ jQuery(function ($) {
     }
 
     msc.init();
+
+    // Lightbox for event featured image
+    $(document).on('click', '.msc-lightbox-trigger', function (e) {
+        e.preventDefault();
+        var src = $(this).attr('href');
+        var $overlay = $('<div class="msc-lightbox-overlay"><img src="' + src + '"></div>');
+        $('body').append($overlay);
+        $overlay.on('click', function () { $(this).remove(); });
+    });
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape') { $('.msc-lightbox-overlay').remove(); }
+    });
 });

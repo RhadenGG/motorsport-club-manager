@@ -45,9 +45,11 @@ class MSC_Shortcodes {
             $event_id = get_the_ID();
             $thumb_id = get_post_thumbnail_id( $event_id );
             if ( $thumb_id ) {
-                $img     = wp_get_attachment_image( $thumb_id, 'large' );
-                $content = '<div class="msc-event-hero" style="display:flex;gap:28px;align-items:flex-start;margin-bottom:20px;">'
-                    . '<div class="msc-event-hero-img" style="flex:0 0 40%;max-width:40%;">' . $img . '</div>'
+                $full_url = wp_get_attachment_image_url( $thumb_id, 'full' );
+                $img      = wp_get_attachment_image( $thumb_id, 'large' );
+                $img_wrap = '<a href="' . esc_url( $full_url ) . '" class="msc-lightbox-trigger" aria-label="View full image">' . $img . '</a>';
+                $content  = '<div class="msc-event-hero" style="display:flex;gap:28px;align-items:flex-start;margin-bottom:20px;">'
+                    . '<div class="msc-event-hero-img" style="flex:0 0 40%;max-width:40%;">' . $img_wrap . '</div>'
                     . '<div class="msc-event-hero-body" style="flex:1;min-width:0;">' . $content . '</div>'
                     . '</div>';
             }
