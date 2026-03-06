@@ -333,17 +333,17 @@ class MSC_Shortcodes {
                     </div>
 
                     <div style="margin-bottom:20px;">
-                        <p style="font-weight:600;margin:0 0 8px">Emergency Contact Information</p>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;">
-                            <div class="msc-field-group">
-                                <label>Name <span style="color:red">*</span></label>
+                        <p class="msc-reg-section-label">Emergency Contact Information</p>
+                        <div class="msc-reg-grid-3">
+                            <div class="msc-field">
+                                <label>Name <span class="msc-required">*</span></label>
                                 <input type="text" id="msc-emergency-name" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_name', true)); ?>" placeholder="Contact person name">
                             </div>
-                            <div class="msc-field-group">
-                                <label>Number <span style="color:red">*</span></label>
+                            <div class="msc-field">
+                                <label>Number <span class="msc-required">*</span></label>
                                 <input type="text" id="msc-emergency-phone" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_phone', true)); ?>" placeholder="Contact phone number">
                             </div>
-                            <div class="msc-field-group">
+                            <div class="msc-field">
                                 <label>Relationship</label>
                                 <input type="text" id="msc-emergency-rel" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_rel', true)); ?>" placeholder="Spouse, Parent, etc.">
                             </div>
@@ -351,13 +351,13 @@ class MSC_Shortcodes {
                     </div>
 
                     <div style="margin-bottom:20px;">
-                        <p style="font-weight:600;margin:0 0 8px">Pit Crew</p>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-                            <div class="msc-field-group">
+                        <p class="msc-reg-section-label">Pit Crew</p>
+                        <div class="msc-reg-grid-2">
+                            <div class="msc-field">
                                 <label>Name #1</label>
                                 <input type="text" id="msc-pit-crew-1" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_1', true)); ?>" placeholder="Pit crew member name">
                             </div>
-                            <div class="msc-field-group">
+                            <div class="msc-field">
                                 <label>Name #2</label>
                                 <input type="text" id="msc-pit-crew-2" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
                             </div>

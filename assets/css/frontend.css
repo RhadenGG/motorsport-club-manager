@@ -118,6 +118,11 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-step-header { background: var(--msc-dark); color: #fff; padding: 14px 20px; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 12px; }
 .msc-step-num { background: var(--msc-primary); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
 .msc-step-body { padding: 20px; }
+.msc-reg-section-label { font-weight: 600; margin: 0 0 8px; font-size: 13px; }
+.msc-reg-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+.msc-reg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.msc-reg-grid-3 .msc-field,
+.msc-reg-grid-2 .msc-field { min-width: 0; }
 
 /* Vehicle selection cards */
 .msc-vehicle-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; }
