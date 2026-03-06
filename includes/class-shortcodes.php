@@ -5,6 +5,7 @@ class MSC_Shortcodes {
 
     public static function init() {
         add_shortcode( 'msc_events_list',     array( __CLASS__, 'events_list' ) );
+        add_shortcode( 'msc_next_event',      array( __CLASS__, 'next_event' ) );
         add_shortcode( 'msc_register_event',  array( __CLASS__, 'register_form' ) );
         add_action(    'wp_enqueue_scripts',  array( __CLASS__, 'enqueue' ) );
         add_filter( 'the_content',       array( __CLASS__, 'append_to_event' ) );
@@ -95,6 +96,54 @@ class MSC_Shortcodes {
             $html .= "<div class='msc-meta-row'><span class='msc-meta-icon'>{$i[0]}</span><span class='msc-meta-label'>{$i[1]}</span><span class='msc-meta-value'>{$i[2]}</span></div>";
         }
         $html .= '</div>';
+        return $html;
+    }
+
+    public static function next_event( $atts = array() ) {
+        $events = get_posts( array(
+            'post_type'      => 'msc_event',
+            'posts_per_page' => 1,
+            'post_status'    => 'publish',
+            'orderby'        => 'meta_value',
+            'meta_key'       => '_msc_event_date',
+            'order'          => 'ASC',
+            'meta_query'     => array( array(
+                'key'     => '_msc_event_date',
+                'value'   => current_time('Y-m-d\TH:i'),
+                'compare' => '>=',
+                'type'    => 'DATETIME',
+            ) ),
+        ) );
+
+        if ( empty( $events ) ) {
+            return '<p class="msc-no-events">No upcoming events at the moment.</p>';
+        }
+
+        $e        = $events[0];
+        $date     = get_post_meta( $e->ID, '_msc_event_date', true );
+        $location = get_post_meta( $e->ID, '_msc_event_location', true );
+        $fee      = floatval( get_post_meta( $e->ID, '_msc_entry_fee', true ) );
+        $thumb_id = get_post_thumbnail_id( $e->ID );
+        $url      = get_permalink( $e->ID );
+
+        $html  = '<div class="msc-next-event">';
+        if ( $thumb_id ) {
+            $html .= '<a href="' . esc_url( $url ) . '" class="msc-next-event-img-wrap">'
+                   . wp_get_attachment_image( $thumb_id, 'medium', false, array( 'class' => 'msc-next-event-img' ) )
+                   . '</a>';
+        } else {
+            $html .= '<div class="msc-next-event-img-wrap msc-next-event-placeholder">🏁</div>';
+        }
+        $html .= '<div class="msc-next-event-body">';
+        $html .= '<p class="msc-next-event-label">Next Event</p>';
+        $html .= '<h4 class="msc-next-event-title"><a href="' . esc_url( $url ) . '">' . esc_html( $e->post_title ) . '</a></h4>';
+        if ( $date )     $html .= '<p class="msc-next-event-meta">📅 ' . esc_html( date_i18n( 'D d F Y', strtotime( $date ) ) ) . '</p>';
+        if ( $location ) $html .= '<p class="msc-next-event-meta">📍 ' . esc_html( $location ) . '</p>';
+        $html .= '<p class="msc-next-event-meta">💰 ' . ( $fee > 0 ? 'R ' . number_format( $fee, 2 ) : 'Free' ) . '</p>';
+        $html .= '<a href="' . esc_url( $url ) . '" class="msc-btn msc-btn-sm" style="margin-top:10px;display:inline-block;">View &amp; Register</a>';
+        $html .= '</div>';
+        $html .= '</div>';
+
         return $html;
     }
 
