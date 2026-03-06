@@ -91,7 +91,7 @@ class MSC_Shortcodes {
             'post_status'    => 'publish',
             'orderby'        => 'meta_value',
             'meta_key'       => '_msc_event_date',
-            'order'          => 'ASC',
+            'order'          => 'DESC',
         );
         if ( ! $atts['show_past'] ) {
             $args['meta_query'] = array(array(
