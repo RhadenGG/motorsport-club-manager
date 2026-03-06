@@ -471,6 +471,16 @@ class MSC_Admin_Events {
             update_option('msc_custom_declarations', wp_kses_post(wp_unslash($_POST['msc_custom_declarations'] ?? '')));
             update_option('msc_email_from_name', sanitize_text_field(wp_unslash($_POST['msc_email_from_name'] ?? '')));
             update_option('msc_email_from_address', sanitize_email(wp_unslash($_POST['msc_email_from_address'] ?? '')));
+            
+            update_option('msc_smtp_enabled', isset($_POST['msc_smtp_enabled']) ? 1 : 0);
+            update_option('msc_smtp_host', sanitize_text_field(wp_unslash($_POST['msc_smtp_host'] ?? '')));
+            update_option('msc_smtp_port', intval($_POST['msc_smtp_port'] ?? 587));
+            update_option('msc_smtp_encryption', sanitize_text_field(wp_unslash($_POST['msc_smtp_encryption'] ?? 'tls')));
+            update_option('msc_smtp_user', sanitize_text_field(wp_unslash($_POST['msc_smtp_user'] ?? '')));
+            if ( ! empty($_POST['msc_smtp_pass']) ) {
+                update_option('msc_smtp_pass', sanitize_text_field(wp_unslash($_POST['msc_smtp_pass'])));
+            }
+
             echo '<div class="updated"><p>Settings saved.</p></div>';
         }
 
@@ -480,6 +490,12 @@ class MSC_Admin_Events {
         $declarations = get_option('msc_custom_declarations', '');
         $from_name    = get_option('msc_email_from_name', '');
         $from_address = get_option('msc_email_from_address', '');
+
+        $smtp_enabled = get_option('msc_smtp_enabled', 0);
+        $smtp_host    = get_option('msc_smtp_host', '');
+        $smtp_port    = get_option('msc_smtp_port', 587);
+        $smtp_enc     = get_option('msc_smtp_encryption', 'tls');
+        $smtp_user    = get_option('msc_smtp_user', '');
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
@@ -505,6 +521,49 @@ class MSC_Admin_Events {
                                 <input type="email" name="msc_email_from_address" id="msc_email_from_address" value="<?php echo esc_attr($from_address); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
                             </div>
                             <p class="description">Configure the sender details for all automated emails. Leave empty to use site defaults.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">SMTP Configuration</th>
+                        <td>
+                            <div style="margin-bottom:15px">
+                                <label><input type="checkbox" name="msc_smtp_enabled" value="1" <?php checked($smtp_enabled, 1); ?>> <strong>Enable Custom SMTP</strong></label>
+                                <p class="description">Use an external SMTP server for all emails instead of the default web server mailer.</p>
+                            </div>
+                            <div class="msc-smtp-fields" style="<?php echo $smtp_enabled ? '' : 'display:none;'; ?> background:#f9f9f9; padding:15px; border:1px solid #ddd; border-radius:4px; max-width:600px;">
+                                <div style="margin-bottom:10px">
+                                    <label style="display:inline-block; width:120px;">SMTP Host:</label>
+                                    <input type="text" name="msc_smtp_host" value="<?php echo esc_attr($smtp_host); ?>" class="regular-text" placeholder="smtp.example.com">
+                                </div>
+                                <div style="margin-bottom:10px">
+                                    <label style="display:inline-block; width:120px;">SMTP Port:</label>
+                                    <input type="number" name="msc_smtp_port" value="<?php echo esc_attr($smtp_port); ?>" class="small-text">
+                                </div>
+                                <div style="margin-bottom:10px">
+                                    <label style="display:inline-block; width:120px;">Encryption:</label>
+                                    <select name="msc_smtp_encryption">
+                                        <option value="none" <?php selected($smtp_enc, 'none'); ?>>None</option>
+                                        <option value="ssl"  <?php selected($smtp_enc, 'ssl'); ?>>SSL</option>
+                                        <option value="tls"  <?php selected($smtp_enc, 'tls'); ?>>TLS</option>
+                                    </select>
+                                </div>
+                                <div style="margin-bottom:10px">
+                                    <label style="display:inline-block; width:120px;">Username:</label>
+                                    <input type="text" name="msc_smtp_user" value="<?php echo esc_attr($smtp_user); ?>" class="regular-text">
+                                </div>
+                                <div>
+                                    <label style="display:inline-block; width:120px;">Password:</label>
+                                    <input type="password" name="msc_smtp_pass" value="" class="regular-text" placeholder="••••••••">
+                                    <?php if (get_option('msc_smtp_pass')): ?><span class="description" style="color:green; margin-left:10px;">✓ Password saved</span><?php endif; ?>
+                                </div>
+                            </div>
+                            <script>
+                                jQuery(document).ready(function($) {
+                                    $('input[name="msc_smtp_enabled"]').on('change', function() {
+                                        $('.msc-smtp-fields').toggle($(this).is(':checked'));
+                                    });
+                                });
+                            </script>
                         </td>
                     </tr>
                     <tr>

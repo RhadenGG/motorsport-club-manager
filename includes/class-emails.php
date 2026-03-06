@@ -5,6 +5,26 @@ class MSC_Emails {
 
     public static function init() {
         // Content-Type is set per-send via explicit headers — no global filter needed.
+        add_action( 'phpmailer_init', array( __CLASS__, 'configure_smtp' ) );
+    }
+
+    /** Configure PHPMailer to use custom SMTP if enabled in settings */
+    public static function configure_smtp( $phpmailer ) {
+        if ( ! get_option( 'msc_smtp_enabled' ) ) return;
+
+        $phpmailer->isSMTP();
+        $phpmailer->Host       = get_option( 'msc_smtp_host' );
+        $phpmailer->SMTPAuth   = true;
+        $phpmailer->Port       = get_option( 'msc_smtp_port', 587 );
+        $phpmailer->Username   = get_option( 'msc_smtp_user' );
+        $phpmailer->Password   = get_option( 'msc_smtp_pass' );
+        $phpmailer->SMTPSecure = get_option( 'msc_smtp_encryption', 'tls' );
+        
+        // Ensure some servers don't complain about encryption being set to 'none'
+        if ( $phpmailer->SMTPSecure === 'none' ) {
+            $phpmailer->SMTPSecure = '';
+            $phpmailer->SMTPAutoTLS = false;
+        }
     }
 
     /** Wrapper for wp_mail() that logs failures. */
