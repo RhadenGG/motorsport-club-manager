@@ -32,15 +32,17 @@ Built for any motorsport club or racing organisation running their website on Wo
 ### Proof of Payment (EFT)
 - Configurable banking details shown to members during registration
 - PDF upload required for events with an entry fee
-- Admins can view uploaded PoP documents and toggle paid status
+- PoP is emailed to the admin/event creator with the signed indemnity, then deleted from the server — no permanent storage
+- Admin registrations table shows "✓ Emailed" once the PoP has been sent and removed
 
 ### PDF & Email Notifications
 - Auto-generated A4 indemnity PDFs with participant details, emergency contacts, signatures, and accepted declarations
 - Branded with your WordPress site logo and name
-- Emails sent on registration submission, confirmation, and indemnity signing
+- **Participant** receives a registration confirmation email, then a separate email with their signed indemnity PDF attached
+- **Admin and event creator** receive a single combined email with both the signed indemnity PDF and proof of payment attached (deduplicated if both share the same address)
+- Neither the indemnity PDF nor the PoP file are stored permanently on the server — both are generated/attached in memory and deleted immediately after emailing
 - **Configurable SMTP settings** built-in — no separate SMTP plugin required
 - **Customizable sender details** (From Name and From Email address)
-- PDF and PoP attachments included in relevant emails
 
 ### Member Profiles
 - Custom profile photo upload (avatar displayed in dashboard header)
