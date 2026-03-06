@@ -164,7 +164,7 @@ class MSC_Registration {
             'pop_file_id'      => $pop_file_id,
             'class_id'         => $class_id,
             'created_at'       => gmdate('Y-m-d H:i:s'),
-        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ));
+        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%d','%s' ));
 
         if ( false === $inserted ) {
             error_log('MSC Registration Error: ' . $wpdb->last_error);
