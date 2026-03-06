@@ -91,7 +91,7 @@ class MSC_Registration {
         // Check registration window
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
-        $now       = time();
+        $now       = current_time('timestamp');
         if ( $reg_open  && strtotime($reg_open)  > $now ) wp_send_json_error(array('message'=>'Registration has not opened yet.'));
         if ( $reg_close && strtotime($reg_close) < $now ) wp_send_json_error(array('message'=>'Registration is closed.'));
 

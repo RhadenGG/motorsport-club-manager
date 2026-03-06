@@ -112,7 +112,7 @@ class MSC_Shortcodes {
         if ( ! $atts['show_past'] ) {
             $args['meta_query'] = array(array(
                 'key'     => '_msc_event_date',
-                'value'   => date('Y-m-d\TH:i'),
+                'value'   => current_time('Y-m-d\TH:i'),
                 'compare' => '>=',
                 'type'    => 'DATETIME',
             ));
@@ -179,7 +179,7 @@ class MSC_Shortcodes {
 
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);
         $reg_close = get_post_meta($event_id,'_msc_reg_close',true);
-        $now       = time();
+        $now       = current_time('timestamp');
         $indemnity = get_post_meta( $event_id, '_msc_indemnity_text', true );
         if ( ! $indemnity ) {
             $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
