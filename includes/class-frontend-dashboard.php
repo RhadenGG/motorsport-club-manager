@@ -37,6 +37,17 @@ class MSC_Frontend_Dashboard {
         return $has_role || current_user_can( MSC_Admin_Participants::required_cap() );
     }
 
+    /**
+     * Restrict event mutations: admins can manage all events, non-admins only their own.
+     */
+    private static function can_manage_event( $event_id ) {
+        $event_id = absint( $event_id );
+        if ( ! $event_id ) return false;
+        if ( current_user_can( 'manage_options' ) ) return true;
+        $post = get_post( $event_id );
+        return ( $post && $post->post_type === 'msc_event' && (int) $post->post_author === get_current_user_id() );
+    }
+
     // ─── Main renderer ────────────────────────────────────────────────────────
 
     public static function render() {
@@ -58,7 +69,18 @@ class MSC_Frontend_Dashboard {
         $valid_tabs = array( 'events', 'registrations', 'results', 'participants' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
 
-        $all_events   = get_posts( array( 'post_type' => 'msc_event', 'numberposts' => -1, 'post_status' => 'publish', 'orderby' => 'meta_value', 'meta_key' => '_msc_event_date', 'order' => 'DESC' ) );
+        $events_args = array(
+            'post_type'   => 'msc_event',
+            'numberposts' => -1,
+            'post_status' => 'publish',
+            'orderby'     => 'meta_value',
+            'meta_key'    => '_msc_event_date',
+            'order'       => 'DESC',
+        );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $events_args['author'] = get_current_user_id();
+        }
+        $all_events   = get_posts( $events_args );
         $event_counts = self::get_reg_counts();
 
         ob_start();
@@ -397,6 +419,10 @@ class MSC_Frontend_Dashboard {
 
         $conditions = array( '1=1' );
         $values     = array();
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $conditions[] = 'p.post_author = %d';
+            $values[]     = get_current_user_id();
+        }
         if ( $event_filter ) { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
         if ( $status_filter ) { $conditions[] = 'r.status = %s'; $values[] = $status_filter; }
 
@@ -864,10 +890,19 @@ class MSC_Frontend_Dashboard {
         $img_id = absint( $_POST['featured_image_id'] ?? 0 );
         if ( $img_id ) set_post_thumbnail( $post_id, $img_id );
 
-        $class_ids = array_map( 'absint', (array) ( $_POST['class_ids'] ?? array() ) );
+        $class_ids  = array_filter( array_map( 'absint', (array) ( $_POST['class_ids'] ?? array() ) ) );
+        $valid_ids  = array();
         if ( $class_ids ) {
-            update_post_meta( $post_id, '_msc_event_classes', $class_ids );
+            $terms = get_terms( array(
+                'taxonomy'   => 'msc_vehicle_class',
+                'hide_empty' => false,
+                'include'    => $class_ids,
+                'fields'     => 'ids',
+            ) );
+            $valid_ids = is_wp_error( $terms ) ? array() : array_map( 'intval', $terms );
         }
+        update_post_meta( $post_id, '_msc_event_classes', $valid_ids );
+        wp_set_post_terms( $post_id, $valid_ids, 'msc_vehicle_class' );
 
         wp_send_json_success( array( 'message' => 'Event created.', 'post_id' => $post_id ) );
     }
@@ -887,6 +922,9 @@ class MSC_Frontend_Dashboard {
         if ( ! $post || $post->post_type !== 'msc_event' ) {
             wp_send_json_error( array( 'message' => 'Event not found.' ) );
         }
+        if ( ! self::can_manage_event( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify this event.' ) );
+        }
 
         update_post_meta( $event_id, '_msc_event_status', $status );
         wp_send_json_success( array( 'message' => 'Event status updated.' ) );
@@ -904,6 +942,17 @@ class MSC_Frontend_Dashboard {
         $status = in_array( $_POST['status'] ?? '', $valid, true ) ? $_POST['status'] : '';
 
         if ( ! $reg_id || ! $status ) wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+
+        $event_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT event_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        if ( ! $event_id ) {
+            wp_send_json_error( array( 'message' => 'Registration not found.' ) );
+        }
+        if ( ! self::can_manage_event( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify this registration.' ) );
+        }
 
         $wpdb->update(
             $wpdb->prefix . 'msc_registrations',
@@ -929,6 +978,9 @@ class MSC_Frontend_Dashboard {
         global $wpdb;
         $event_id = absint( $_POST['event_id'] ?? 0 );
         if ( ! $event_id ) wp_send_json_error( array( 'message' => 'Invalid event.' ) );
+        if ( ! self::can_manage_event( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify results for this event.' ) );
+        }
 
         $res_table      = $wpdb->prefix . 'msc_event_results';
         $valid_statuses = array( 'Finished', 'DNF', 'DNS', 'DSQ' );
@@ -995,10 +1047,16 @@ class MSC_Frontend_Dashboard {
 
     private static function get_reg_counts() {
         global $wpdb;
-        $rows = $wpdb->get_results(
-            "SELECT event_id, COUNT(*) AS cnt FROM {$wpdb->prefix}msc_registrations
-             WHERE status NOT IN ('cancelled','rejected') GROUP BY event_id"
-        );
+        $sql = "SELECT r.event_id, COUNT(*) AS cnt
+                FROM {$wpdb->prefix}msc_registrations r";
+        $where = " WHERE r.status NOT IN ('cancelled','rejected')";
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            $sql .= " INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id";
+            $where .= $wpdb->prepare( ' AND p.post_author = %d', get_current_user_id() );
+        }
+
+        $rows = $wpdb->get_results( $sql . $where . ' GROUP BY r.event_id' );
         $counts = array();
         foreach ( $rows as $r ) {
             $counts[ $r->event_id ] = (int) $r->cnt;

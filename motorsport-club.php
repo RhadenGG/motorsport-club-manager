@@ -60,6 +60,9 @@ function msc_init() {
  */
 add_action( 'init', 'msc_run_migration', 20 );
 function msc_run_migration() {
+    // Migration and rewrite flush are admin lifecycle concerns; avoid running on public traffic.
+    if ( ! is_admin() ) return;
+
     if ( get_option('msc_db_version') !== MSC_VERSION ) {
         MSC_Activator::activate();
         flush_rewrite_rules();
