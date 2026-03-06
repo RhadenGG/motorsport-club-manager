@@ -98,7 +98,8 @@ Built for any motorsport club or racing organisation running their website on Wo
    - Configure the default indemnity text
    - Set the account page URL
 4. Create a page with the `[msc_my_account]` shortcode and add it to your menu
-5. Start creating events under **Motorsport Club → Events**
+5. Create a page with the `[msc_event_dashboard]` shortcode for staff/event creators and restrict its menu visibility as needed
+6. Start creating events under **Motorsport Club → Events** or via the frontend dashboard
 
 Database tables are created automatically on activation. Schema migrations run automatically when the plugin version changes.
 
@@ -112,6 +113,7 @@ Database tables are created automatically on activation. Schema migrations run a
 | `[msc_next_event]` | Compact card showing the next upcoming open event — featured image (clickable to enlarge), date, location, fee, and a link. Closed events are excluded. Designed for sidebars and footers. |
 | `[msc_my_account]` | Member dashboard — garage, registrations, and profile management |
 | `[msc_register_event event_id="X"]` | Embed a registration form for a specific event |
+| `[msc_event_dashboard]` | Unified management dashboard for admins and Event Creators (Events, Registrations, Results, Participants tabs) |
 
 Single event pages (`msc_event` post type) automatically display the featured image (left, clickable lightbox) alongside the description (right), followed by event details, the registration form, and results. All date/time comparisons respect the timezone configured in **Settings → General**.
 
@@ -123,9 +125,7 @@ Single event pages (`msc_event` post type) automatically display the featured im
 **Motorsport Club → Dashboard** shows at-a-glance stats: upcoming events, total vehicles, registrations, and pending approvals.
 
 ### Participants Dashboard
-Available in two places — both require the `msc_view_participants` capability (automatically granted to administrators and the built-in **Event Creator** role):
-
-**Motorsport Club → Participants** (admin):
+**Motorsport Club → Participants** (admin-only) and the **Participants tab** of `[msc_event_dashboard]` (frontend) both provide:
 - Search by name or email
 - Table view showing name, email, phone, competition number, and event count
 - Click any row to expand a three-panel detail card:
@@ -133,12 +133,18 @@ Available in two places — both require the `msc_view_participants` capability 
   - **Motorsport Details** — competition number, MSA licence, medical aid provider & number, pit crew names
   - **Emergency Contact** — name, phone, relationship
 
-**`[msc_participants_dashboard]`** shortcode (frontend):
-- Same search and expandable card layout, styled to match the frontend theme
-- Access-controlled — non-authorised visitors see a permission notice
+### Event Manager Dashboard
+`[msc_event_dashboard]` is a unified frontend management shortcode for **administrators** and **Event Creators**. Place it on any page — access is restricted by role.
+
+| Tab | Features |
+|---|---|
+| **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form. Close or reopen events. |
+| **Registrations** | Filter by event and status. View entrant details, update registration status (triggers confirmation email), and download indemnity PDFs. |
+| **Results** | Select a closed event and enter results for registered and manual (walk-in) drivers — position, laps, lap times, finish status, and notes. |
+| **Participants** | Full participant lookup with expandable detail cards (same as admin Participants page). |
 
 ### Event Creator Role
-The plugin automatically creates an **Event Creator** (`msc_event_creator`) WordPress role on activation. Assign this role to staff who need frontend access to the Participants dashboard without full admin access.
+The plugin automatically creates an **Event Creator** (`msc_event_creator`) WordPress role on activation. Assign this role to staff who need access to the frontend Event Manager Dashboard without full WordPress admin access.
 
 ### Managing Registrations
 **Motorsport Club → Registrations** lets you:
