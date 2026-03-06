@@ -45,7 +45,20 @@ class MSC_Results {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $sql );
 
-        // Migration: make registration_id nullable for existing installs
+        // Explicit column migrations — dbDelta is unreliable for existing tables.
+        $existing_cols = $wpdb->get_col( "DESCRIBE $table", 0 );
+
+        if ( ! in_array( 'driver_name', $existing_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN driver_name VARCHAR(150) DEFAULT NULL AFTER registration_id" );
+        }
+        if ( ! in_array( 'manual_vehicle', $existing_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN manual_vehicle VARCHAR(150) DEFAULT NULL AFTER driver_name" );
+        }
+        if ( ! in_array( 'class_id', $existing_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE $table ADD COLUMN class_id BIGINT UNSIGNED DEFAULT NULL AFTER manual_vehicle" );
+        }
+
+        // Make registration_id nullable for existing installs
         $col = $wpdb->get_row( $wpdb->prepare(
             "SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
              WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'registration_id'",
