@@ -122,6 +122,16 @@ Single event pages (`msc_event` post type) automatically display the featured im
 ### Dashboard
 **Motorsport Club → Dashboard** shows at-a-glance stats: upcoming events, total vehicles, registrations, and pending approvals.
 
+### Participants Dashboard
+**Motorsport Club → Participants** gives admins and event creators a quick-lookup directory of all registered members:
+- Search by name or email
+- Table view showing name, email, phone, competition number, and event count
+- Click any row to expand a three-panel detail card:
+  - **Personal Details** — date of birth, gender, phone, full address
+  - **Motorsport Details** — competition number, MSA licence, medical aid provider & number, pit crew names
+  - **Emergency Contact** — name, phone, relationship
+- Direct link to the member's WordPress profile for editing
+
 ### Managing Registrations
 **Motorsport Club → Registrations** lets you:
 - Filter by event or status (Pending / Confirmed / Rejected / Cancelled)

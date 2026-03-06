@@ -35,6 +35,7 @@ class MSC_Admin_Events {
             'motorsport-club',                                                  // Dashboard
             'edit.php?post_type=msc_event',                                     // Racing Events
             'msc-registrations',                                                // Registrations
+            'msc-participants',                                                 // Participants
             'edit.php?post_type=msc_vehicle',                                   // Vehicles
             'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle',   // Vehicle Classes
             'msc-settings',                                                     // Settings
