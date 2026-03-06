@@ -52,6 +52,8 @@ class MSC_Frontend_Dashboard {
             return '<p class="msc-notice">You do not have permission to access this dashboard.</p>';
         }
 
+        wp_enqueue_media();
+
         $tab = isset( $_GET['msc_etab'] ) ? sanitize_key( $_GET['msc_etab'] ) : 'events';
         $valid_tabs = array( 'events', 'registrations', 'results', 'participants' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
@@ -164,7 +166,18 @@ class MSC_Frontend_Dashboard {
                     </div>
                     <div class="msc-field msc-field-full">
                         <label>Indemnity Text</label>
-                        <textarea id="ce_indemnity" rows="4" placeholder="Leave blank to use site-wide default"><?php echo esc_textarea( msc_get_default_indemnity() ); ?></textarea>
+                        <textarea id="ce_indemnity" rows="4" placeholder="Leave blank to use site-wide default. Site-wide default can be set in wp-admin at Motorsport Club &gt; Settings."></textarea>
+                    </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Featured Image</label>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div id="ce-featured-image-preview"></div>
+                            <div style="display:flex;gap:8px;flex-direction:column">
+                                <button type="button" class="msc-btn msc-btn-outline msc-btn-sm" id="msc-ce-set-image">Set Featured Image</button>
+                                <button type="button" class="msc-btn msc-btn-outline msc-btn-sm" id="msc-ce-remove-image" style="display:none">Remove Image</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="ce_featured_image_id" value="">
                     </div>
                 </div>
 
@@ -274,6 +287,32 @@ class MSC_Frontend_Dashboard {
                 $('#msc-create-event-panel').slideUp(200);
             });
 
+            // Featured image picker
+            var ceImageFrame;
+            $('#msc-ce-set-image').on('click', function(e){
+                e.preventDefault();
+                if ( ceImageFrame ) { ceImageFrame.open(); return; }
+                ceImageFrame = wp.media({
+                    title:    'Select Featured Image',
+                    button:   { text: 'Use this image' },
+                    multiple: false,
+                    library:  { type: 'image' }
+                });
+                ceImageFrame.on('select', function(){
+                    var att = ceImageFrame.state().get('selection').first().toJSON();
+                    $('#ce_featured_image_id').val(att.id);
+                    var url = (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url;
+                    $('#ce-featured-image-preview').html('<img src="'+url+'" style="max-width:150px;max-height:100px;object-fit:cover;border-radius:4px;">');
+                    $('#msc-ce-remove-image').show();
+                });
+                ceImageFrame.open();
+            });
+            $('#msc-ce-remove-image').on('click', function(){
+                $('#ce_featured_image_id').val('');
+                $('#ce-featured-image-preview').empty();
+                $(this).hide();
+            });
+
             // Filter class checkboxes by vehicle type
             function filterClasses(type) {
                 if (type === 'Both') { $('.msc-ce-class-group').show(); }
@@ -308,10 +347,11 @@ class MSC_Frontend_Dashboard {
                     capacity:        $('#ce_capacity').val() || 0,
                     reg_open:        $('#ce_reg_open').val(),
                     reg_close:       $('#ce_reg_close').val(),
-                    approval:        $('#ce_approval').val(),
-                    vehicle_type:    $('#ce_vehicle_type').val(),
-                    indemnity:       $('#ce_indemnity').val(),
-                    class_ids:       classes,
+                    approval:           $('#ce_approval').val(),
+                    vehicle_type:       $('#ce_vehicle_type').val(),
+                    indemnity:          $('#ce_indemnity').val(),
+                    featured_image_id:  $('#ce_featured_image_id').val() || 0,
+                    class_ids:          classes,
                 }, function(res){
                     btn.prop('disabled', false).text('Create Event');
                     if (res.success) {
@@ -819,7 +859,10 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $post_id, '_msc_event_vehicle_type', $vehicle_type );
 
         $indemnity = sanitize_textarea_field( wp_unslash( $_POST['indemnity'] ?? '' ) );
-        update_post_meta( $post_id, '_msc_indemnity_text', $indemnity ?: msc_get_default_indemnity() );
+        update_post_meta( $post_id, '_msc_indemnity_text', $indemnity );
+
+        $img_id = absint( $_POST['featured_image_id'] ?? 0 );
+        if ( $img_id ) set_post_thumbnail( $post_id, $img_id );
 
         $class_ids = array_map( 'absint', (array) ( $_POST['class_ids'] ?? array() ) );
         if ( $class_ids ) {

@@ -138,7 +138,7 @@ Single event pages (`msc_event` post type) automatically display the featured im
 
 | Tab | Features |
 |---|---|
-| **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form. Close or reopen events. |
+| **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form (including featured image picker and optional per-event indemnity text). Close or reopen events. |
 | **Registrations** | Filter by event and status. View entrant details, update registration status (triggers confirmation email), and download indemnity PDFs. |
 | **Results** | Select a closed event and enter results for registered and manual (walk-in) drivers — position, laps, lap times, finish status, and notes. |
 | **Participants** | Full participant lookup with expandable detail cards (same as admin Participants page). |
