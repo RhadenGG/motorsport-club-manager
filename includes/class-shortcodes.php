@@ -109,12 +109,20 @@ class MSC_Shortcodes {
             'orderby'        => 'meta_value',
             'meta_key'       => '_msc_event_date',
             'order'          => 'ASC',
-            'meta_query'     => array( array(
-                'key'     => '_msc_event_date',
-                'value'   => current_time('Y-m-d\TH:i'),
-                'compare' => '>=',
-                'type'    => 'DATETIME',
-            ) ),
+            'meta_query'     => array(
+                'relation' => 'AND',
+                array(
+                    'key'     => '_msc_event_date',
+                    'value'   => current_time('Y-m-d\TH:i'),
+                    'compare' => '>=',
+                    'type'    => 'DATETIME',
+                ),
+                array(
+                    'relation' => 'OR',
+                    array( 'key' => '_msc_event_status', 'compare' => 'NOT EXISTS' ),
+                    array( 'key' => '_msc_event_status', 'value' => 'closed', 'compare' => '!=' ),
+                ),
+            ),
         ) );
 
         if ( empty( $events ) ) {
