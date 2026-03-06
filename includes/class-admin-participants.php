@@ -156,12 +156,6 @@ class MSC_Admin_Participants {
                     <?php self::detail_row( 'Name',         $em_name ?: '—' ); ?>
                     <?php self::detail_row( 'Phone',        $em_phone ?: '—' ); ?>
                     <?php self::detail_row( 'Relationship', $em_rel ?: '—' ); ?>
-                    <p style="margin:14px 0 0">
-                        <a class="button button-small"
-                           href="<?php echo esc_url( get_edit_user_link( $user->ID ) ); ?>">
-                            Edit Profile
-                        </a>
-                    </p>
                 </div>
 
             </div>
