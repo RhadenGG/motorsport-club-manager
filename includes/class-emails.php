@@ -16,6 +16,15 @@ class MSC_Emails {
         return $sent;
     }
 
+    public static function get_headers() {
+        $from_name    = get_option('msc_email_from_name') ?: get_bloginfo('name');
+        $from_address = get_option('msc_email_from_address') ?: get_option('admin_email');
+        return array(
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $from_name . ' <' . $from_address . '>'
+        );
+    }
+
     private static function get_reg($reg_id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare("
@@ -108,10 +117,7 @@ class MSC_Emails {
             }
         }
 
-        $headers = array( 
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . $site_name . ' <' . get_option('admin_email') . '>'
-        );
+        $headers = self::get_headers();
 
         self::send_mail( $reg->user_email, "Registration Received - {$reg->event_name}", self::wrap("Registration Received", $body), $headers, $attachments );
 
@@ -144,10 +150,7 @@ class MSC_Emails {
         <p>We look forward to seeing you at the event!</p>
         <p>Best regards,<br>" . esc_html($site_name) . "</p>";
 
-        $headers = array( 
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . $site_name . ' <' . get_option('admin_email') . '>'
-        );
+        $headers = self::get_headers();
         self::send_mail( $reg->user_email, "Entry Confirmed - {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
     }
 }

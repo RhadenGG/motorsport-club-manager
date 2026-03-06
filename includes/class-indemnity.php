@@ -367,10 +367,7 @@ class MSC_Indemnity {
             <p>Please keep this for your records. Entry #<strong>{$reg->id}</strong>.</p>
             <p>See you at the track!<br>The " . esc_html($site_name) . " Team</p>";
 
-        $headers = array( 
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . $site_name . ' <' . get_option('admin_email') . '>'
-        );
+        $headers  = MSC_Emails::get_headers();
         $attachments = array( $tmp );
 
         // Add Proof of Payment if exists

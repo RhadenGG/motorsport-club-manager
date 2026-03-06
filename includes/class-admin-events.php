@@ -469,6 +469,8 @@ class MSC_Admin_Events {
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
             update_option('msc_account_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url'] ?? ''))));
             update_option('msc_custom_declarations', wp_kses_post(wp_unslash($_POST['msc_custom_declarations'] ?? '')));
+            update_option('msc_email_from_name', sanitize_text_field(wp_unslash($_POST['msc_email_from_name'] ?? '')));
+            update_option('msc_email_from_address', sanitize_email(wp_unslash($_POST['msc_email_from_address'] ?? '')));
             echo '<div class="updated"><p>Settings saved.</p></div>';
         }
 
@@ -476,6 +478,8 @@ class MSC_Admin_Events {
         $indemnity    = get_option('msc_default_indemnity', msc_get_default_indemnity());
         $account_url  = get_option('msc_account_page_url', '');
         $declarations = get_option('msc_custom_declarations', '');
+        $from_name    = get_option('msc_email_from_name', '');
+        $from_address = get_option('msc_email_from_address', '');
         ?>
         <div class="wrap">
             <h1>⚙️ Motorsport Club — Settings</h1>
@@ -487,6 +491,20 @@ class MSC_Admin_Events {
                         <td>
                             <input type="url" name="msc_account_page_url" id="msc_account_page_url" value="<?php echo esc_attr($account_url); ?>" class="large-text" placeholder="https://yoursite.com/my-account/">
                             <p class="description">Full URL of the page containing the <code>[msc_my_account]</code> shortcode. Used in registration emails and on-page links.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Email Settings</th>
+                        <td>
+                            <div style="margin-bottom:10px">
+                                <label for="msc_email_from_name" style="display:inline-block; width:100px;">From Name:</label>
+                                <input type="text" name="msc_email_from_name" id="msc_email_from_name" value="<?php echo esc_attr($from_name); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_bloginfo('name')); ?>">
+                            </div>
+                            <div>
+                                <label for="msc_email_from_address" style="display:inline-block; width:100px;">From Email:</label>
+                                <input type="email" name="msc_email_from_address" id="msc_email_from_address" value="<?php echo esc_attr($from_address); ?>" class="regular-text" placeholder="<?php echo esc_attr(get_option('admin_email')); ?>">
+                            </div>
+                            <p class="description">Configure the sender details for all automated emails. Leave empty to use site defaults.</p>
                         </td>
                     </tr>
                     <tr>
