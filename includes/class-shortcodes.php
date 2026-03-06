@@ -7,7 +7,8 @@ class MSC_Shortcodes {
         add_shortcode( 'msc_events_list',     array( __CLASS__, 'events_list' ) );
         add_shortcode( 'msc_register_event',  array( __CLASS__, 'register_form' ) );
         add_action(    'wp_enqueue_scripts',  array( __CLASS__, 'enqueue' ) );
-        add_filter( 'the_content', array( __CLASS__, 'append_to_event' ) );
+        add_filter( 'the_content',       array( __CLASS__, 'append_to_event' ) );
+        add_filter( 'post_thumbnail_html', array( __CLASS__, 'suppress_event_thumbnail' ), 10, 2 );
     }
 
     public static function enqueue() {
@@ -31,9 +32,23 @@ class MSC_Shortcodes {
         ) );
     }
 
+    public static function suppress_event_thumbnail( $html, $post_id ) {
+        if ( is_singular('msc_event') ) {
+            return '';
+        }
+        return $html;
+    }
+
     public static function append_to_event( $content ) {
         if ( is_singular('msc_event') && in_the_loop() && is_main_query() ) {
             $event_id = get_the_ID();
+            if ( has_post_thumbnail( $event_id ) ) {
+                $img     = get_the_post_thumbnail( $event_id, 'large' );
+                $content = '<div class="msc-event-hero">'
+                    . '<div class="msc-event-hero-img">' . $img . '</div>'
+                    . '<div class="msc-event-hero-body">' . $content . '</div>'
+                    . '</div>';
+            }
             $content .= self::render_event_meta( $event_id );
             $content .= self::register_form( array( 'event_id' => $event_id ) );
             if ( MSC_Results::is_closed( $event_id ) ) {

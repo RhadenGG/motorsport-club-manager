@@ -49,6 +49,16 @@
 .msc-badge-closed { background: var(--msc-dark); color: #fff; }
 .msc-no-events { font-style: italic; color: #888; }
 
+/* ── Single Event Hero (image left, description right) ───────────────────── */
+.msc-event-hero { display: flex; gap: 28px; align-items: flex-start; margin-bottom: 20px; }
+.msc-event-hero-img { flex: 0 0 40%; max-width: 40%; }
+.msc-event-hero-img img { width: 100%; height: auto; border-radius: var(--msc-radius); display: block; }
+.msc-event-hero-body { flex: 1; min-width: 0; }
+@media (max-width: 640px) {
+    .msc-event-hero { flex-direction: column; }
+    .msc-event-hero-img { flex: none; max-width: 100%; }
+}
+
 /* ── Event Meta Block ────────────────────────────────────────────────────── */
 .msc-event-meta { background: var(--msc-light); border: 1px solid var(--msc-border); border-radius: var(--msc-radius); padding: 16px; margin: 20px 0; }
 .msc-meta-row { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--msc-border); gap: 10px; }
