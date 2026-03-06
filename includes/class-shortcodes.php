@@ -42,8 +42,9 @@ class MSC_Shortcodes {
     public static function append_to_event( $content ) {
         if ( is_singular('msc_event') && in_the_loop() && is_main_query() ) {
             $event_id = get_the_ID();
-            if ( has_post_thumbnail( $event_id ) ) {
-                $img     = get_the_post_thumbnail( $event_id, 'large' );
+            $thumb_id = get_post_thumbnail_id( $event_id );
+            if ( $thumb_id ) {
+                $img     = wp_get_attachment_image( $thumb_id, 'large' );
                 $content = '<div class="msc-event-hero">'
                     . '<div class="msc-event-hero-img">' . $img . '</div>'
                     . '<div class="msc-event-hero-body">' . $content . '</div>'
