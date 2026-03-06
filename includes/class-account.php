@@ -423,11 +423,11 @@ class MSC_Account {
                     <div class="msc-form-section-title">Personal Details</div>
                     <div class="msc-form-grid">
                         <div class="msc-field">
-                            <label>First Name</label>
+                            <label>First Name <span class="msc-required">*</span></label>
                             <input type="text" id="pe_first_name" value="<?php echo esc_attr($user->first_name); ?>">
                         </div>
                         <div class="msc-field">
-                            <label>Last Name</label>
+                            <label>Last Name <span class="msc-required">*</span></label>
                             <input type="text" id="pe_last_name" value="<?php echo esc_attr($user->last_name); ?>">
                         </div>
                         <div class="msc-field">
@@ -443,7 +443,7 @@ class MSC_Account {
                             <input type="date" id="pe_birthday" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_birthday', true)); ?>">
                         </div>
                         <div class="msc-field">
-                            <label>Phone Number</label>
+                            <label>Phone Number <span class="msc-required">*</span></label>
                             <input type="tel" id="pe_phone" value="<?php echo esc_attr(get_user_meta($user->ID, 'phone', true)); ?>" placeholder="+27 82 000 0000">
                         </div>
                         <div class="msc-field">
@@ -474,24 +474,32 @@ class MSC_Account {
                             <label>Medical Aid Number <span class="msc-required">*</span></label>
                             <input type="text" id="pe_medical_aid_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_medical_aid_number', true)); ?>" placeholder="Member number">
                         </div>
+                        <div class="msc-field">
+                            <label>Pit Crew Name #1</label>
+                            <input type="text" id="pe_pit_crew_1" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_pit_crew_1', true)); ?>" placeholder="Pit crew member name">
+                        </div>
+                        <div class="msc-field">
+                            <label>Pit Crew Name #2</label>
+                            <input type="text" id="pe_pit_crew_2" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
+                        </div>
                     </div>
 
                     <div class="msc-form-section-title" style="margin-top:20px">Address</div>
                     <div class="msc-form-grid">
                         <div class="msc-field msc-field-full">
-                            <label>Street Address</label>
+                            <label>Street Address <span class="msc-required">*</span></label>
                             <input type="text" id="pe_address1" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_address1', true)); ?>" placeholder="123 Main Road">
                         </div>
                         <div class="msc-field">
-                            <label>City / Town</label>
+                            <label>City / Town <span class="msc-required">*</span></label>
                             <input type="text" id="pe_city" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_city', true)); ?>">
                         </div>
                         <div class="msc-field">
-                            <label>Province</label>
+                            <label>Province <span class="msc-required">*</span></label>
                             <input type="text" id="pe_province" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_province', true)); ?>">
                         </div>
                         <div class="msc-field">
-                            <label>Postal Code</label>
+                            <label>Postal Code <span class="msc-required">*</span></label>
                             <input type="text" id="pe_postcode" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_postcode', true)); ?>">
                         </div>
                     </div>
@@ -547,6 +555,23 @@ class MSC_Account {
         if ( isset($_POST['last_name']) )     $data['last_name']     = sanitize_text_field($_POST['last_name']);
         if ( isset($_POST['display_name']) )  $data['display_name']  = sanitize_text_field($_POST['display_name']);
 
+        // Required field validation
+        $required = array(
+            'first_name'   => 'First Name',
+            'last_name'    => 'Last Name',
+            'phone'        => 'Phone Number',
+            'msc_address1' => 'Street Address',
+            'msc_city'     => 'City / Town',
+            'msc_province' => 'Province',
+            'msc_postcode' => 'Postal Code',
+        );
+        foreach ( $required as $key => $label ) {
+            $val = isset( $_POST[ $key ] ) ? sanitize_text_field( $_POST[ $key ] ) : ( $data[ $key ] ?? '' );
+            if ( empty( $val ) ) {
+                wp_send_json_error( array( 'message' => $label . ' is required.' ) );
+            }
+        }
+
         // Email change
         if ( ! empty($_POST['email']) ) {
             $new_email = sanitize_email($_POST['email']);
@@ -571,6 +596,7 @@ class MSC_Account {
         $meta_fields = array(
             'phone', 'msc_birthday',
             'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
+            'msc_pit_crew_1', 'msc_pit_crew_2',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
         );

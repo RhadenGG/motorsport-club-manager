@@ -176,6 +176,9 @@ jQuery(function ($) {
                 fd.append('parent_name',      $('#msc-parent-name').val());
                 fd.append('emergency_name',   $('#msc-emergency-name').val());
                 fd.append('emergency_phone',  $('#msc-emergency-phone').val());
+                fd.append('emergency_rel',    $('#msc-emergency-rel').val());
+                fd.append('pit_crew_1',       $('#msc-pit-crew-1').val());
+                fd.append('pit_crew_2',       $('#msc-pit-crew-2').val());
                 fd.append('notes',            $('#msc-notes').val());
                 if (popFile) fd.append('pop_file', popFile);
 
@@ -590,6 +593,24 @@ jQuery(function ($) {
 
             $('#msc-save-profile').on('click', function (e) {
                 e.preventDefault();
+
+                var profileRequired = [
+                    { id: '#pe_first_name', label: 'First Name' },
+                    { id: '#pe_last_name',  label: 'Last Name' },
+                    { id: '#pe_phone',      label: 'Phone Number' },
+                    { id: '#pe_address1',   label: 'Street Address' },
+                    { id: '#pe_city',       label: 'City / Town' },
+                    { id: '#pe_province',   label: 'Province' },
+                    { id: '#pe_postcode',   label: 'Postal Code' },
+                ];
+                for (var i = 0; i < profileRequired.length; i++) {
+                    if (!$(profileRequired[i].id).val().trim()) {
+                        $('#msc-profile-msg').text(profileRequired[i].label + ' is required.').css('color', 'red').show();
+                        $(profileRequired[i].id).focus();
+                        return;
+                    }
+                }
+
                 var btn = $(this);
                 btn.prop('disabled', true).text('Saving…');
 
@@ -614,6 +635,8 @@ jQuery(function ($) {
                 fd.append('msc_emergency_name',  $('#pe_emergency_name').val());
                 fd.append('msc_emergency_phone', $('#pe_emergency_phone').val());
                 fd.append('msc_emergency_rel',   $('#pe_emergency_rel').val());
+                fd.append('msc_pit_crew_1', $('#pe_pit_crew_1').val());
+                fd.append('msc_pit_crew_2', $('#pe_pit_crew_2').val());
                 
                 if ($('#pe_password').val()) {
                     fd.append('password',  $('#pe_password').val());

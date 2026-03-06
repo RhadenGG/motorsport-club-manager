@@ -24,7 +24,8 @@ Built for any motorsport club or racing organisation running their website on Wo
 - Multi-step registration form with real-time validation
 - Electronic signature support via `signature_pad` (drawn or typed)
 - Automatic minor detection from date of birth — enforces parent/guardian name and signature
-- Mandatory emergency contact fields pre-filled from user profile
+- Mandatory emergency contact fields (name and phone) pre-filled from user profile
+- Optional emergency contact relationship and pit crew names (1 & 2) pre-filled from profile, editable during registration and saved back automatically
 - Submit button only enables when all required fields are complete
 - **Event-specific indemnity text** overrides the global default when set
 - **Custom mandatory declarations** (configurable via settings) appear as checkboxes
@@ -46,8 +47,9 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Member Profiles
 - Custom profile photo upload (avatar displayed in dashboard header)
-- Mandatory fields: date of birth, competition number, MSA licence, medical aid, gender
-- Emergency contact details saved to profile and pre-filled during registration
+- Mandatory fields: first name, last name, phone number, date of birth, street address, city/town, province, postal code, competition number, MSA licence, medical aid, gender
+- Optional fields: pit crew name #1 and #2
+- Emergency contact details (name, phone, relationship) saved to profile and pre-filled during registration
 - First-login onboarding prompt to complete missing profile fields
 
 ### Email Verification

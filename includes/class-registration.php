@@ -65,6 +65,9 @@ class MSC_Registration {
         $parent_sig = sanitize_textarea_field($_POST['parent_sig'] ?? '');
         $em_name    = sanitize_text_field($_POST['emergency_name'] ?? '');
         $em_phone   = sanitize_text_field($_POST['emergency_phone'] ?? '');
+        $em_rel     = sanitize_text_field($_POST['emergency_rel'] ?? '');
+        $pit_crew_1 = sanitize_text_field($_POST['pit_crew_1'] ?? '');
+        $pit_crew_2 = sanitize_text_field($_POST['pit_crew_2'] ?? '');
         $notes      = sanitize_textarea_field($_POST['notes'] ?? '');
 
         // Pull full name from user profile
@@ -172,6 +175,11 @@ class MSC_Registration {
         }
 
         $reg_id = $wpdb->insert_id;
+
+        // Save pit crew names and emergency relationship back to user profile for future pre-fill
+        if ( isset($_POST['pit_crew_1']) )    update_user_meta( $user_id, 'msc_pit_crew_1',       $pit_crew_1 );
+        if ( isset($_POST['pit_crew_2']) )    update_user_meta( $user_id, 'msc_pit_crew_2',       $pit_crew_2 );
+        if ( isset($_POST['emergency_rel']) ) update_user_meta( $user_id, 'msc_emergency_rel',    $em_rel );
 
         MSC_Emails::send_registration_received($reg_id);
         if ( $status === 'confirmed' ) MSC_Emails::send_confirmation($reg_id);

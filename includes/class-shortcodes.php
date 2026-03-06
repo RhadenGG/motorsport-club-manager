@@ -341,6 +341,18 @@ class MSC_Shortcodes {
                             <label>Emergency Contact Number <span style="color:red">*</span></label>
                             <input type="text" id="msc-emergency-phone" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_phone', true)); ?>" placeholder="Contact phone number">
                         </div>
+                        <div class="msc-field-group">
+                            <label>Emergency Contact Relationship</label>
+                            <input type="text" id="msc-emergency-rel" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_emergency_rel', true)); ?>" placeholder="Spouse, Parent, etc.">
+                        </div>
+                        <div class="msc-field-group">
+                            <label>Pit Crew Name #1</label>
+                            <input type="text" id="msc-pit-crew-1" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_1', true)); ?>" placeholder="Pit crew member name">
+                        </div>
+                        <div class="msc-field-group">
+                            <label>Pit Crew Name #2</label>
+                            <input type="text" id="msc-pit-crew-2" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
+                        </div>
                         <?php if ($is_minor) : ?>
                         <div class="msc-field-group" style="grid-column: span 2;">
                             <label>Parent/Guardian Full Name <span style="color:red">*</span></label>
