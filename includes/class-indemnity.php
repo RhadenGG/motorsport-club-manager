@@ -358,20 +358,23 @@ class MSC_Indemnity {
 
         $user_name  = esc_html( $reg->user_name );
         $event_name = esc_html( $reg->event_name );
-        $site       = esc_html( get_bloginfo( 'name' ) );
+        $site_name  = get_bloginfo( 'name' );
 
-        $subject  = 'Signed Indemnity Form — ' . $reg->event_name;
+        $subject  = 'Signed Indemnity Form - ' . $reg->event_name;
         $message  = "
             <p>Hi {$user_name},</p>
             <p>Please find attached your signed indemnity form for <strong>{$event_name}</strong>.</p>
             <p>Please keep this for your records. Entry #<strong>{$reg->id}</strong>.</p>
-            <p>See you at the track!<br>The {$site} Team</p>";
+            <p>See you at the track!<br>The " . esc_html($site_name) . " Team</p>";
 
-        $headers  = array( 'Content-Type: text/html; charset=UTF-8' );
+        $headers = array( 
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $site_name . ' <' . get_option('admin_email') . '>'
+        );
         $attachments = array( $tmp );
 
         // Add Proof of Payment if exists
-        if ($reg->pop_file_id) {
+        if ( ! empty($reg->pop_file_id) ) {
             $pop_path = get_attached_file($reg->pop_file_id);
             if ($pop_path && file_exists($pop_path)) {
                 $attachments[] = $pop_path;
@@ -382,12 +385,12 @@ class MSC_Indemnity {
         wp_mail( $reg->user_email, $subject, MSC_Emails::wrap("Signed Indemnity Form", $message), $headers, $attachments );
 
         // Send to admin
-        wp_mail( get_option( 'admin_email' ), 'Indemnity Signed: ' . $reg->event_name . ' — ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
+        wp_mail( get_option( 'admin_email' ), 'Indemnity Signed: ' . $reg->event_name . ' - ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
 
         // Send to event author if different from admin
         $event_author = get_user_by( 'id', $reg->event_author );
-        if ( $event_author && $event_author->user_email !== get_option( 'admin_email' ) ) {
-            wp_mail( $event_author->user_email, 'Indemnity Signed: ' . $reg->event_name . ' — ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
+        if ( $event_author && $event_author->user_email && $event_author->user_email !== get_option( 'admin_email' ) ) {
+            wp_mail( $event_author->user_email, 'Indemnity Signed: ' . $reg->event_name . ' - ' . $reg->user_name, MSC_Emails::wrap("Indemnity Signed", $message), $headers, $attachments );
         }
 
         if ( ! unlink( $tmp ) ) {
