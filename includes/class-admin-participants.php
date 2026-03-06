@@ -5,7 +5,6 @@ class MSC_Admin_Participants {
 
     public static function init() {
         add_action( 'admin_menu', array( __CLASS__, 'add_submenu' ) );
-        add_shortcode( 'msc_participants_dashboard', array( __CLASS__, 'frontend_dashboard' ) );
     }
 
     public static function add_submenu() {
