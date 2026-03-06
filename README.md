@@ -57,8 +57,10 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Race Results
 - Record lap times and finishing positions once an event is closed
-- Results displayed on the frontend event page
+- Results displayed on the frontend event page with podium cards for the top 3 finishers
 - Status tracking: Finished, DNF, DNS, DSQ
+- **Manual driver entry** — add drivers who aren't registered on the website directly from the results meta box
+- Compact, data-dense results entry UI designed for quick post-event data entry
 
 ### Security
 - Nonce verification on all AJAX endpoints and form handlers
