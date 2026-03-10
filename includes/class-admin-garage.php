@@ -55,20 +55,10 @@ class MSC_Admin_Garage {
                 <td><input type="text" name="msc_reg_number" value="<?php echo esc_attr($d['reg_number']); ?>" class="regular-text"></td>
             </tr>
             <tr>
-                <th><label>Vehicle Class</label></th>
+                <th><label>Engine Size</label></th>
                 <td colspan="3">
-                    <?php
-                    $current_classes = wp_get_post_terms($post->ID, 'msc_vehicle_class', array('fields'=>'ids'));
-                    $all = MSC_Taxonomies::get_all_classes();
-                    if (empty($all)) {
-                        echo '<a href="'.admin_url('edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle').'">Add vehicle classes first →</a>';
-                    } else {
-                        foreach($all as $id => $name) {
-                            $checked = in_array($id, $current_classes) ? 'checked' : '';
-                            echo "<label style='margin-right:12px'><input type='checkbox' name='msc_vehicle_class[]' value='".esc_attr($id)."' $checked> ".esc_html($name)."</label>";
-                        }
-                    }
-                    ?>
+                    <input type="text" name="msc_engine_size" value="<?php echo esc_attr( get_post_meta( $post->ID, '_msc_engine_size', true ) ); ?>" class="regular-text" placeholder="e.g. 1600cc, 2.0L Turbo">
+                    <p class="description">Displacement or engine specification — used to determine eligible classes at registration time.</p>
                 </td>
             </tr>
             <tr>
@@ -90,16 +80,17 @@ class MSC_Admin_Garage {
         if ( isset($_POST['msc_notes']) ) {
             update_post_meta($post_id,'_msc_notes', sanitize_textarea_field($_POST['msc_notes']));
         }
-        $class_ids = isset($_POST['msc_vehicle_class']) ? array_map('intval',$_POST['msc_vehicle_class']) : array();
-        wp_set_post_terms($post_id, $class_ids, 'msc_vehicle_class');
+        if ( isset($_POST['msc_engine_size']) ) {
+            update_post_meta($post_id,'_msc_engine_size', sanitize_text_field($_POST['msc_engine_size']));
+        }
     }
 
     public static function columns($cols) {
         return array_merge($cols, array(
-            'vehicle_type'  => 'Type',
-            'vehicle_make'  => 'Make/Model',
-            'vehicle_class' => 'Class',
-            'vehicle_owner' => 'Owner',
+            'vehicle_type'   => 'Type',
+            'vehicle_make'   => 'Make/Model',
+            'vehicle_engine' => 'Engine Size',
+            'vehicle_owner'  => 'Owner',
         ));
     }
 
@@ -114,9 +105,8 @@ class MSC_Admin_Garage {
                 $year  = get_post_meta($post_id,'_msc_year',true);
                 echo esc_html(trim("$year $make $model") ?: '—');
                 break;
-            case 'vehicle_class':
-                $terms = wp_get_post_terms($post_id,'msc_vehicle_class',array('fields'=>'names'));
-                echo !empty($terms) ? esc_html(implode(', ',$terms)) : '—';
+            case 'vehicle_engine':
+                echo esc_html( get_post_meta( $post_id, '_msc_engine_size', true ) ?: '—' );
                 break;
             case 'vehicle_owner':
                 $post  = get_post($post_id);
@@ -154,17 +144,6 @@ class MSC_Admin_Garage {
             $args['meta_query'][] = array(
                 'key'   => '_msc_type',
                 'value' => $allowed_type,
-            );
-        }
-
-        // Filter by class if classes are set
-        if ( ! empty( $allowed_classes ) ) {
-            $args['tax_query'] = array(
-                array(
-                    'taxonomy' => 'msc_vehicle_class',
-                    'field'    => 'term_id',
-                    'terms'    => array_map( 'intval', $allowed_classes ),
-                ),
             );
         }
 

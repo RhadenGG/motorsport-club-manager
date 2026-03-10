@@ -9,19 +9,24 @@ Built for any motorsport club or racing organisation running their website on Wo
 ## Key Features
 
 ### Event Management
-- Create events with dates, locations, capacity limits, entry fees, and registration windows
-- Per-event configuration of allowed vehicle types (Cars, Motorcycles, or Both) and classes
+- Create events with dates, locations, capacity limits, and registration windows
+- **Base entry fee** applies to all entrants, regardless of class
+- **Per-class additional fees** — each allowed class can have its own additional cost on top of the base fee
+- Per-event configuration of allowed vehicle types (Cars, Motorcycles, or Both) and which classes can enter
 - Instant or manual approval modes for registrations
 - Event lifecycle: open for registration → closed → results published
 
 ### Member Garage
 - Members manage their own fleet of vehicles from a frontend dashboard
 - Vehicle photos with drag-and-drop upload
-- Vehicle classification by type and class (taxonomy-driven)
-- Only vehicles matching an event's allowed classes appear during registration
+- Vehicles are classified by **type** (Car or Motorcycle) and **engine size** — not by a single class
+- Any vehicle of the correct type is eligible for events; class selection happens at registration time, not at vehicle setup
 
 ### Registration & Indemnity
 - Multi-step registration form with real-time validation
+- **Multi-class entry** — members select one or more classes to enter for the event, each with its own additional fee
+- **Live fee breakdown** — total cost is calculated in real time as classes are selected (Base fee + class fees = Total), displayed above the banking details and proof-of-payment upload
+- One registration, one indemnity, one proof of payment — covers all selected classes
 - Electronic signature support via `signature_pad` (drawn or typed)
 - Automatic minor detection from date of birth — enforces parent/guardian name and signature
 - Mandatory emergency contact fields (name and phone) pre-filled from user profile
@@ -32,7 +37,8 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Proof of Payment (EFT)
 - Configurable banking details shown to members during registration
-- PDF upload required for events with an entry fee
+- **Live fee breakdown** displayed above banking details: base fee, each selected class fee, and total — so entrants know exactly what to pay
+- PDF upload required when the total fee (base + selected classes) is greater than zero
 - PoP is emailed to the admin/event creator with the signed indemnity, then deleted from the server — no permanent storage
 - Admin registrations table shows "✓ Emailed" once the PoP has been sent and removed
 
@@ -66,9 +72,11 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Race Results
 - Record lap times and finishing positions once an event is closed
-- Results displayed on the frontend event page with podium cards for the top 3 finishers
+- **Per-class results** — each class entered in an event has its own results tab in the admin and its own podium section on the frontend
+- Results entry UI uses **class tabs** — click a class to enter results for drivers in that class; registered and manual drivers shown separately per class
+- Frontend results page groups standings by class, each with its own podium (top 3 finishers with medals)
 - Status tracking: Finished, DNF, DNS, DSQ
-- **Manual driver entry** — add drivers who aren't registered on the website directly from the results meta box
+- **Manual driver entry** — add walk-in drivers (not registered on the website) to any class's results directly from the results meta box
 - Compact, data-dense results entry UI designed for quick post-event data entry
 
 ### Security
@@ -89,7 +97,8 @@ Built for any motorsport club or racing organisation running their website on Wo
 - **Custom Taxonomy:** `msc_vehicle_class` (shared across post types)
 - **Custom Database Tables:**
     - `{prefix}msc_registrations` — entrant details, signatures, emergency contacts, PoP references
-    - `{prefix}msc_event_results` — lap times, positions, finish status
+    - `{prefix}msc_registration_classes` — junction table linking each registration to one or more entered classes, with the class-specific fee recorded at time of registration
+    - `{prefix}msc_event_results` — lap times, positions, finish status (one row per driver per class)
 - **Frontend:** jQuery + vanilla CSS (all classes prefixed `msc-`)
 - **Libraries:**
     - [`signature_pad`](https://github.com/nicholasgasior/signature_pad) (CDN) — electronic signatures
@@ -163,8 +172,8 @@ Operational scope for Event Creators is configurable in **Motorsport Club → Se
 | Tab | Features |
 |---|---|
 | **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form (including featured image picker and optional per-event indemnity text). Close or reopen events. |
-| **Registrations** | Filter by event and status. View entrant details, update registration status (triggers confirmation email), and download indemnity PDFs. |
-| **Results** | Select a closed event and enter results for registered and manual (walk-in) drivers — position, laps, lap times, finish status, and notes. |
+| **Registrations** | Filter by event and status. View entrant details (including entered classes and total fee), update registration status (triggers confirmation email), and download indemnity PDFs. |
+| **Results** | Select a closed event and enter results per class via class tabs. Each tab lists registered drivers for that class plus a manual entry section for walk-ins. |
 | **Participants** | Full participant lookup with expandable detail cards (same as admin Participants page). |
 
 ### Event Creator Role
@@ -180,7 +189,7 @@ The plugin automatically creates an **Event Creator** (`msc_event_creator`) Word
 - Delete registrations
 
 ### Vehicle Classes
-Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a Vehicle Type (Car or Motorcycle). Events select which types and classes are allowed, and only matching vehicles from a member's garage appear during registration. A set of default classes is created on first activation — add, rename, or remove them to suit your club.
+Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a Vehicle Type (Car or Motorcycle). Events select which types and classes are allowed, and each class can carry its own additional entry fee on top of the event's base fee. Members select which classes to enter during registration — a single entry can cover multiple classes. A set of default classes is created on first activation — add, rename, or remove them to suit your club.
 
 ### Settings
 - **Account Page URL** — full URL of the page containing `[msc_my_account]`
@@ -209,12 +218,14 @@ Access is restricted to the participant, the event author, and administrators.
 ## Architecture
 
 ### Event Lifecycle
-1. **Open** — members can register with eligible vehicles
+1. **Open** — members can register with eligible vehicles, select classes, and pay the calculated total fee
 2. **Closed** (`_msc_event_status = 'closed'`) — registrations locked, results interface enabled
-3. **Results published** — displayed on the frontend event page
+3. **Results published** — displayed on the frontend event page, grouped by class with per-class podiums
 
 ### Centralised Classification
-`MSC_Taxonomies` is the single source of truth for vehicle types and classes, backed by the `msc_vehicle_class` taxonomy with `msc_vehicle_type` term meta. Classes are managed entirely through the WordPress admin UI, ensuring consistency between the admin garage, event configuration, and frontend registration filtering.
+`MSC_Taxonomies` is the single source of truth for vehicle types and classes, backed by the `msc_vehicle_class` taxonomy with `msc_vehicle_type` term meta. Classes are managed entirely through the WordPress admin UI.
+
+Classes are no longer assigned to individual vehicles. Instead, they are assigned at **registration time** — a member picks their vehicle (filtered by type: Car or Motorcycle) and then selects which classes they want to enter from the event's allowed classes. This means one vehicle can compete in multiple classes in a single event, and results are tracked per class.
 
 ---
 

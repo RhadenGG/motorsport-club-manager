@@ -16,20 +16,11 @@ class MSC_Shortcodes {
         wp_enqueue_style(  'msc-frontend', MSC_URL . 'assets/css/frontend.css', array(), MSC_VERSION );
         wp_enqueue_script( 'msc-signature', 'https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js', array(), null, true );
         wp_enqueue_script( 'msc-frontend',  MSC_URL . 'assets/js/frontend.js', array('jquery','msc-signature'), MSC_VERSION, true );
-        $classes_by_type = MSC_Taxonomies::get_classes_by_type();
-        $classes_for_js  = array();
-        foreach ( $classes_by_type as $type => $type_classes ) {
-            $classes_for_js[ $type ] = array();
-            foreach ( $type_classes as $term_id => $term_name ) {
-                $classes_for_js[ $type ][] = array( 'id' => $term_id, 'name' => $term_name );
-            }
-        }
         wp_localize_script( 'msc-frontend', 'mscData', array(
             'ajaxUrl'  => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => wp_login_url(),
             'loggedIn' => is_user_logged_in(),
-            'classes'  => $classes_for_js,
         ) );
     }
 
@@ -243,8 +234,25 @@ class MSC_Shortcodes {
         if ( ! $indemnity ) {
             $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
         }
-        $fee       = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
-        $approval  = get_post_meta($event_id,'_msc_approval',true) ?: 'instant';
+        $fee        = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
+        $class_fees = get_post_meta( $event_id, '_msc_class_fees', true );
+        $class_fees = is_array( $class_fees ) ? $class_fees : array();
+        $approval   = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
+
+        // Build class data for the registration form
+        $event_class_ids = get_post_meta( $event_id, '_msc_event_classes', true );
+        $event_class_ids = $event_class_ids ? array_map( 'intval', (array) $event_class_ids ) : array();
+        $event_classes_for_form = array();
+        foreach ( $event_class_ids as $cid ) {
+            $term = get_term( $cid, 'msc_vehicle_class' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $event_classes_for_form[] = array(
+                    'id'   => $cid,
+                    'name' => $term->name,
+                    'fee'  => isset( $class_fees[ $cid ] ) ? floatval( $class_fees[ $cid ] ) : 0.0,
+                );
+            }
+        }
 
         if ($reg_open  && strtotime($reg_open)  > $now) return '<div class="msc-notice msc-notice-info">Registration opens on '.date('D d F Y @ H:i',strtotime($reg_open)).'.</div>';
         if ($reg_close && strtotime($reg_close) < $now) return '<div class="msc-notice msc-notice-warning">Registration for this event is now closed.</div>';
@@ -297,28 +305,66 @@ class MSC_Shortcodes {
 
         ob_start();
         ?>
-        <div id="msc-reg-wrap" class="msc-registration-wrap" data-event="<?php echo $event_id ?>" data-minor="<?php echo $is_minor ? '1' : '0'; ?>">
+        <div id="msc-reg-wrap" class="msc-registration-wrap"
+             data-event="<?php echo $event_id; ?>"
+             data-minor="<?php echo $is_minor ? '1' : '0'; ?>"
+             data-base-fee="<?php echo esc_attr( number_format( $fee, 2, '.', '' ) ); ?>"
+             data-classes="<?php echo esc_attr( wp_json_encode( $event_classes_for_form ) ); ?>">
             <h3 class="msc-section-title">Register for this Event</h3>
 
             <?php if($approval==='manual'): ?>
             <div class="msc-notice msc-notice-info" style="margin-bottom:16px">ℹ️ Registrations for this event require admin approval. You will be notified by email once confirmed.</div>
             <?php endif ?>
 
-            <!-- Step 1: Vehicle -->
+            <!-- Step 1: Vehicle + Class Selection -->
             <div class="msc-step" id="msc-step-1">
-                <div class="msc-step-header"><span class="msc-step-num">1</span> Select Your Vehicle</div>
+                <div class="msc-step-header"><span class="msc-step-num">1</span> Select Your Vehicle &amp; Classes</div>
                 <div class="msc-step-body">
                     <div id="msc-vehicles-loading">Loading your vehicles…</div>
                     <div id="msc-vehicles-list" style="display:none"></div>
                     <div id="msc-vehicles-empty" style="display:none">
-                        <p>No eligible vehicles found in your garage for this event's classes.</p>
+                        <p>No eligible vehicles found in your garage for this event's vehicle type.</p>
                         <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-outline">Add a Vehicle</a>
                     </div>
-                    <div style="margin-top:12px">
+
+                    <!-- Class selection — shown after a vehicle is picked -->
+                    <div id="msc-class-selection" style="display:none;margin-top:20px;">
+                        <p style="font-weight:600;margin-bottom:8px">Select classes to enter <span style="color:red">*</span></p>
+                        <?php if ( empty( $event_classes_for_form ) ) : ?>
+                        <p style="color:#888;font-style:italic;">No classes have been configured for this event.</p>
+                        <?php else : ?>
+                        <div class="msc-class-check-list">
+                        <?php foreach ( $event_classes_for_form as $cls ) : ?>
+                            <label class="msc-class-check-label">
+                                <input type="checkbox" class="msc-class-check"
+                                       data-id="<?php echo esc_attr( $cls['id'] ); ?>"
+                                       data-fee="<?php echo esc_attr( number_format( $cls['fee'], 2, '.', '' ) ); ?>">
+                                <span class="msc-class-check-name"><?php echo esc_html( $cls['name'] ); ?></span>
+                                <span class="msc-class-check-fee">
+                                    <?php echo $cls['fee'] > 0 ? '+R ' . number_format( $cls['fee'], 2 ) : 'included'; ?>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                        </div>
+
+                        <!-- Live fee breakdown -->
+                        <div id="msc-fee-breakdown" style="margin-top:14px;padding:12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;display:none;">
+                            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                                <tbody id="msc-fee-breakdown-rows"></tbody>
+                                <tr style="border-top:2px solid #ccc;">
+                                    <td style="padding:6px 4px;font-weight:700;">Total</td>
+                                    <td style="padding:6px 4px;font-weight:700;text-align:right;" id="msc-fee-total">R 0.00</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div style="margin-top:16px">
                         <label style="font-weight:600;display:block;margin-bottom:4px">Additional Notes (optional)</label>
                         <textarea id="msc-notes" rows="2" placeholder="Any notes for the organiser..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box"></textarea>
                     </div>
-                    <button id="msc-step1-next" class="msc-btn" style="margin-top:12px" disabled>Next: Review & Indemnity →</button>
+                    <button id="msc-step1-next" class="msc-btn" style="margin-top:12px" disabled>Next: Review &amp; Indemnity →</button>
                 </div>
             </div>
 
@@ -375,27 +421,36 @@ class MSC_Shortcodes {
 
                     <div id="msc-summary" class="msc-summary-box"></div>
 
-                    <?php if($fee > 0): ?>
-                    <div class="msc-payment-section" style="margin:20px 0; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
+                    <!-- Payment section — shown/hidden by JS based on total fee -->
+                    <div id="msc-payment-section" class="msc-payment-section" style="display:none;margin:20px 0;padding:15px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
                         <h4 style="margin-top:0">💰 Payment Information</h4>
-                        <p>Entry fee: <strong>R <?php echo number_format($fee, 2); ?></strong></p>
-                        
-                        <?php 
-                        $banking = get_option('msc_banking_details', '');
-                        if($banking): ?>
-                        <div class="msc-banking-details" style="margin-bottom:15px; padding:10px; background:#fff; border-left:4px solid #2271b1;">
+
+                        <!-- Fee breakdown injected by JS -->
+                        <div id="msc-payment-breakdown" style="margin-bottom:14px;padding:10px;background:#fff;border:1px solid #e0e0e0;border-radius:4px;">
+                            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                                <tbody id="msc-payment-breakdown-rows"></tbody>
+                                <tr style="border-top:2px solid #ccc;">
+                                    <td style="padding:6px 4px;font-weight:700;">Total due</td>
+                                    <td style="padding:6px 4px;font-weight:700;text-align:right;" id="msc-payment-total">R 0.00</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <?php
+                        $banking = get_option( 'msc_banking_details', '' );
+                        if ( $banking ) : ?>
+                        <div class="msc-banking-details" style="margin-bottom:15px;padding:10px;background:#fff;border-left:4px solid #2271b1;">
                             <strong>Banking Details for EFT:</strong><br>
-                            <?php echo nl2br(wp_kses_post($banking)); ?>
+                            <?php echo nl2br( wp_kses_post( $banking ) ); ?>
                         </div>
                         <?php endif; ?>
 
                         <div class="msc-field-group">
                             <label style="font-weight:700">Upload Proof of Payment (PDF only) <span style="color:red">*</span></label>
-                            <input type="file" id="msc-pop-file" accept="application/pdf" style="width:100%; padding:10px; background:#fff; border:1px solid #ccc; border-radius:4px;">
-                            <p class="description" style="font-size:0.85em; margin-top:4px;">Please upload your EFT confirmation PDF to complete your registration.</p>
+                            <input type="file" id="msc-pop-file" accept="application/pdf" style="width:100%;padding:10px;background:#fff;border:1px solid #ccc;border-radius:4px;">
+                            <p class="description" style="font-size:0.85em;margin-top:4px;">Please upload your EFT confirmation PDF to complete your registration.</p>
                         </div>
                     </div>
-                    <?php endif ?>
 
                     <?php 
                     $custom_decs = get_option('msc_custom_declarations', '');

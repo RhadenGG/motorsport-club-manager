@@ -175,10 +175,8 @@ class MSC_Account {
                             </select>
                         </div>
                         <div class="msc-field">
-                            <label for="v_class">Vehicle Class</label>
-                            <select id="v_class" disabled>
-                                <option value="">Select type first…</option>
-                            </select>
+                            <label for="v_engine_size">Engine Size</label>
+                            <input type="text" id="v_engine_size" placeholder="e.g. 1600cc, 2.0L Turbo">
                         </div>
                         <div class="msc-field">
                             <label for="v_make">Make</label>
@@ -230,8 +228,7 @@ class MSC_Account {
                         $color = get_post_meta( $v->ID, '_msc_color',      true );
                         $reg   = get_post_meta( $v->ID, '_msc_reg_number', true );
                         $notes = get_post_meta( $v->ID, '_msc_notes',      true );
-                        $terms = wp_get_post_terms( $v->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
-                        $class = ! empty( $terms ) ? implode( ', ', $terms ) : null;
+                        $engine_size = get_post_meta( $v->ID, '_msc_engine_size', true );
                         $thumb_id  = get_post_thumbnail_id( $v->ID );
                         $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
                         $icons     = array( 'Car' => '🚗', 'Motorcycle' => '🏍' );
@@ -244,8 +241,8 @@ class MSC_Account {
                             <?php else : ?>
                                 <div class="msc-garage-card-icon"><?php echo $icon; ?></div>
                             <?php endif; ?>
-                            <?php if ( $class ) : ?>
-                            <span class="msc-garage-class-badge"><?php echo esc_html( $class ); ?></span>
+                            <?php if ( $engine_size ) : ?>
+                            <span class="msc-garage-class-badge"><?php echo esc_html( $engine_size ); ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="msc-garage-card-body">
@@ -308,18 +305,10 @@ class MSC_Account {
                                     </select>
                                 </div>
                                 <div class="msc-field">
-                                    <label>Vehicle Class</label>
-                                    <?php
-                                    $current_term_ids   = wp_get_post_terms( $v->ID, 'msc_vehicle_class', array( 'fields' => 'ids' ) );
-                                    $current_class_id   = ! empty( $current_term_ids ) ? intval( $current_term_ids[0] ) : 0;
-                                    ?>
-                                    <select class="edit-v_class" data-id="<?php echo $v->ID; ?>" data-current="<?php echo esc_attr( $current_class_id ); ?>" <?php echo $type ? '' : 'disabled'; ?>>
-                                        <?php if ( ! $type ) : ?>
-                                        <option value="">Select type first…</option>
-                                        <?php else : ?>
-                                        <option value="">Select class…</option>
-                                        <?php endif; ?>
-                                    </select>
+                                    <label>Engine Size</label>
+                                    <input type="text" class="edit-v_engine_size" data-id="<?php echo $v->ID; ?>"
+                                           value="<?php echo esc_attr( get_post_meta( $v->ID, '_msc_engine_size', true ) ); ?>"
+                                           placeholder="e.g. 1600cc, 2.0L Turbo">
                                 </div>
                                 <div class="msc-field">
                                     <label>Make</label>
@@ -689,9 +678,8 @@ class MSC_Account {
         if ( ! empty( $_POST['notes'] ) ) {
             update_post_meta( $post_id, '_msc_notes', sanitize_textarea_field( $_POST['notes'] ) );
         }
-        $class_term_id = absint( $_POST['class_id'] ?? 0 );
-        if ( $class_term_id ) {
-            wp_set_post_terms( $post_id, array( $class_term_id ), 'msc_vehicle_class' );
+        if ( isset( $_POST['engine_size'] ) ) {
+            update_post_meta( $post_id, '_msc_engine_size', sanitize_text_field( $_POST['engine_size'] ) );
         }
 
         // Handle photo upload
@@ -741,15 +729,7 @@ class MSC_Account {
             }
         }
         update_post_meta( $post_id, '_msc_notes', sanitize_textarea_field( $_POST['notes'] ?? '' ) );
-
-        if ( isset( $_POST['class_id'] ) ) {
-            $class_term_id = absint( $_POST['class_id'] );
-            if ( $class_term_id ) {
-                wp_set_post_terms( $post_id, array( $class_term_id ), 'msc_vehicle_class' );
-            } else {
-                wp_set_post_terms( $post_id, array(), 'msc_vehicle_class' );
-            }
-        }
+        update_post_meta( $post_id, '_msc_engine_size', sanitize_text_field( $_POST['engine_size'] ?? '' ) );
 
         // Handle new photo upload
         if ( ! empty( $_FILES['photo'] ) && ! empty( $_FILES['photo']['name'] ) ) {

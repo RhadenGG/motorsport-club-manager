@@ -37,6 +37,18 @@ class MSC_Activator {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $sql1 );
 
+        // Registration classes junction table
+        $sql2 = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}msc_registration_classes (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            registration_id bigint(20) unsigned NOT NULL,
+            class_id bigint(20) unsigned NOT NULL,
+            class_fee decimal(10,2) NOT NULL DEFAULT 0.00,
+            PRIMARY KEY  (id),
+            KEY idx_reg (registration_id),
+            UNIQUE KEY reg_class (registration_id, class_id)
+        ) $charset;";
+        $wpdb->query( $sql2 );
+
         // Results table
         MSC_Results::create_table();
 
