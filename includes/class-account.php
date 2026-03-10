@@ -26,8 +26,8 @@ class MSC_Account {
                     <h3>Members Area</h3>
                     <p>Please log in to access your account, manage your vehicles and view your registrations.</p>
                     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                        <a href="' . wp_login_url( get_permalink() ) . '" class="msc-btn">Log In to Your Account</a>
-                        <a href="' . wp_registration_url() . '" class="msc-btn">Create an Account</a>
+                        <a href="' . esc_url( add_query_arg( 'redirect_to', rawurlencode( get_permalink() ), MSC_Auth::login_url() ) ) . '" class="msc-btn">Log In to Your Account</a>
+                        <a href="' . esc_url( MSC_Auth::register_url() ) . '" class="msc-btn">Create an Account</a>
                     </div>
                 </div>
             </div>';
