@@ -57,7 +57,7 @@ Built for any motorsport club or racing organisation running their website on Wo
 - **`[msc_register]`** — registration form (username + email only); verification email sent automatically on submit
 - **`[msc_set_password]`** — secure set-password form reached after email verification; includes password strength indicator and match check
 - All three shortcodes redirect logged-in users to the account page
-- Designed to work alongside **WPS Hide Login** or any plugin that hides `wp-login.php`
+- **CAPTCHA-compatible** — the login form calls `do_action('login_form')` and enqueues the Cloudflare Turnstile API script, so any CAPTCHA plugin that hooks into the standard WordPress login form (e.g. Simple CAPTCHA Alternative with Cloudflare Turnstile) works out of the box
 
 ### Email Verification
 - New registrations require email verification before login

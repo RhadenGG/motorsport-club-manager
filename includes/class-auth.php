@@ -122,15 +122,18 @@ class MSC_Auth {
         ), is_ssl() );
 
         if ( is_wp_error( $user ) ) {
-            $code = $user->get_error_code();
-            if ( $code === 'email_not_verified' ) {
-                $err = 'not_verified';
-            } elseif ( in_array( $code, array( 'incorrect_password', 'invalid_username', 'invalid_email' ), true ) ) {
-                $err = 'wrong_credentials';
+            $referer = wp_get_referer() ?: self::login_url();
+
+            if ( $user->get_error_code() === 'email_not_verified' ) {
+                // Our own error — use the dedicated notice (includes resend link).
+                wp_safe_redirect( add_query_arg( 'msc_auth_err', 'not_verified', $referer ) );
             } else {
-                $err = sanitize_key( $code );
+                // For all other WP errors, store the actual message in a transient
+                // so we can display it without losing detail through URL sanitisation.
+                $tok = wp_generate_password( 12, false );
+                set_transient( 'msc_auth_msg_' . $tok, wp_strip_all_tags( $user->get_error_message() ), 120 );
+                wp_safe_redirect( add_query_arg( 'msc_auth_tok', $tok, $referer ) );
             }
-            wp_safe_redirect( add_query_arg( 'msc_auth_err', $err, wp_get_referer() ?: self::login_url() ) );
             exit;
         }
 
@@ -231,6 +234,21 @@ class MSC_Auth {
         $resent   = isset( $_GET['msc_resent'] );
         $redirect = esc_url_raw( wp_unslash( $_GET['redirect_to'] ?? '' ) );
 
+        // Retrieve WP error message stored in transient (for unrecognised error codes).
+        $wp_error_msg = '';
+        if ( isset( $_GET['msc_auth_tok'] ) ) {
+            $tok = sanitize_text_field( wp_unslash( $_GET['msc_auth_tok'] ) );
+            $stored = get_transient( 'msc_auth_msg_' . $tok );
+            if ( $stored ) {
+                $wp_error_msg = $stored;
+                delete_transient( 'msc_auth_msg_' . $tok );
+            }
+        }
+
+        // Enqueue the Cloudflare Turnstile API so CAPTCHA plugins that hook into
+        // login_form can render their widget on this frontend page.
+        wp_enqueue_script( 'cf-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', array(), null, true );
+
         ob_start();
         ?>
         <div class="msc-auth-wrap">
@@ -250,7 +268,9 @@ class MSC_Auth {
                         <div class="msc-notice msc-notice-info">Verification email resent. Please check your inbox.</div>
                     <?php endif; ?>
 
-                    <?php if ( $error ) : ?>
+                    <?php if ( $wp_error_msg ) : ?>
+                        <div class="msc-notice msc-notice-error"><?php echo esc_html( $wp_error_msg ); ?></div>
+                    <?php elseif ( $error ) : ?>
                         <div class="msc-notice msc-notice-error"><?php echo esc_html( self::error_message( $error ) ); ?></div>
                     <?php endif; ?>
 
@@ -280,6 +300,15 @@ class MSC_Auth {
                             </label>
                             <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>" class="msc-auth-link msc-auth-link-muted">Forgot password?</a>
                         </div>
+
+                        <?php
+                        /**
+                         * Runs inside the login form — same hook wp-login.php uses.
+                         * CAPTCHA plugins (e.g. Cloudflare Turnstile) hook here to
+                         * render their widget, so it appears on this custom form too.
+                         */
+                        do_action( 'login_form' );
+                        ?>
 
                         <button type="submit" class="msc-btn msc-auth-submit">Log In →</button>
                     </form>
