@@ -209,21 +209,36 @@ class MSC_Frontend_Dashboard {
                     </div>
                 </div>
 
-                <!-- Class checkboxes -->
+                <!-- Class checkboxes + per-class fees -->
                 <div style="margin-top:16px">
-                    <label style="font-weight:600;display:block;margin-bottom:8px">Allowed Vehicle Classes</label>
+                    <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
+                    <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
                     <div id="ce-class-boxes">
                     <?php foreach ( $classes_by_type as $type => $classes ) : ?>
-                    <div class="msc-ce-class-group" data-type="<?php echo esc_attr($type); ?>" style="margin-bottom:12px">
-                        <strong style="display:block;margin-bottom:4px"><?php echo esc_html($type); ?> Classes</strong>
-                        <div style="display:flex;flex-wrap:wrap;gap:6px 16px">
+                    <div class="msc-ce-class-group" data-type="<?php echo esc_attr($type); ?>" style="margin-bottom:16px">
+                        <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
+                        <table style="width:100%;border-collapse:collapse;max-width:500px">
+                        <thead><tr>
+                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
+                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>
+                        </tr></thead>
+                        <tbody>
                         <?php foreach ( $classes as $term_id => $class_name ) : ?>
-                        <label style="font-weight:400;white-space:nowrap">
-                            <input type="checkbox" class="ce-class-cb" value="<?php echo esc_attr($term_id); ?>">
-                            <?php echo esc_html($class_name); ?>
-                        </label>
+                        <tr>
+                            <td style="padding:3px 8px 3px 0">
+                                <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">
+                                    <input type="checkbox" class="ce-class-cb" value="<?php echo esc_attr($term_id); ?>">
+                                    <?php echo esc_html($class_name); ?>
+                                </label>
+                            </td>
+                            <td style="padding:3px 0">
+                                <input type="number" class="ce-class-fee" data-class-id="<?php echo esc_attr($term_id); ?>"
+                                       min="0" step="0.01" style="width:80px" placeholder="0.00" value="0.00">
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
-                        </div>
+                        </tbody>
+                        </table>
                     </div>
                     <?php endforeach; ?>
                     </div>
@@ -354,7 +369,13 @@ class MSC_Frontend_Dashboard {
                 var btn = $(this);
                 var msg = $('#msc-create-event-msg');
                 var classes = [];
-                $('.ce-class-cb:checked').each(function(){ classes.push($(this).val()); });
+                var classFees = {};
+                $('.ce-class-cb:checked').each(function(){
+                    var id = $(this).val();
+                    classes.push(id);
+                    var fee = parseFloat($('.ce-class-fee[data-class-id="'+id+'"]').val()) || 0;
+                    classFees[id] = fee;
+                });
 
                 if (!$('#ce_title').val().trim()) {
                     msg.text('Event title is required.').css('color','red').show(); return;
@@ -380,6 +401,7 @@ class MSC_Frontend_Dashboard {
                     indemnity:          $('#ce_indemnity').val(),
                     featured_image_id:  $('#ce_featured_image_id').val() || 0,
                     class_ids:          classes,
+                    class_fees:         classFees,
                 }, function(res){
                     btn.prop('disabled', false).text('Create Event');
                     if (res.success) {
@@ -909,6 +931,15 @@ class MSC_Frontend_Dashboard {
         }
         update_post_meta( $post_id, '_msc_event_classes', $valid_ids );
         wp_set_post_terms( $post_id, $valid_ids, 'msc_vehicle_class' );
+
+        // Per-class additional fees
+        $class_fees = array();
+        if ( ! empty( $_POST['class_fees'] ) && is_array( $_POST['class_fees'] ) ) {
+            foreach ( $_POST['class_fees'] as $class_id => $fee ) {
+                $class_fees[ intval( $class_id ) ] = round( floatval( $fee ), 2 );
+            }
+        }
+        update_post_meta( $post_id, '_msc_class_fees', $class_fees );
 
         wp_send_json_success( array( 'message' => 'Event created.', 'post_id' => $post_id ) );
     }
