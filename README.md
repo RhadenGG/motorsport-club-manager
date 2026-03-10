@@ -52,9 +52,16 @@ Built for any motorsport club or racing organisation running their website on Wo
 - Emergency contact details (name, phone, relationship) saved to profile and pre-filled during registration
 - First-login onboarding prompt to complete missing profile fields
 
+### Custom Frontend Auth Pages
+- **`[msc_login]`** — fully styled login form with username/email + password, "keep me logged in", and "forgot password?" link
+- **`[msc_register]`** — registration form (username + email only); verification email sent automatically on submit
+- **`[msc_set_password]`** — secure set-password form reached after email verification; includes password strength indicator and match check
+- All three shortcodes redirect logged-in users to the account page
+- Designed to work alongside **WPS Hide Login** or any plugin that hides `wp-login.php`
+
 ### Email Verification
 - New registrations require email verification before login
-- Custom branded login/register/password pages using site logo
+- After clicking the verification link, members are sent directly to the `[msc_set_password]` page to choose their password
 - Resend verification link with rate limiting and CSRF protection
 
 ### Race Results
@@ -93,12 +100,21 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 1. Upload the plugin folder to `/wp-content/plugins/`
 2. Activate through **Plugins** in WordPress admin
-3. Go to **Motorsport Club → Settings**:
+3. Enable **Settings → General → Anyone can register** in WordPress
+4. Go to **Motorsport Club → Settings**:
    - Set your EFT banking details
    - Configure the default indemnity text
-   - Set the account page URL
-4. Create a page with the `[msc_my_account]` shortcode and add it to your menu
-5. Create a page with the `[msc_event_dashboard]` shortcode for staff/event creators and restrict its menu visibility as needed
+   - Set the Account, Login, Registration, and Set Password page URLs
+5. Create the following pages and add them to your menu:
+
+   | Page | Shortcode |
+   |---|---|
+   | My Account | `[msc_my_account]` |
+   | Login | `[msc_login]` |
+   | Register | `[msc_register]` |
+   | Set Password | `[msc_set_password]` |
+   | Event Dashboard *(staff only)* | `[msc_event_dashboard]` |
+
 6. Start creating events under **Motorsport Club → Events** or via the frontend dashboard
 
 Database tables are created automatically on activation. Schema migrations run automatically when the plugin version changes.
@@ -109,6 +125,9 @@ Database tables are created automatically on activation. Schema migrations run a
 
 | Shortcode | Purpose |
 |---|---|
+| `[msc_login]` | Frontend login form — username/email + password, remember me, forgot password link |
+| `[msc_register]` | Frontend registration form — username + email; sends verification email automatically |
+| `[msc_set_password]` | Set-password form reached after email verification; includes strength indicator |
 | `[msc_events_list]` | Grid of upcoming events with date, location, fee, and registration status. Accepts `count` (default 10) and `show_past` (default 0) attributes. Events are ordered newest first. |
 | `[msc_next_event]` | Compact card showing the next upcoming open event — featured image (clickable to enlarge), date, location, fee, and a link. Closed events are excluded. Designed for sidebars and footers. |
 | `[msc_my_account]` | Member dashboard — garage, registrations, and profile management |
@@ -164,6 +183,9 @@ Manage classes under **Motorsport Club → Vehicle Classes**. Each class has a V
 
 ### Settings
 - **Account Page URL** — full URL of the page containing `[msc_my_account]`
+- **Login Page URL** — full URL of the page containing `[msc_login]` (leave blank to use WordPress default)
+- **Registration Page URL** — full URL of the page containing `[msc_register]` (leave blank to use WordPress default)
+- **Set Password Page URL** — full URL of the page containing `[msc_set_password]` (leave blank to use WordPress default)
 - **Dashboard Event Access Mode** — choose **Strict ownership** or **Shared ops** for Event Creator permissions in `[msc_event_dashboard]`
 - **Email Settings** — configure the "From" name and email address for automated messages
 - **SMTP Configuration** — built-in support for external SMTP servers
@@ -204,6 +226,7 @@ Access is restricted to the participant, the event author, and administrators.
 | `includes/class-registration.php` | AJAX registration logic and validation |
 | `includes/class-account.php` | Frontend member dashboard |
 | `includes/class-indemnity.php` | PDF generation and email delivery |
+| `includes/class-auth.php` | Frontend login, register, and set-password shortcodes |
 | `includes/class-security.php` | Email verification, login branding, profile fields |
 | `includes/class-results.php` | Event closing and results management |
 | `includes/class-admin-events.php` | Admin event meta boxes, registrations page, settings |

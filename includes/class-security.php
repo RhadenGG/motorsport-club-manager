@@ -122,7 +122,7 @@ class MSC_Security {
         if ( user_can( $user, 'manage_options' ) ) return $user;
 
         if ( get_user_meta( $user->ID, 'msc_email_verified', true ) === '0' ) {
-            $resend_url = esc_url( wp_nonce_url( add_query_arg( 'msc_resend', $user->ID, wp_login_url() ), 'msc_resend_verify' ) );
+            $resend_url = esc_url( wp_nonce_url( add_query_arg( 'msc_resend', $user->ID, MSC_Auth::login_url() ), 'msc_resend_verify' ) );
             return new WP_Error(
                 'email_not_verified',
                 'Your email address has not been verified yet. Please check your inbox for the verification link. ' .
@@ -142,7 +142,7 @@ class MSC_Security {
 
             if ( ! $stored || ! hash_equals( $stored, $token ) ) {
                 wp_die(
-                    'This verification link is invalid or has already been used. Please <a href="' . esc_url( wp_login_url() ) . '">return to login</a> and request a new link.',
+                    'This verification link is invalid or has already been used. Please <a href="' . esc_url( MSC_Auth::login_url() ) . '">return to login</a> and request a new link.',
                     'Verification Failed',
                     array( 'response' => 400 )
                 );
@@ -156,22 +156,19 @@ class MSC_Security {
             $reset_key = $user ? get_password_reset_key( $user ) : new WP_Error();
 
             if ( $user && ! is_wp_error( $reset_key ) ) {
-                $set_pw_url = add_query_arg( array(
-                    'action' => 'rp',
-                    'key'    => $reset_key,
-                    'login'  => rawurlencode( $user->user_login ),
-                ), wp_login_url() );
+                // Use the custom set-password page if configured, else fall back to wp-login.php.
+                $set_pw_url = MSC_Auth::set_password_url( $reset_key, $user->user_login );
                 wp_safe_redirect( $set_pw_url );
             } else {
-                wp_safe_redirect( add_query_arg( 'msc_verified', '1', wp_login_url() ) );
+                wp_safe_redirect( add_query_arg( 'msc_verified', '1', MSC_Auth::login_url() ) );
             }
             exit;
         }
 
         // Resend verification email (requires nonce to prevent enumeration/spam)
         if ( isset( $_GET['msc_resend'] ) ) {
-            if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'msc_resend_verify' ) ) {
-                wp_safe_redirect( wp_login_url() );
+            if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce'] ), 'msc_resend_verify' ) ) {
+                wp_safe_redirect( MSC_Auth::login_url() );
                 exit;
             }
             $user_id = absint( $_GET['msc_resend'] );
@@ -184,7 +181,7 @@ class MSC_Security {
                     self::send_verification_email( $user_id, $token );
                 }
             }
-            wp_safe_redirect( add_query_arg( 'msc_resent', '1', wp_login_url() ) );
+            wp_safe_redirect( add_query_arg( 'msc_resent', '1', MSC_Auth::login_url() ) );
             exit;
         }
     }

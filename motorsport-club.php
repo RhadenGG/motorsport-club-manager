@@ -29,6 +29,7 @@ require_once MSC_PATH . 'includes/class-indemnity.php';
 require_once MSC_PATH . 'includes/class-emails.php';
 require_once MSC_PATH . 'includes/class-shortcodes.php';
 require_once MSC_PATH . 'includes/class-account.php';
+require_once MSC_PATH . 'includes/class-auth.php';
 require_once MSC_PATH . 'includes/class-security.php';
 require_once MSC_PATH . 'includes/class-results.php';
 require_once MSC_PATH . 'includes/class-admin-participants.php';
@@ -52,6 +53,7 @@ function msc_init() {
     MSC_Results::init();
     MSC_Admin_Participants::init();
     MSC_Frontend_Dashboard::init();
+    MSC_Auth::init();
 }
 
 /**

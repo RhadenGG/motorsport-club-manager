@@ -482,7 +482,10 @@ class MSC_Admin_Events {
             check_admin_referer('msc_save_settings');
             update_option('msc_banking_details', wp_kses_post(wp_unslash($_POST['msc_banking_details'])));
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));
-            update_option('msc_account_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url'] ?? ''))));
+            update_option('msc_account_page_url',      esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_account_page_url']      ?? ''))));
+            update_option('msc_login_page_url',        esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_login_page_url']        ?? ''))));
+            update_option('msc_register_page_url',     esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_register_page_url']     ?? ''))));
+            update_option('msc_set_password_page_url', esc_url_raw(sanitize_text_field(wp_unslash($_POST['msc_set_password_page_url'] ?? ''))));
             update_option('msc_custom_declarations', wp_kses_post(wp_unslash($_POST['msc_custom_declarations'] ?? '')));
             update_option('msc_email_from_name', sanitize_text_field(wp_unslash($_POST['msc_email_from_name'] ?? '')));
             update_option('msc_email_from_address', sanitize_email(wp_unslash($_POST['msc_email_from_address'] ?? '')));
@@ -506,7 +509,10 @@ class MSC_Admin_Events {
 
         $banking      = get_option('msc_banking_details', '');
         $indemnity    = get_option('msc_default_indemnity', msc_get_default_indemnity());
-        $account_url  = get_option('msc_account_page_url', '');
+        $account_url      = get_option('msc_account_page_url', '');
+        $login_url        = get_option('msc_login_page_url', '');
+        $register_url     = get_option('msc_register_page_url', '');
+        $set_password_url = get_option('msc_set_password_page_url', '');
         $declarations = get_option('msc_custom_declarations', '');
         $from_name    = get_option('msc_email_from_name', '');
         $from_address = get_option('msc_email_from_address', '');
@@ -528,6 +534,27 @@ class MSC_Admin_Events {
                         <td>
                             <input type="url" name="msc_account_page_url" id="msc_account_page_url" value="<?php echo esc_attr($account_url); ?>" class="large-text" placeholder="https://yoursite.com/my-account/">
                             <p class="description">Full URL of the page containing the <code>[msc_my_account]</code> shortcode. Used in registration emails and on-page links.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_login_page_url">Login Page URL</label></th>
+                        <td>
+                            <input type="url" name="msc_login_page_url" id="msc_login_page_url" value="<?php echo esc_attr($login_url); ?>" class="large-text" placeholder="https://yoursite.com/login/">
+                            <p class="description">Full URL of the page containing the <code>[msc_login]</code> shortcode. Leave blank to use the default WordPress login page.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_register_page_url">Registration Page URL</label></th>
+                        <td>
+                            <input type="url" name="msc_register_page_url" id="msc_register_page_url" value="<?php echo esc_attr($register_url); ?>" class="large-text" placeholder="https://yoursite.com/register/">
+                            <p class="description">Full URL of the page containing the <code>[msc_register]</code> shortcode. Leave blank to use the default WordPress registration page.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="msc_set_password_page_url">Set Password Page URL</label></th>
+                        <td>
+                            <input type="url" name="msc_set_password_page_url" id="msc_set_password_page_url" value="<?php echo esc_attr($set_password_url); ?>" class="large-text" placeholder="https://yoursite.com/set-password/">
+                            <p class="description">Full URL of the page containing the <code>[msc_set_password]</code> shortcode. After email verification, users are sent here to choose their password. Leave blank to use the default WordPress password reset page.</p>
                         </td>
                     </tr>
                     <tr>
