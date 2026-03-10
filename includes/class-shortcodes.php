@@ -19,7 +19,7 @@ class MSC_Shortcodes {
         wp_localize_script( 'msc-frontend', 'mscData', array(
             'ajaxUrl'  => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('msc_nonce'),
-            'loginUrl' => wp_login_url(),
+            'loginUrl' => MSC_Auth::login_url(),
             'loggedIn' => is_user_logged_in(),
         ) );
     }
@@ -258,7 +258,9 @@ class MSC_Shortcodes {
         if ($reg_close && strtotime($reg_close) < $now) return '<div class="msc-notice msc-notice-warning">Registration for this event is now closed.</div>';
 
         if (!is_user_logged_in()) {
-            return '<div class="msc-notice msc-notice-info"><p>You must be logged in to register for this event.</p><a href="'.wp_login_url(get_permalink()).'" class="msc-btn">Log In</a> <a href="'.wp_registration_url().'" class="msc-btn msc-btn-outline">Register Account</a></div>';
+            $login_url    = add_query_arg( 'redirect_to', urlencode( get_permalink() ), MSC_Auth::login_url() );
+            $register_url = MSC_Auth::register_url();
+            return '<div class="msc-notice msc-notice-info"><p>You must be logged in to register for this event.</p><a href="' . esc_url( $login_url ) . '" class="msc-btn">Log In</a> <a href="' . esc_url( $register_url ) . '" class="msc-btn msc-btn-outline">Register Account</a></div>';
         }
 
         $user_id = get_current_user_id();
