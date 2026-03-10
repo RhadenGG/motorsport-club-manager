@@ -340,21 +340,25 @@ class MSC_Shortcodes {
                                        data-id="<?php echo esc_attr( $cls['id'] ); ?>"
                                        data-fee="<?php echo esc_attr( number_format( $cls['fee'], 2, '.', '' ) ); ?>">
                                 <span class="msc-class-check-name"><?php echo esc_html( $cls['name'] ); ?></span>
-                                <span class="msc-class-check-fee">
-                                    <?php echo $cls['fee'] > 0 ? '+R ' . number_format( $cls['fee'], 2 ) : 'included'; ?>
-                                </span>
+                                <?php if ( $cls['fee'] > 0 ) : ?>
+                                <span class="msc-class-check-fee">+R <?php echo number_format( $cls['fee'], 2 ); ?></span>
+                                <?php else : ?>
+                                <span class="msc-class-check-fee-free">included</span>
+                                <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
                         </div>
 
                         <!-- Live fee breakdown -->
-                        <div id="msc-fee-breakdown" style="margin-top:14px;padding:12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;display:none;">
-                            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                        <div id="msc-fee-breakdown" style="display:none;">
+                            <table>
                                 <tbody id="msc-fee-breakdown-rows"></tbody>
-                                <tr style="border-top:2px solid #ccc;">
-                                    <td style="padding:6px 4px;font-weight:700;">Total</td>
-                                    <td style="padding:6px 4px;font-weight:700;text-align:right;" id="msc-fee-total">R 0.00</td>
-                                </tr>
+                                <tfoot>
+                                    <tr>
+                                        <td style="padding:6px 4px;">Total</td>
+                                        <td style="padding:6px 4px;text-align:right;" id="msc-fee-total">R 0.00</td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                         <?php endif; ?>

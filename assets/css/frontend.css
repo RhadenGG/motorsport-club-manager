@@ -134,6 +134,71 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-vehicle-card-sub { font-size: 12px; color: #777; }
 .msc-vehicle-card-class { font-size: 11px; color: #4a148c; background: #ede7f6; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 4px; }
 
+/* Class selection grid */
+.msc-class-check-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+}
+.msc-class-check-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 2px solid var(--msc-border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all .2s;
+    background: #fff;
+    position: relative;
+}
+.msc-class-check-label:hover {
+    border-color: var(--msc-primary);
+    box-shadow: 0 2px 8px rgba(233,69,96,.12);
+}
+.msc-class-check-label input[type="checkbox"] {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: var(--msc-primary);
+}
+.msc-class-check-label:has(input:checked) {
+    border-color: var(--msc-primary);
+    background: #fff5f7;
+}
+.msc-class-check-name {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--msc-dark);
+    padding-right: 22px;
+    line-height: 1.3;
+}
+.msc-class-check-fee {
+    font-size: 12px;
+    color: var(--msc-primary);
+    font-weight: 600;
+}
+.msc-class-check-fee-free {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+}
+
+/* Fee breakdown table */
+#msc-fee-breakdown {
+    margin-top: 14px;
+    background: #f9f9f9;
+    border: 1px solid var(--msc-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+}
+#msc-fee-breakdown table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#msc-fee-breakdown tfoot td { font-weight: 700; border-top: 1px solid var(--msc-border); padding-top: 6px !important; }
+
 /* Indemnity */
 .msc-indemnity-section { background: var(--msc-light); border: 1px solid var(--msc-border); border-radius: var(--msc-radius); padding: 20px; margin-top: 16px; }
 .msc-indemnity-section h4 { margin: 0 0 12px; color: var(--msc-dark); }
