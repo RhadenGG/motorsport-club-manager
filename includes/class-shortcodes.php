@@ -247,9 +247,10 @@ class MSC_Shortcodes {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
                 $event_classes_for_form[] = array(
-                    'id'   => $cid,
-                    'name' => $term->name,
-                    'fee'  => isset( $class_fees[ $cid ] ) ? floatval( $class_fees[ $cid ] ) : 0.0,
+                    'id'    => $cid,
+                    'name'  => $term->name,
+                    'fee'   => isset( $class_fees[ $cid ] ) ? floatval( $class_fees[ $cid ] ) : 0.0,
+                    'vtype' => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
                 );
             }
         }
@@ -337,7 +338,7 @@ class MSC_Shortcodes {
                         <?php else : ?>
                         <div class="msc-class-check-list">
                         <?php foreach ( $event_classes_for_form as $cls ) : ?>
-                            <label class="msc-class-check-label">
+                            <label class="msc-class-check-label" data-vtype="<?php echo esc_attr( $cls['vtype'] ); ?>">
                                 <input type="checkbox" class="msc-class-check"
                                        data-id="<?php echo esc_attr( $cls['id'] ); ?>"
                                        data-fee="<?php echo esc_attr( number_format( $cls['fee'], 2, '.', '' ) ); ?>">

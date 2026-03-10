@@ -38,7 +38,7 @@ jQuery(function ($) {
                 var $cards = $('<div>').addClass('msc-vehicle-cards');
                 $.each(res.data, function (i, v) {
                     var icons = {Car:'🚗',Bike:'🚲',Motorcycle:'🏍',Quad:'🛻',Kart:'🏎',Truck:'🚚',Other:'🚙'};
-                    var $card = $('<div>').addClass('msc-vehicle-card').attr('data-id', v.id);
+                    var $card = $('<div>').addClass('msc-vehicle-card').attr({'data-id': v.id, 'data-vtype': v.type});
                     $card.append($('<div>').addClass('msc-vehicle-card-icon').text(icons[v.type] || '🚗'));
                     $card.append($('<div>').addClass('msc-vehicle-card-title').text(v.title));
                     $card.append($('<div>').addClass('msc-vehicle-card-sub').text(v.label));
@@ -127,8 +127,21 @@ jQuery(function ($) {
                 $('.msc-vehicle-card').removeClass('selected');
                 $(this).addClass('selected');
                 msc.vehicleId = $(this).data('id');
-                // Show class selection
+                var vtype = $(this).data('vtype') || '';
+
+                // Filter class cards to only show those matching the vehicle type
+                $('.msc-class-check-label').each(function () {
+                    var ctype = $(this).data('vtype') || '';
+                    // Show if class type matches vehicle type, or if either is unset/empty
+                    var visible = !ctype || !vtype || ctype === vtype;
+                    $(this).toggle(visible);
+                    if (!visible) {
+                        $(this).find('.msc-class-check').prop('checked', false);
+                    }
+                });
+
                 $('#msc-class-selection').show();
+                updateFees();
                 msc.checkStep1();
             });
 
