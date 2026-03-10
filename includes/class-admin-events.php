@@ -127,7 +127,6 @@ class MSC_Admin_Events {
                    'reg_close'      => get_post_meta( $post->ID, '_msc_reg_close', true ),
                    'indemnity_text' => get_post_meta( $post->ID, '_msc_indemnity_text', true ),
         );
-        if ( ! $d['indemnity_text'] ) $d['indemnity_text'] = msc_get_default_indemnity();
         ?>
         <table class="form-table" style="width:100%">
         <tr>
@@ -162,8 +161,8 @@ class MSC_Admin_Events {
         <tr>
         <th><label for="msc_indemnity_text">Indemnity Text</label></th>
         <td colspan="3">
-        <textarea name="msc_indemnity_text" id="msc_indemnity_text" rows="6" class="large-text"><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
-        <p class="description">Overrides the global default indemnity text for this event only. Leave unchanged to use the site-wide default.</p>
+        <textarea name="msc_indemnity_text" id="msc_indemnity_text" rows="6" class="large-text" placeholder="Leave blank to use site-wide default. Site-wide default can be set in Motorsport Club &gt; Settings."><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
+        <p class="description">Overrides the global default indemnity text for this event only. Leave blank to use the site-wide default.</p>
         </td>
         </tr>
         </table>
