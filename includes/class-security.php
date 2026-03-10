@@ -9,6 +9,10 @@ class MSC_Security {
         add_action( 'personal_options_update',  array( __CLASS__, 'save_birthdate_field' ) );
         add_action( 'edit_user_profile_update', array( __CLASS__, 'save_birthdate_field' ) );
 
+        // Restrict wp-admin to administrators only
+        add_filter( 'auth_redirect',  array( __CLASS__, 'block_unauthenticated_admin_access' ) );
+        add_action( 'admin_init',     array( __CLASS__, 'block_non_admin_access' ), 1 );
+
         // Onboarding redirect on first login
         add_filter( 'login_redirect', array( __CLASS__, 'onboarding_redirect' ), 10, 3 );
 
@@ -23,6 +27,36 @@ class MSC_Security {
         add_filter( 'wp_authenticate_user',             array( __CLASS__, 'check_email_verified' ), 10, 2 );
         add_action( 'init',                             array( __CLASS__, 'handle_email_verification' ) );
         add_filter( 'login_message',                    array( __CLASS__, 'login_verification_notice' ) );
+    }
+
+    // ── wp-admin access restriction ──────────────────────────────────────────
+
+    /**
+     * Fires inside auth_redirect() before WordPress can redirect unauthenticated
+     * users to wp-login.php. If the user isn't logged in and this isn't an AJAX
+     * request, we redirect to the homepage instead and exit.
+     */
+    public static function block_unauthenticated_admin_access( $user_id ) {
+        if ( wp_doing_ajax() ) return $user_id;
+        if ( ! $user_id ) {
+            nocache_headers();
+            wp_safe_redirect( home_url() );
+            exit;
+        }
+        return $user_id;
+    }
+
+    /**
+     * Fires on every wp-admin page load for authenticated users.
+     * Redirects anyone without manage_options (i.e. non-administrators) to
+     * the homepage. AJAX requests are excluded so frontend forms keep working.
+     */
+    public static function block_non_admin_access() {
+        if ( wp_doing_ajax() ) return;
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_safe_redirect( home_url() );
+            exit;
+        }
     }
 
     // ── Login page branding ──────────────────────────────────────────────────

@@ -78,6 +78,7 @@ Built for any motorsport club or racing organisation running their website on Wo
 - Parameterised database queries with format specifiers
 - XSS prevention via safe DOM construction and output escaping
 - Capability checks on all admin pages
+- **wp-admin restricted to administrators only** — unauthenticated and non-admin users are redirected to the homepage (not `wp-login.php`); frontend AJAX via `admin-ajax.php` is unaffected
 
 ---
 
