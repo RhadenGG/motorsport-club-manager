@@ -98,11 +98,32 @@ class MSC_Activator {
 
         // Results table
         MSC_Results::create_table();
-
+ 
+        // Migrate existing terms: assign vehicle type meta if missing
+        self::migrate_term_vehicle_types();
+ 
         // Create the Event Creator role and assign capabilities
         self::setup_roles();
     }
-
+ 
+    /** One-time migration: assign msc_vehicle_type meta to existing terms */
+    private static function migrate_term_vehicle_types() {
+        $terms = get_terms( array( 'taxonomy' => 'msc_vehicle_class', 'hide_empty' => false ) );
+        if ( is_wp_error( $terms ) ) return;
+ 
+        // Legacy mapping from the old hardcoded lists
+        $motorcycle_classes = array(
+            'Juniors', 'Motards / Supermotards', 'Powersport',
+            'CBR150', '300 Class', '600/1000', 'MiniGP',
+        );
+ 
+        foreach ( $terms as $term ) {
+            if ( get_term_meta( $term->term_id, 'msc_vehicle_type', true ) ) continue;
+            $type = in_array( $term->name, $motorcycle_classes, true ) ? 'Motorcycle' : 'Car';
+            update_term_meta( $term->term_id, 'msc_vehicle_type', $type );
+        }
+    }
+ 
     private static function setup_roles() {
         // Create the Event Creator role if it doesn't exist
         if ( ! get_role( 'msc_event_creator' ) ) {
