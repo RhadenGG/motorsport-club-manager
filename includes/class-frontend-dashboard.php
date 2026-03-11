@@ -78,7 +78,7 @@ class MSC_Frontend_Dashboard {
         wp_enqueue_media();
 
         $tab = isset( $_GET['msc_etab'] ) ? sanitize_key( $_GET['msc_etab'] ) : 'events';
-        $valid_tabs = array( 'events', 'registrations', 'results', 'participants' );
+        $valid_tabs = array( 'events', 'registrations', 'results', 'participants', 'vehicle-classes' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
 
         $events_args = array(
