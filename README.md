@@ -171,7 +171,7 @@ Operational scope for Event Creators is configurable in **Motorsport Club → Se
 
 | Tab | Features |
 |---|---|
-| **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form (including allowed classes with per-class additional fees, featured image picker, and optional per-event indemnity text). Close or reopen events. |
+| **Events** | List all events with status, registration count, and quick actions. Create new events via an inline form (including allowed classes with per-class additional fees, featured image picker, and optional per-event indemnity text). **Edit** any event's details inline (title, dates, location, fee, capacity, classes, featured image, etc.). Close or reopen events. |
 | **Registrations** | Filter by event and status. View entrant details (including entered classes and total fee), update registration status (triggers confirmation email), and download indemnity PDFs. |
 | **Results** | Select a closed event and enter results per class via class tabs. Each tab lists registered drivers for that class plus a manual entry section for walk-ins. |
 | **Participants** | Full participant lookup with expandable detail cards (same as admin Participants page). |

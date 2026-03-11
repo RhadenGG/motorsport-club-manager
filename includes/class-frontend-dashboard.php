@@ -14,6 +14,7 @@ class MSC_Frontend_Dashboard {
 
         // AJAX: Events
         add_action( 'wp_ajax_msc_fe_create_event',      array( __CLASS__, 'ajax_create_event' ) );
+        add_action( 'wp_ajax_msc_fe_update_event',      array( __CLASS__, 'ajax_update_event' ) );
         add_action( 'wp_ajax_msc_fe_set_event_status',  array( __CLASS__, 'ajax_set_event_status' ) );
 
         // AJAX: Registrations
@@ -251,6 +252,120 @@ class MSC_Frontend_Dashboard {
             </div>
             </div>
 
+            <!-- Edit Event Panel -->
+            <div id="msc-edit-event-panel" style="display:none;margin-bottom:24px">
+            <div class="msc-panel" style="padding:20px">
+                <h4 style="margin:0 0 16px">Edit Event</h4>
+                <div id="msc-edit-event-msg" class="msc-field-msg" style="margin-bottom:10px"></div>
+                <input type="hidden" id="ee_event_id" value="">
+
+                <div class="msc-form-grid">
+                    <div class="msc-field msc-field-full">
+                        <label>Event Title <span class="msc-required">*</span></label>
+                        <input type="text" id="ee_title" placeholder="e.g. Round 3 — Kyalami">
+                    </div>
+                    <div class="msc-field">
+                        <label>Start Date &amp; Time <span class="msc-required">*</span></label>
+                        <input type="datetime-local" id="ee_event_date">
+                    </div>
+                    <div class="msc-field">
+                        <label>End Date &amp; Time</label>
+                        <input type="datetime-local" id="ee_event_end_date">
+                    </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Location / Venue</label>
+                        <input type="text" id="ee_location" placeholder="e.g. Kyalami Grand Prix Circuit">
+                    </div>
+                    <div class="msc-field">
+                        <label>Entry Fee (R)</label>
+                        <input type="number" id="ee_entry_fee" min="0" step="0.01" placeholder="0 = free">
+                    </div>
+                    <div class="msc-field">
+                        <label>Capacity <small style="font-weight:400">(0 = unlimited)</small></label>
+                        <input type="number" id="ee_capacity" min="0" placeholder="0">
+                    </div>
+                    <div class="msc-field">
+                        <label>Registration Opens</label>
+                        <input type="datetime-local" id="ee_reg_open">
+                    </div>
+                    <div class="msc-field">
+                        <label>Registration Closes</label>
+                        <input type="datetime-local" id="ee_reg_close">
+                    </div>
+                    <div class="msc-field">
+                        <label>Registration Approval</label>
+                        <select id="ee_approval">
+                            <option value="instant">Instant (auto-confirmed)</option>
+                            <option value="manual">Manual (admin approval)</option>
+                        </select>
+                    </div>
+                    <div class="msc-field">
+                        <label>Vehicle Types Allowed</label>
+                        <select id="ee_vehicle_type">
+                            <option value="Both">Both Cars &amp; Motorcycles</option>
+                            <option value="Car">Cars only</option>
+                            <option value="Motorcycle">Motorcycles only</option>
+                        </select>
+                    </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Indemnity Text</label>
+                        <textarea id="ee_indemnity" rows="4" placeholder="Leave blank to use site-wide default."></textarea>
+                    </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Featured Image</label>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <div id="ee-featured-image-preview"></div>
+                            <div style="display:flex;gap:8px;flex-direction:column">
+                                <button type="button" class="msc-btn msc-btn-outline msc-btn-sm" id="msc-ee-set-image">Set Featured Image</button>
+                                <button type="button" class="msc-btn msc-btn-outline msc-btn-sm" id="msc-ee-remove-image" style="display:none">Remove Image</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="ee_featured_image_id" value="">
+                    </div>
+                </div>
+
+                <!-- Class checkboxes + per-class fees -->
+                <div style="margin-top:16px">
+                    <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
+                    <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
+                    <div id="ee-class-boxes">
+                    <?php foreach ( $classes_by_type as $type => $classes ) : ?>
+                    <div class="msc-ee-class-group" data-type="<?php echo esc_attr($type); ?>" style="margin-bottom:16px">
+                        <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
+                        <table style="width:100%;border-collapse:collapse;max-width:500px">
+                        <thead><tr>
+                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
+                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>
+                        </tr></thead>
+                        <tbody>
+                        <?php foreach ( $classes as $term_id => $class_name ) : ?>
+                        <tr>
+                            <td style="padding:3px 8px 3px 0">
+                                <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">
+                                    <input type="checkbox" class="ee-class-cb" value="<?php echo esc_attr($term_id); ?>">
+                                    <?php echo esc_html($class_name); ?>
+                                </label>
+                            </td>
+                            <td style="padding:3px 0">
+                                <input type="number" class="ee-class-fee" data-class-id="<?php echo esc_attr($term_id); ?>"
+                                       min="0" step="0.01" style="width:80px" placeholder="0.00" value="0.00">
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                        </table>
+                    </div>
+                    <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;display:flex;gap:10px">
+                    <button type="button" class="msc-btn" id="msc-submit-edit-event">Save Changes</button>
+                    <button type="button" class="msc-btn msc-btn-outline" id="msc-cancel-edit-event">Cancel</button>
+                </div>
+            </div>
+            </div>
+
             <!-- Events Table -->
             <?php if ( empty( $all_events ) ) : ?>
             <p style="color:#888">No events found. Create your first event above.</p>
@@ -270,11 +385,16 @@ class MSC_Frontend_Dashboard {
             </thead>
             <tbody>
             <?php foreach ( $all_events as $event ) :
-                $event_date = get_post_meta( $event->ID, '_msc_event_date', true );
-                $location   = get_post_meta( $event->ID, '_msc_event_location', true );
-                $fee        = floatval( get_post_meta( $event->ID, '_msc_entry_fee', true ) );
-                $is_closed  = MSC_Results::is_closed( $event->ID );
-                $reg_count  = $event_counts[ $event->ID ] ?? 0;
+                $event_date   = get_post_meta( $event->ID, '_msc_event_date', true );
+                $event_end    = get_post_meta( $event->ID, '_msc_event_end_date', true );
+                $location     = get_post_meta( $event->ID, '_msc_event_location', true );
+                $fee          = floatval( get_post_meta( $event->ID, '_msc_entry_fee', true ) );
+                $is_closed    = MSC_Results::is_closed( $event->ID );
+                $reg_count    = $event_counts[ $event->ID ] ?? 0;
+                $thumb_id     = get_post_thumbnail_id( $event->ID );
+                $thumb_url    = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'thumbnail' ) : '';
+                $ev_classes   = get_post_meta( $event->ID, '_msc_event_classes', true ) ?: array();
+                $ev_fees      = get_post_meta( $event->ID, '_msc_class_fees', true ) ?: array();
             ?>
             <tr>
                 <td><strong><?php echo esc_html( $event->post_title ); ?></strong></td>
@@ -297,6 +417,24 @@ class MSC_Frontend_Dashboard {
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                     <a href="<?php echo esc_url( get_permalink( $event->ID ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" target="_blank">View</a>
+                    <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-fe-edit-event"
+                        data-id="<?php echo esc_attr( $event->ID ); ?>"
+                        data-title="<?php echo esc_attr( $event->post_title ); ?>"
+                        data-date="<?php echo esc_attr( $event_date ); ?>"
+                        data-end-date="<?php echo esc_attr( $event_end ); ?>"
+                        data-location="<?php echo esc_attr( $location ); ?>"
+                        data-fee="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_entry_fee', true ) ); ?>"
+                        data-capacity="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_capacity', true ) ); ?>"
+                        data-reg-open="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_reg_open', true ) ); ?>"
+                        data-reg-close="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_reg_close', true ) ); ?>"
+                        data-approval="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_approval', true ) ?: 'instant' ); ?>"
+                        data-vehicle-type="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_event_vehicle_type', true ) ?: 'Both' ); ?>"
+                        data-indemnity="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_indemnity_text', true ) ); ?>"
+                        data-image-id="<?php echo esc_attr( $thumb_id ?: '' ); ?>"
+                        data-image-url="<?php echo esc_attr( $thumb_url ); ?>"
+                        data-classes="<?php echo esc_attr( wp_json_encode( array_values( $ev_classes ) ) ); ?>"
+                        data-class-fees="<?php echo esc_attr( wp_json_encode( $ev_fees ) ); ?>"
+                    >Edit</button>
                     <?php if ( $is_closed ) : ?>
                     <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-fe-event-status"
                             data-id="<?php echo $event->ID; ?>" data-status="open">Reopen</button>
@@ -406,6 +544,134 @@ class MSC_Frontend_Dashboard {
                     btn.prop('disabled', false).text('Create Event');
                     if (res.success) {
                         msg.text('Event created! Reloading…').css('color','green').show();
+                        setTimeout(function(){ location.reload(); }, 1000);
+                    } else {
+                        msg.text(res.data.message || 'Error.').css('color','red').show();
+                    }
+                });
+            });
+
+            // Edit event
+            $('#msc-cancel-edit-event').on('click', function(){
+                $('#msc-edit-event-panel').slideUp(200);
+            });
+
+            function eeFilterClasses(type) {
+                if (type === 'Both') { $('.msc-ee-class-group').show(); }
+                else { $('.msc-ee-class-group').hide(); $('.msc-ee-class-group[data-type="'+type+'"]').show(); }
+            }
+            $('#ee_vehicle_type').on('change', function(){ eeFilterClasses($(this).val()); });
+
+            var eeImageFrame;
+            $('#msc-ee-set-image').on('click', function(e){
+                e.preventDefault();
+                if ( eeImageFrame ) { eeImageFrame.open(); return; }
+                eeImageFrame = wp.media({
+                    title:    'Select Featured Image',
+                    button:   { text: 'Use this image' },
+                    multiple: false,
+                    library:  { type: 'image' }
+                });
+                eeImageFrame.on('select', function(){
+                    var att = eeImageFrame.state().get('selection').first().toJSON();
+                    $('#ee_featured_image_id').val(att.id);
+                    var url = (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url;
+                    $('#ee-featured-image-preview').html('<img src="'+url+'" style="max-width:150px;max-height:100px;object-fit:cover;border-radius:4px;">');
+                    $('#msc-ee-remove-image').show();
+                });
+                eeImageFrame.open();
+            });
+            $('#msc-ee-remove-image').on('click', function(){
+                $('#ee_featured_image_id').val('');
+                $('#ee-featured-image-preview').empty();
+                $(this).hide();
+            });
+
+            $(document).on('click', '.msc-fe-edit-event', function(){
+                var btn = $(this);
+                var d   = btn.data();
+                $('#msc-edit-event-msg').hide().text('');
+                $('#ee_event_id').val(d.id);
+                $('#ee_title').val(d.title);
+                $('#ee_event_date').val(d.date);
+                $('#ee_event_end_date').val(d.endDate || '');
+                $('#ee_location').val(d.location || '');
+                $('#ee_entry_fee').val(d.fee || 0);
+                $('#ee_capacity').val(d.capacity || 0);
+                $('#ee_reg_open').val(d.regOpen || '');
+                $('#ee_reg_close').val(d.regClose || '');
+                $('#ee_approval').val(d.approval || 'instant');
+                $('#ee_vehicle_type').val(d.vehicleType || 'Both');
+                $('#ee_indemnity').val(d.indemnity || '');
+
+                // Featured image
+                if (d.imageId) {
+                    $('#ee_featured_image_id').val(d.imageId);
+                    $('#ee-featured-image-preview').html('<img src="'+d.imageUrl+'" style="max-width:150px;max-height:100px;object-fit:cover;border-radius:4px;">');
+                    $('#msc-ee-remove-image').show();
+                } else {
+                    $('#ee_featured_image_id').val('');
+                    $('#ee-featured-image-preview').empty();
+                    $('#msc-ee-remove-image').hide();
+                }
+
+                // Classes
+                var savedClasses = d.classes || [];
+                var savedFees    = d.classFees || {};
+                $('.ee-class-cb').prop('checked', false);
+                $('.ee-class-fee').val('0.00');
+                $.each(savedClasses, function(i, classId){
+                    $('.ee-class-cb[value="'+classId+'"]').prop('checked', true);
+                    var fee = savedFees[classId] || 0;
+                    $('.ee-class-fee[data-class-id="'+classId+'"]').val(parseFloat(fee).toFixed(2));
+                });
+                eeFilterClasses(d.vehicleType || 'Both');
+
+                // Scroll to panel and show
+                $('html,body').animate({scrollTop: $('#msc-edit-event-panel').offset().top - 80}, 300);
+                $('#msc-edit-event-panel').slideDown(200);
+            });
+
+            $('#msc-submit-edit-event').on('click', function(){
+                var btn = $(this);
+                var msg = $('#msc-edit-event-msg');
+                var classes = [];
+                var classFees = {};
+                $('.ee-class-cb:checked').each(function(){
+                    var id = $(this).val();
+                    classes.push(id);
+                    var fee = parseFloat($('.ee-class-fee[data-class-id="'+id+'"]').val()) || 0;
+                    classFees[id] = fee;
+                });
+                if (!$('#ee_title').val().trim()) {
+                    msg.text('Event title is required.').css('color','red').show(); return;
+                }
+                if (!$('#ee_event_date').val()) {
+                    msg.text('Start date is required.').css('color','red').show(); return;
+                }
+                btn.prop('disabled', true).text('Saving…');
+                $.post(ajaxUrl, {
+                    action:           'msc_fe_update_event',
+                    nonce:            nonce,
+                    event_id:         $('#ee_event_id').val(),
+                    title:            $('#ee_title').val(),
+                    event_date:       $('#ee_event_date').val(),
+                    event_end_date:   $('#ee_event_end_date').val(),
+                    location:         $('#ee_location').val(),
+                    entry_fee:        $('#ee_entry_fee').val() || 0,
+                    capacity:         $('#ee_capacity').val() || 0,
+                    reg_open:         $('#ee_reg_open').val(),
+                    reg_close:        $('#ee_reg_close').val(),
+                    approval:         $('#ee_approval').val(),
+                    vehicle_type:     $('#ee_vehicle_type').val(),
+                    indemnity:        $('#ee_indemnity').val(),
+                    featured_image_id: $('#ee_featured_image_id').val() || 0,
+                    class_ids:        classes,
+                    class_fees:       classFees,
+                }, function(res){
+                    btn.prop('disabled', false).text('Save Changes');
+                    if (res.success) {
+                        msg.text('Event updated! Reloading…').css('color','green').show();
                         setTimeout(function(){ location.reload(); }, 1000);
                     } else {
                         msg.text(res.data.message || 'Error.').css('color','red').show();
@@ -942,6 +1208,84 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $post_id, '_msc_class_fees', $class_fees );
 
         wp_send_json_success( array( 'message' => 'Event created.', 'post_id' => $post_id ) );
+    }
+
+    // ─── AJAX: Update Event ───────────────────────────────────────────────────
+
+    public static function ajax_update_event() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $event_id = absint( $_POST['event_id'] ?? 0 );
+        if ( ! $event_id ) wp_send_json_error( array( 'message' => 'Invalid event.' ) );
+
+        $post = get_post( $event_id );
+        if ( ! $post || $post->post_type !== 'msc_event' ) {
+            wp_send_json_error( array( 'message' => 'Event not found.' ) );
+        }
+        if ( ! self::can_manage_event( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify this event.' ) );
+        }
+
+        $title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
+        if ( ! $title ) wp_send_json_error( array( 'message' => 'Event title is required.' ) );
+
+        wp_update_post( array(
+            'ID'         => $event_id,
+            'post_title' => $title,
+        ) );
+
+        $text_meta = array(
+            'msc_event_date', 'msc_event_end_date', 'msc_event_location',
+            'msc_reg_open', 'msc_reg_close',
+        );
+        foreach ( $text_meta as $key ) {
+            $val = sanitize_text_field( wp_unslash( $_POST[ str_replace( 'msc_', '', $key ) ] ?? '' ) );
+            update_post_meta( $event_id, '_' . $key, $val );
+        }
+
+        update_post_meta( $event_id, '_msc_entry_fee', floatval( $_POST['entry_fee'] ?? 0 ) );
+        update_post_meta( $event_id, '_msc_capacity',  absint(  $_POST['capacity']   ?? 0 ) );
+
+        $approval = in_array( $_POST['approval'] ?? '', array( 'instant', 'manual' ), true ) ? $_POST['approval'] : 'instant';
+        update_post_meta( $event_id, '_msc_approval', $approval );
+
+        $vehicle_type = in_array( $_POST['vehicle_type'] ?? '', array( 'Both', 'Car', 'Motorcycle' ), true ) ? $_POST['vehicle_type'] : 'Both';
+        update_post_meta( $event_id, '_msc_event_vehicle_type', $vehicle_type );
+
+        $indemnity = sanitize_textarea_field( wp_unslash( $_POST['indemnity'] ?? '' ) );
+        update_post_meta( $event_id, '_msc_indemnity_text', $indemnity );
+
+        $img_id = absint( $_POST['featured_image_id'] ?? 0 );
+        if ( $img_id ) {
+            set_post_thumbnail( $event_id, $img_id );
+        } else {
+            delete_post_thumbnail( $event_id );
+        }
+
+        $class_ids = array_filter( array_map( 'absint', (array) ( $_POST['class_ids'] ?? array() ) ) );
+        $valid_ids = array();
+        if ( $class_ids ) {
+            $terms = get_terms( array(
+                'taxonomy'   => 'msc_vehicle_class',
+                'hide_empty' => false,
+                'include'    => $class_ids,
+                'fields'     => 'ids',
+            ) );
+            $valid_ids = is_wp_error( $terms ) ? array() : array_map( 'intval', $terms );
+        }
+        update_post_meta( $event_id, '_msc_event_classes', $valid_ids );
+        wp_set_post_terms( $event_id, $valid_ids, 'msc_vehicle_class' );
+
+        $class_fees = array();
+        if ( ! empty( $_POST['class_fees'] ) && is_array( $_POST['class_fees'] ) ) {
+            foreach ( $_POST['class_fees'] as $class_id => $fee ) {
+                $class_fees[ intval( $class_id ) ] = round( floatval( $fee ), 2 );
+            }
+        }
+        update_post_meta( $event_id, '_msc_class_fees', $class_fees );
+
+        wp_send_json_success( array( 'message' => 'Event updated.' ) );
     }
 
     // ─── AJAX: Set Event Status ───────────────────────────────────────────────
