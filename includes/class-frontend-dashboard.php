@@ -1161,10 +1161,11 @@ class MSC_Frontend_Dashboard {
                     <table class="msc-dash-table" style="font-size:13px">
                     <thead><tr>
                         <th>Class</th>
-                        <th>Primary</th>
-                        <th>Addit.</th>
-                        <th>Override</th>
-                        <th>Exempt?</th>
+                        <th title="Base fee when this class is the primary entry.">Primary</th>
+                        <th title="Fee when this class is added as an additional entry.">Addit.</th>
+                        <th title="If this is the PRIMARY class, use this fee for ALL additional classes (except exempt ones).">Override</th>
+                        <th title="If checked, this class ignores primary-class overrides and always uses its own additional fee.">Exempt?</th>
+                        <th title="If checked, this class can ONLY be selected as the primary class and won't appear as an additional option.">Primary Only?</th>
                     </tr></thead>
                     <tbody>
                     <?php foreach ( $classes as $term_id => $class_name ) : ?>
@@ -1174,6 +1175,7 @@ class MSC_Frontend_Dashboard {
                         <td><input type="number" class="msc-ps-additional-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:70px"></td>
                         <td><input type="number" class="msc-ps-override-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="" placeholder="—" style="width:70px"></td>
                         <td style="text-align:center"><input type="checkbox" class="msc-ps-exempt-fee" data-class="<?php echo (int)$term_id; ?>"></td>
+                        <td style="text-align:center"><input type="checkbox" class="msc-ps-primary-only-fee" data-class="<?php echo (int)$term_id; ?>"></td>
                     </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -1230,7 +1232,7 @@ class MSC_Frontend_Dashboard {
                 $('#msc-ps-name').val('');
                 $('.msc-ps-primary-fee, .msc-ps-additional-fee').val('0.00');
                 $('.msc-ps-override-fee').val('');
-                $('.msc-ps-exempt-fee').prop('checked', false);
+                $('.msc-ps-exempt-fee, .msc-ps-primary-only-fee').prop('checked', false);
                 $('#msc-pricing-panel-title').text('New Pricing Set');
                 $('#msc-pricing-form-msg').hide().text('');
             }
@@ -1260,7 +1262,8 @@ class MSC_Frontend_Dashboard {
                         primary_fee:    parseFloat($(this).val()) || 0,
                         additional_fee: parseFloat($('.msc-ps-additional-fee[data-class="' + cid + '"]').val()) || 0,
                         override_fee:   ovr !== '' ? parseFloat(ovr) : null,
-                        is_exempt:      $('.msc-ps-exempt-fee[data-class="' + cid + '"]').is(':checked') ? 1 : 0
+                        is_exempt:      $('.msc-ps-exempt-fee[data-class="' + cid + '"]').is(':checked') ? 1 : 0,
+                        is_primary_only: $('.msc-ps-primary-only-fee[data-class="' + cid + '"]').is(':checked') ? 1 : 0
                     });
                 });
                 btn.prop('disabled', true).text('Saving…');
@@ -1297,6 +1300,7 @@ class MSC_Frontend_Dashboard {
                         $('.msc-ps-additional-fee[data-class="' + classId + '"]').val(parseFloat(f.additional_fee).toFixed(2));
                         $('.msc-ps-override-fee[data-class="' + classId + '"]').val(f.override !== null ? parseFloat(f.override).toFixed(2) : '');
                         $('.msc-ps-exempt-fee[data-class="' + classId + '"]').prop('checked', parseInt(f.exempt) === 1);
+                        $('.msc-ps-primary-only-fee[data-class="' + classId + '"]').prop('checked', parseInt(f.primary_only) === 1);
                     });
                     $('html,body').animate({scrollTop: $('#msc-pricing-form-panel').offset().top - 80}, 200);
                     $('#msc-pricing-form-panel').slideDown(200);

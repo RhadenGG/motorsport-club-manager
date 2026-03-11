@@ -148,6 +148,7 @@ jQuery(function ($) {
                 var usedIds = msc.getSelectedClassIds();
 
                 classes.forEach(function(cls) {
+                    if (cls.primary_only) return; // Skip primary-only classes
                     var isUsed = usedIds.indexOf(cls.id) !== -1;
                     $classSel.append(
                         $('<option>').val(cls.id).text(cls.name).prop('disabled', isUsed)

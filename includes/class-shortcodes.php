@@ -246,7 +246,7 @@ class MSC_Shortcodes {
         foreach ( $event_class_ids as $cid ) {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
-                $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0, 'override' => null, 'exempt' => 0 );
+                $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0, 'override' => null, 'exempt' => 0, 'primary_only' => 0 );
                 $event_classes_for_form[] = array(
                     'id'             => $cid,
                     'name'           => $term->name,
@@ -255,6 +255,7 @@ class MSC_Shortcodes {
                     'additional_fee' => $fees['additional_fee'],
                     'override'       => isset($fees['override']) ? $fees['override'] : null,
                     'exempt'         => isset($fees['exempt']) ? (int) $fees['exempt'] : 0,
+                    'primary_only'   => isset($fees['primary_only']) ? (int) $fees['primary_only'] : 0,
                 );
             }
         }

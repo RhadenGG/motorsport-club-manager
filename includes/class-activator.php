@@ -78,6 +78,7 @@ class MSC_Activator {
             additional_fee decimal(10,2) NOT NULL DEFAULT 0.00,
             global_additional_fee_override decimal(10,2) DEFAULT NULL,
             is_exempt_from_override tinyint(1) NOT NULL DEFAULT 0,
+            is_primary_only tinyint(1) NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY pricing_class (pricing_set_id, class_id)
         ) $charset;";
@@ -90,6 +91,9 @@ class MSC_Activator {
         }
         if ( ! in_array( 'is_exempt_from_override', $cols_pricing, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_pricing_set_classes ADD COLUMN is_exempt_from_override tinyint(1) NOT NULL DEFAULT 0" );
+        }
+        if ( ! in_array( 'is_primary_only', $cols_pricing, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_pricing_set_classes ADD COLUMN is_primary_only tinyint(1) NOT NULL DEFAULT 0" );
         }
 
         // Results table

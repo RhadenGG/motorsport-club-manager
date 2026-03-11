@@ -183,6 +183,12 @@ class MSC_Registration {
 
             foreach ( $additional_class_ids as $cid ) {
                 $class_data = isset( $all_set_fees[ $cid ] ) ? $all_set_fees[ $cid ] : null;
+                
+                // Security check: cannot use primary-only class as additional
+                if ( $class_data && ! empty( $class_data['primary_only'] ) ) {
+                    wp_send_json_error( array( 'message' => 'The class "' . get_term($cid)->name . '" can only be a primary class.' ) );
+                }
+
                 $af = 0.0;
 
                 if ( $class_data ) {
