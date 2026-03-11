@@ -17,6 +17,11 @@ class MSC_Frontend_Dashboard {
         add_action( 'wp_ajax_msc_fe_update_event',      array( __CLASS__, 'ajax_update_event' ) );
         add_action( 'wp_ajax_msc_fe_set_event_status',  array( __CLASS__, 'ajax_set_event_status' ) );
 
+        // AJAX: Vehicle Classes
+        add_action( 'wp_ajax_msc_fe_add_class',    array( __CLASS__, 'ajax_add_class' ) );
+        add_action( 'wp_ajax_msc_fe_rename_class', array( __CLASS__, 'ajax_rename_class' ) );
+        add_action( 'wp_ajax_msc_fe_delete_class', array( __CLASS__, 'ajax_delete_class' ) );
+
         // AJAX: Registrations
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
 
@@ -98,10 +103,11 @@ class MSC_Frontend_Dashboard {
         <div class="msc-tab-nav">
             <?php
             $tabs = array(
-                'events'        => 'Events',
-                'registrations' => 'Registrations',
-                'results'       => 'Results',
-                'participants'  => 'Participants',
+                'events'          => 'Events',
+                'registrations'   => 'Registrations',
+                'results'         => 'Results',
+                'participants'    => 'Participants',
+                'vehicle-classes' => 'Vehicle Classes',
             );
             foreach ( $tabs as $t => $label ) :
                 $url = add_query_arg( 'msc_etab', $t, get_permalink() );
@@ -115,10 +121,11 @@ class MSC_Frontend_Dashboard {
 
         <?php
         switch ( $tab ) {
-            case 'registrations': self::tab_registrations( $all_events ); break;
-            case 'results':       self::tab_results( $all_events );       break;
-            case 'participants':  self::tab_participants();                break;
-            default:              self::tab_events( $all_events, $event_counts ); break;
+            case 'registrations':   self::tab_registrations( $all_events ); break;
+            case 'results':         self::tab_results( $all_events );       break;
+            case 'participants':    self::tab_participants();                break;
+            case 'vehicle-classes': self::tab_vehicle_classes();            break;
+            default:                self::tab_events( $all_events, $event_counts ); break;
         }
         ?>
 
@@ -1422,6 +1429,232 @@ class MSC_Frontend_Dashboard {
         }
 
         wp_send_json_success( array( 'message' => 'Results saved.' ) );
+    }
+
+    // ─── Tab: Vehicle Classes ─────────────────────────────────────────────────
+
+    private static function tab_vehicle_classes() {
+        $classes_by_type = MSC_Taxonomies::get_classes_by_type();
+        $nonce           = wp_create_nonce( 'msc_nonce' );
+        $ajax_url        = admin_url( 'admin-ajax.php' );
+        ?>
+        <div class="msc-tab-content">
+            <div class="msc-tab-header">
+                <h3 class="msc-tab-title">Vehicle Classes</h3>
+            </div>
+
+            <div id="msc-vc-msg" class="msc-field-msg" style="margin-bottom:12px;display:none"></div>
+
+            <!-- Add Class Form -->
+            <div class="msc-panel" style="padding:16px;margin-bottom:24px">
+                <h4 style="margin:0 0 12px">Add New Class</h4>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                    <div class="msc-field" style="margin:0;flex:1;min-width:160px">
+                        <label>Class Name <span class="msc-required">*</span></label>
+                        <input type="text" id="vc-new-name" placeholder="e.g. Superbikes">
+                    </div>
+                    <div class="msc-field" style="margin:0">
+                        <label>Vehicle Type</label>
+                        <select id="vc-new-type">
+                            <option value="Car">Car</option>
+                            <option value="Motorcycle">Motorcycle</option>
+                        </select>
+                    </div>
+                    <button type="button" class="msc-btn" id="msc-vc-add-btn">Add Class</button>
+                </div>
+            </div>
+
+            <!-- Classes Table -->
+            <?php foreach ( $classes_by_type as $type => $classes ) : ?>
+            <div class="msc-panel" style="padding:16px;margin-bottom:20px" data-vc-type="<?php echo esc_attr($type); ?>">
+                <h4 style="margin:0 0 12px"><?php echo esc_html($type); ?> Classes</h4>
+                <?php if ( empty($classes) ) : ?>
+                <p style="color:#888;margin:0">No <?php echo esc_html($type); ?> classes yet.</p>
+                <?php else : ?>
+                <table class="msc-dash-table" style="max-width:600px">
+                    <thead><tr><th>Class Name</th><th style="width:120px">Actions</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $classes as $term_id => $name ) : ?>
+                    <tr data-term-id="<?php echo esc_attr($term_id); ?>">
+                        <td>
+                            <span class="vc-name-display"><?php echo esc_html($name); ?></span>
+                            <input type="text" class="vc-name-input" value="<?php echo esc_attr($name); ?>"
+                                   style="display:none;width:100%;box-sizing:border-box">
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-rename-btn">Rename</button>
+                                <button type="button" class="msc-btn msc-btn-sm vc-save-btn" style="display:none">Save</button>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cancel-btn" style="display:none">Cancel</button>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-danger vc-delete-btn">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <script>
+        (function($){
+            var nonce   = '<?php echo esc_js( $nonce ); ?>';
+            var ajaxUrl = '<?php echo esc_js( $ajax_url ); ?>';
+
+            function vcMsg(text, ok) {
+                $('#msc-vc-msg').text(text).css('color', ok ? 'green' : 'red').show();
+            }
+
+            // Add class
+            $('#msc-vc-add-btn').on('click', function(){
+                var btn  = $(this);
+                var name = $('#vc-new-name').val().trim();
+                var type = $('#vc-new-type').val();
+                if (!name) { vcMsg('Class name is required.', false); return; }
+                btn.prop('disabled', true).text('Adding…');
+                $.post(ajaxUrl, { action: 'msc_fe_add_class', nonce: nonce, name: name, vehicle_type: type }, function(res){
+                    btn.prop('disabled', false).text('Add Class');
+                    if (res.success) {
+                        vcMsg('Class added! Reloading…', true);
+                        setTimeout(function(){ location.reload(); }, 800);
+                    } else {
+                        vcMsg(res.data.message || 'Error.', false);
+                    }
+                });
+            });
+
+            // Rename: show inline input
+            $(document).on('click', '.vc-rename-btn', function(){
+                var row = $(this).closest('tr');
+                row.find('.vc-name-display').hide();
+                row.find('.vc-name-input').show().focus();
+                row.find('.vc-rename-btn, .vc-delete-btn').hide();
+                row.find('.vc-save-btn, .vc-cancel-btn').show();
+            });
+
+            // Cancel rename
+            $(document).on('click', '.vc-cancel-btn', function(){
+                var row = $(this).closest('tr');
+                var original = row.find('.vc-name-display').text();
+                row.find('.vc-name-input').val(original).hide();
+                row.find('.vc-name-display').show();
+                row.find('.vc-rename-btn, .vc-delete-btn').show();
+                row.find('.vc-save-btn, .vc-cancel-btn').hide();
+            });
+
+            // Save rename
+            $(document).on('click', '.vc-save-btn', function(){
+                var btn     = $(this);
+                var row     = btn.closest('tr');
+                var termId  = row.data('term-id');
+                var newName = row.find('.vc-name-input').val().trim();
+                if (!newName) { vcMsg('Class name cannot be empty.', false); return; }
+                btn.prop('disabled', true).text('Saving…');
+                $.post(ajaxUrl, { action: 'msc_fe_rename_class', nonce: nonce, term_id: termId, name: newName }, function(res){
+                    btn.prop('disabled', false).text('Save');
+                    if (res.success) {
+                        row.find('.vc-name-display').text(newName).show();
+                        row.find('.vc-name-input').hide();
+                        row.find('.vc-rename-btn, .vc-delete-btn').show();
+                        row.find('.vc-save-btn, .vc-cancel-btn').hide();
+                        vcMsg('Class renamed.', true);
+                    } else {
+                        vcMsg(res.data.message || 'Error.', false);
+                    }
+                });
+            });
+
+            // Delete
+            $(document).on('click', '.vc-delete-btn', function(){
+                var btn    = $(this);
+                var row    = btn.closest('tr');
+                var termId = row.data('term-id');
+                var name   = row.find('.vc-name-display').text();
+                if (!confirm('Delete class "' + name + '"? It will be removed from any events that use it.')) return;
+                btn.prop('disabled', true).text('Deleting…');
+                $.post(ajaxUrl, { action: 'msc_fe_delete_class', nonce: nonce, term_id: termId }, function(res){
+                    if (res.success) {
+                        row.fadeOut(300, function(){ $(this).remove(); });
+                        vcMsg('Class deleted.', true);
+                    } else {
+                        btn.prop('disabled', false).text('Delete');
+                        vcMsg(res.data.message || 'Error.', false);
+                    }
+                });
+            });
+        })(jQuery);
+        </script>
+        <?php
+    }
+
+    // ─── AJAX: Add Vehicle Class ──────────────────────────────────────────────
+
+    public static function ajax_add_class() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $name = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+        if ( ! $name ) wp_send_json_error( array( 'message' => 'Class name is required.' ) );
+
+        $type = in_array( $_POST['vehicle_type'] ?? '', array( 'Car', 'Motorcycle' ), true )
+            ? $_POST['vehicle_type'] : 'Car';
+
+        $result = wp_insert_term( $name, 'msc_vehicle_class' );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+
+        update_term_meta( $result['term_id'], 'msc_vehicle_type', $type );
+        wp_send_json_success( array( 'message' => 'Class added.', 'term_id' => $result['term_id'] ) );
+    }
+
+    // ─── AJAX: Rename Vehicle Class ───────────────────────────────────────────
+
+    public static function ajax_rename_class() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $term_id = absint( $_POST['term_id'] ?? 0 );
+        $name    = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+
+        if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
+        if ( ! $name )    wp_send_json_error( array( 'message' => 'Class name is required.' ) );
+
+        $term = get_term( $term_id, 'msc_vehicle_class' );
+        if ( ! $term || is_wp_error( $term ) ) {
+            wp_send_json_error( array( 'message' => 'Class not found.' ) );
+        }
+
+        $result = wp_update_term( $term_id, 'msc_vehicle_class', array( 'name' => $name ) );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+
+        wp_send_json_success( array( 'message' => 'Class renamed.' ) );
+    }
+
+    // ─── AJAX: Delete Vehicle Class ───────────────────────────────────────────
+
+    public static function ajax_delete_class() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $term_id = absint( $_POST['term_id'] ?? 0 );
+        if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
+
+        $term = get_term( $term_id, 'msc_vehicle_class' );
+        if ( ! $term || is_wp_error( $term ) ) {
+            wp_send_json_error( array( 'message' => 'Class not found.' ) );
+        }
+
+        $result = wp_delete_term( $term_id, 'msc_vehicle_class' );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+
+        wp_send_json_success( array( 'message' => 'Class deleted.' ) );
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────────
