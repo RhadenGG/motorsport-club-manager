@@ -127,7 +127,15 @@ jQuery(function ($) {
                 var vid = $(this).val();
                 msc.primaryVehicleId = vid ? parseInt(vid) : null;
                 if (msc.primaryVehicleId) {
-                    $('#msc-additional-classes-wrap').show();
+                    // Show additional classes wrap only if there are other classes that ARE NOT primary_only
+                    var canAddMore = classes.some(function(cls) { 
+                        return !cls.primary_only && cls.id != msc.primaryClassId; 
+                    });
+                    if (canAddMore) {
+                        $('#msc-additional-classes-wrap').show();
+                    } else {
+                        $('#msc-additional-classes-wrap').hide();
+                    }
                 } else {
                     $('#msc-additional-classes-wrap').hide();
                 }
