@@ -24,12 +24,13 @@ class MSC_Pricing {
     }
 
     /**
-     * Returns fees indexed by class_id: [ class_id => ['primary_fee' => x, 'additional_fee' => y], ... ]
+     * Returns fees indexed by class_id: [ class_id => ['primary_fee' => x, 'additional_fee' => y, 'override' => z, 'exempt' => 0/1], ... ]
      */
     public static function get_set_fees( $set_id ) {
         global $wpdb;
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT class_id, primary_fee, additional_fee FROM {$wpdb->prefix}msc_pricing_set_classes WHERE pricing_set_id = %d",
+            "SELECT class_id, primary_fee, additional_fee, global_additional_fee_override as override, is_exempt_from_override as exempt 
+             FROM {$wpdb->prefix}msc_pricing_set_classes WHERE pricing_set_id = %d",
             (int) $set_id
         ) );
         $out = array();
@@ -37,26 +38,75 @@ class MSC_Pricing {
             $out[ (int) $row->class_id ] = array(
                 'primary_fee'    => (float) $row->primary_fee,
                 'additional_fee' => (float) $row->additional_fee,
+                'override'       => $row->override !== null ? (float) $row->override : null,
+                'exempt'         => (int) $row->exempt,
             );
         }
         return $out;
     }
 
     /**
-     * Returns the fee for a single class in a pricing set.
+     * Returns the pricing data for a single class in a pricing set.
+     * @param int  $set_id     Pricing set ID.
+     * @param int  $class_id   Term ID.
+     * @return array|null
+     */
+    public static function get_class_pricing_data( $set_id, $class_id ) {
+        global $wpdb;
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT primary_fee, additional_fee, global_additional_fee_override as override, is_exempt_from_override as exempt 
+             FROM {$wpdb->prefix}msc_pricing_set_classes WHERE pricing_set_id = %d AND class_id = %d",
+            (int) $set_id, (int) $class_id
+        ) );
+        if ( ! $row ) return null;
+        return array(
+            'primary_fee'    => (float) $row->primary_fee,
+            'additional_fee' => (float) $row->additional_fee,
+            'override'       => $row->override !== null ? (float) $row->override : null,
+            'exempt'         => (int) $row->exempt,
+        );
+    }
+
+    /**
+     * Legacy wrapper for backward compatibility or simple fee lookups.
      * @param int  $set_id     Pricing set ID.
      * @param int  $class_id   Term ID.
      * @param bool $is_primary True for primary class fee, false for additional.
      * @return float
      */
     public static function get_class_fee( $set_id, $class_id, $is_primary ) {
-        global $wpdb;
-        $row = $wpdb->get_row( $wpdb->prepare(
-            "SELECT primary_fee, additional_fee FROM {$wpdb->prefix}msc_pricing_set_classes WHERE pricing_set_id = %d AND class_id = %d",
-            (int) $set_id, (int) $class_id
-        ) );
-        if ( ! $row ) return 0.0;
-        return $is_primary ? (float) $row->primary_fee : (float) $row->additional_fee;
+        $data = self::get_class_pricing_data( $set_id, $class_id );
+        if ( ! $data ) return 0.0;
+        return $is_primary ? $data['primary_fee'] : $data['additional_fee'];
+    }
+
+    /**
+     * Calculates the minimum starting price for an event.
+     * @param int $event_id
+     * @return float
+     */
+    public static function get_event_starting_price( $event_id ) {
+        $base_fee       = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
+        $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
+        if ( ! $pricing_set_id ) return $base_fee;
+
+        $allowed_classes = get_post_meta( $event_id, '_msc_event_classes', true );
+        $allowed_classes = $allowed_classes ? array_map( 'intval', (array) $allowed_classes ) : array();
+        if ( empty( $allowed_classes ) ) return $base_fee;
+
+        $fees = self::get_set_fees( $pricing_set_id );
+        $min_primary = null;
+
+        foreach ( $allowed_classes as $cid ) {
+            if ( isset( $fees[ $cid ] ) ) {
+                $p_fee = $fees[ $cid ]['primary_fee'];
+                if ( $min_primary === null || $p_fee < $min_primary ) {
+                    $min_primary = $p_fee;
+                }
+            }
+        }
+
+        return $base_fee + ( $min_primary !== null ? $min_primary : 0.0 );
     }
 
     /** ── Admin page ─────────────────────────────────────────────── */
@@ -124,15 +174,19 @@ class MSC_Pricing {
         <table class="widefat" style="font-size:13px">
         <thead><tr>
             <th>Class</th>
-            <th>Primary Fee (R)</th>
-            <th>Additional Fee (R)</th>
+            <th>Primary Fee</th>
+            <th>Additional Fee</th>
+            <th title="If this class is the PRIMARY class, use this fee for ALL additional classes (except exempt ones).">Override Addit.</th>
+            <th title="If checked, this class ignores primary-class overrides and always uses its own additional fee.">Exempt?</th>
         </tr></thead>
         <tbody>
         <?php foreach ( $classes as $term_id => $class_name ) : ?>
         <tr>
             <td><?php echo esc_html( $class_name ); ?></td>
-            <td><input type="number" class="small-text msc-primary-fee" data-class="<?php echo (int) $term_id; ?>" min="0" step="0.01" value="0.00" placeholder="0.00"></td>
-            <td><input type="number" class="small-text msc-additional-fee" data-class="<?php echo (int) $term_id; ?>" min="0" step="0.01" value="0.00" placeholder="0.00"></td>
+            <td><input type="number" class="small-text msc-primary-fee" data-class="<?php echo (int) $term_id; ?>" min="0" step="0.01" value="0.00"></td>
+            <td><input type="number" class="small-text msc-additional-fee" data-class="<?php echo (int) $term_id; ?>" min="0" step="0.01" value="0.00"></td>
+            <td><input type="number" class="small-text msc-override-fee" data-class="<?php echo (int) $term_id; ?>" min="0" step="0.01" value="" placeholder="None"></td>
+            <td style="text-align:center"><input type="checkbox" class="msc-exempt-fee" data-class="<?php echo (int) $term_id; ?>"></td>
         </tr>
         <?php endforeach; ?>
         </tbody>
@@ -156,6 +210,8 @@ class MSC_Pricing {
                 $('#msc-pricing-set-id').val('');
                 $('#msc-pricing-set-name').val('');
                 $('.msc-primary-fee, .msc-additional-fee').val('0.00');
+                $('.msc-override-fee').val('');
+                $('.msc-exempt-fee').prop('checked', false);
                 $('#msc-pricing-form-title').text('Add New Pricing Set');
                 $('#msc-pricing-cancel-btn').hide();
                 $('#msc-pricing-msg').text('');
@@ -169,10 +225,13 @@ class MSC_Pricing {
                 var fees = [];
                 $('.msc-primary-fee').each(function(){
                     var classId = $(this).data('class');
+                    var overrideVal = $('.msc-override-fee[data-class="' + classId + '"]').val();
                     fees.push({
                         class_id:       classId,
                         primary_fee:    parseFloat($(this).val()) || 0,
-                        additional_fee: parseFloat($('.msc-additional-fee[data-class="' + classId + '"]').val()) || 0
+                        additional_fee: parseFloat($('.msc-additional-fee[data-class="' + classId + '"]').val()) || 0,
+                        override_fee:   overrideVal !== '' ? parseFloat(overrideVal) : null,
+                        is_exempt:      $('.msc-exempt-fee[data-class="' + classId + '"]').is(':checked') ? 1 : 0
                     });
                 });
                 $.post(ajaxurl, {
@@ -205,6 +264,8 @@ class MSC_Pricing {
                     $.each(fees, function(classId, f){
                         $('.msc-primary-fee[data-class="' + classId + '"]').val(parseFloat(f.primary_fee).toFixed(2));
                         $('.msc-additional-fee[data-class="' + classId + '"]').val(parseFloat(f.additional_fee).toFixed(2));
+                        $('.msc-override-fee[data-class="' + classId + '"]').val(f.override !== null ? parseFloat(f.override).toFixed(2) : '');
+                        $('.msc-exempt-fee[data-class="' + classId + '"]').prop('checked', parseInt(f.exempt) === 1);
                     });
                     $('html,body').animate({scrollTop: $('#msc-pricing-form').offset().top - 40}, 300);
                 });
@@ -252,6 +313,9 @@ class MSC_Pricing {
             $class_id       = absint( $fee['class_id'] ?? 0 );
             $primary_fee    = round( floatval( $fee['primary_fee'] ?? 0 ), 2 );
             $additional_fee = round( floatval( $fee['additional_fee'] ?? 0 ), 2 );
+            $override_fee   = isset( $fee['override_fee'] ) && $fee['override_fee'] !== null ? round( floatval( $fee['override_fee'] ), 2 ) : null;
+            $is_exempt      = absint( $fee['is_exempt'] ?? 0 );
+
             if ( ! $class_id ) continue;
             $wpdb->insert(
                 "{$wpdb->prefix}msc_pricing_set_classes",
@@ -260,8 +324,10 @@ class MSC_Pricing {
                     'class_id'       => $class_id,
                     'primary_fee'    => $primary_fee,
                     'additional_fee' => $additional_fee,
+                    'global_additional_fee_override' => $override_fee,
+                    'is_exempt_from_override'        => $is_exempt,
                 ),
-                array( '%d', '%d', '%f', '%f' )
+                array( '%d', '%d', '%f', '%f', $override_fee !== null ? '%f' : null, '%d' )
             );
         }
 

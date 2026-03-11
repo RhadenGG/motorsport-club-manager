@@ -10,12 +10,13 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Event Management
 - Create events with dates, locations, capacity limits, and registration windows
-- **Base entry fee** applies to all entrants, regardless of class
-- **Pricing sets** — named fee schedules (e.g. "2026 Season") defining a **primary fee** and **additional fee** per class; events reference a pricing set. Formula: Base fee + primary class fee + sum(additional class fees)
-- Pricing sets managed in both **Motorsport Club → Pricing** (wp-admin) and the **Pricing tab** of the frontend `[msc_event_dashboard]`
-- Per-event configuration of allowed vehicle types (Cars, Motorcycles, or Both) and which classes can enter
-- Instant or manual approval modes for registrations
-- Event lifecycle: open for registration → closed → results published
+- **Base Admin/Gate fee** — an optional fixed fee added to every registration (replaces the old "Base entry fee").
+- **Dynamic "Starting From" Pricing** — the system automatically calculates and displays the lowest possible entry fee (Base Fee + cheapest allowed Primary Class fee) as "From RXXXX" on event lists.
+- **Pricing sets** — named fee schedules (e.g. "2026 Season") defining a **primary fee**, **additional fee**, **global override**, and **exemption flag** per class; events reference a pricing set.
+- **Conditional Class Overrides** — allows "Special" classes (like Endurance) to change the cost of all other classes when selected as the Primary Class.
+- **Override Exemptions** — specific classes can be marked to ignore primary-class overrides, maintaining their fixed additional fee.
+- Pricing sets managed in **Motorsport Club → Pricing** (wp-admin).
+- Per-event configuration of allowed vehicle types (Cars, Motorcycles, or Both) and which classes can enter.
 
 ### Member Garage
 - Members manage their own fleet of vehicles from a frontend dashboard

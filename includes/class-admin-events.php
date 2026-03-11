@@ -141,8 +141,8 @@ class MSC_Admin_Events {
         <td colspan="3"><input type="text" name="msc_event_location" value="<?php echo esc_attr($d['event_location']); ?>" class="large-text"></td>
         </tr>
         <tr>
-        <th><label>Entry Fee</label></th>
-        <td><input type="number" name="msc_entry_fee" value="<?php echo esc_attr($d['entry_fee']); ?>" min="0" step="0.01" class="small-text" placeholder="0.00"> <span class="description">(0 = free)</span></td>
+        <th><label>Base Admin Fee</label></th>
+        <td><input type="number" name="msc_entry_fee" value="<?php echo esc_attr($d['entry_fee']); ?>" min="0" step="0.01" class="small-text" placeholder="0.00"> <span class="description">(Added to primary class fee)</span></td>
         <th><label>Capacity (max entries)</label></th>
         <td><input type="number" name="msc_capacity" value="<?php echo esc_attr($d['capacity']); ?>" min="0" class="small-text" placeholder="Unlimited"></td>
         </tr>
@@ -287,7 +287,7 @@ class MSC_Admin_Events {
                 $new['event_date'] = 'Date';
                 $new['event_loc']  = 'Location';
                 $new['event_regs'] = 'Registrations';
-                $new['entry_fee']  = 'Entry Fee';
+                $new['entry_fee']  = 'Starting From';
                 $new['approval']   = 'Approval';
             }
         }
@@ -310,8 +310,8 @@ class MSC_Admin_Events {
                 echo esc_html($count . ($cap ? ' / '.$cap : ''));
                 break;
             case 'entry_fee':
-                $fee = get_post_meta($post_id,'_msc_entry_fee',true);
-                echo $fee > 0 ? esc_html('R '.number_format($fee,2)) : 'Free';
+                $price = MSC_Pricing::get_event_starting_price( $post_id );
+                echo $price > 0 ? esc_html('R '.number_format($price,2)) : 'Free';
                 break;
             case 'approval':
                 $ap = get_post_meta($post_id,'_msc_approval',true) ?: 'instant';

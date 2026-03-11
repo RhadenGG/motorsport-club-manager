@@ -1,0 +1,62 @@
+# TECHNICAL STRATEGY: DYNAMIC & CLASS-BASED PRICING SYSTEM
+Project: Motorsport Club Manager
+Date: March 2026
+
+## 1. OVERVIEW
+This strategy shifts the plugin from a static "Base Entry Fee" model to a dynamic system driven by Primary Vehicle Classes. It addresses the need for season-based pricing sets and complex conditional fees (like Endurance-specific overrides) without hardcoding any specific class rules.
+
+## 2. DYNAMIC "STARTING FROM" PRICING
+The "Entry Fee" field in Event settings will be repurposed as a "Base Admin/Gate Fee" (defaulting to R0). The actual displayed price will be calculated dynamically.
+
+### Calculation Logic:
+- **Function:** `MSC_Pricing::get_event_starting_price($event_id)`
+- **Step 1:** Retrieve all `msc_vehicle_class` IDs allowed for the event.
+- **Step 2:** Query the assigned Pricing Set for the `primary_fee` of those specific classes.
+- **Step 3:** Identify the `MIN()` value among those primary fees.
+- **Step 4:** Result = `Base Admin Fee + Lowest Primary Fee`.
+
+### UI Integration:
+- **Shortcodes ([msc_events_list]):** Replaces the static fee display with "From RXXXX" (or just "RXXXX" if all fees are identical).
+- **Admin List:** Shows the calculated starting price for quick reference.
+- **Prevention of "Free" Labels:** By checking the actual class fees, the system avoids displaying "Free" when a base fee is R0 but classes carry costs.
+
+## 3. FLEXIBLE CLASS-BASED FEE OVERRIDES
+To handle scenarios like "Endurance primary class changes additional class fees," we introduce two new configuration attributes in the Pricing Set schema.
+
+### New Database Columns (msc_pricing_set_classes):
+1. `global_additional_fee_override` (Decimal/Null): If this class is chosen as PRIMARY, this value replaces the standard additional fee for all other classes in the registration.
+2. `is_exempt_from_override` (Boolean): If checked, this class ignores any primary-class overrides (e.g., for fixed-cost items like transponder rentals).
+
+### Registration Pricing Hierarchy:
+When calculating the total fee for a registration:
+1. **Primary Fee:** Take the `primary_fee` of the selected primary class.
+2. **Determine Override:** Check if the primary class has a `global_additional_fee_override`.
+3. **Additional Fees:** For each additional class:
+   - IF class `is_exempt_from_override` == TRUE: Use its own `additional_fee`.
+   - ELSE IF a `global_override` exists: Use the `global_override` value.
+   - ELSE: Use the class's own `additional_fee`.
+
+## 4. ADMIN INTERFACE UPDATES
+
+### Pricing Set Management:
+- Add columns for "Override Addit. Fee" and "Exempt?" to the fee table.
+- This allows a club admin to set "Endurance 3h" to have a Primary Fee of R6000 and an Override of R500.
+
+### Event Editor:
+- **Label Change:** "Entry Fee" becomes "Base Admin Fee".
+- **Dynamic Preview:** A real-time summary in the sidebar showing: "Current Display Price: From RX,XXX" based on checked classes and the selected pricing set.
+
+## 5. OPEN-SOURCE INTEGRATION & FLEXIBILITY
+- **Zero Hardcoding:** No specific class names (e.g., 'Endurance') are referenced in code. All logic is driven by metadata defined by the user.
+- **Scalability:** Clubs can create unique Pricing Sets for every year (e.g., "2026 KZN Regional", "2027 National Series").
+- **Backward Compatibility:** Existing events with a "Base Fee" and R0 class fees will still calculate correctly (0 + Base Fee).
+- **Maintenance:** Changing a season's price requires updating one Pricing Set instead of dozens of individual event posts.
+
+## 6. EXAMPLE WORKFLOW (Endurance Rule)
+- **Endurance 3h Class Config:** Primary Fee: R6000 | Override: R500 | Exempt: Yes.
+- **User Action:** Registers for Endurance 3h + Clubmans (Standard R300 additional).
+- **System Result:** 
+  - Finds Endurance 3h as Primary (R6000).
+  - Detects R500 Override.
+  - Applies R500 to Clubmans (instead of R300).
+  - Total: R6500.

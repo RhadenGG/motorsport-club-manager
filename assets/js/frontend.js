@@ -242,10 +242,11 @@ jQuery(function ($) {
             msc.updateFees = function() {
                 var primaryCls = classes.find(function(c) { return c.id == msc.primaryClassId; });
                 var primaryFee = primaryCls ? (primaryCls.primary_fee || 0) : 0;
+                var globalOverride = (primaryCls && primaryCls.override !== undefined && primaryCls.override !== null) ? primaryCls.override : null;
                 var total = baseFee + primaryFee;
 
                 var rows = [];
-                if (baseFee > 0) rows.push({label: 'Base entry fee', fee: baseFee});
+                if (baseFee > 0) rows.push({label: 'Base Admin Fee', fee: baseFee});
                 if (primaryCls) {
                     rows.push({label: primaryCls.name + ' (primary)', fee: primaryFee});
                 }
@@ -254,7 +255,16 @@ jQuery(function ($) {
                     if (!r.classId) return;
                     var cls = classes.find(function(c) { return c.id == r.classId; });
                     if (!cls) return;
-                    var af = cls.additional_fee || 0;
+                    
+                    var af = 0;
+                    if (cls.exempt) {
+                        af = cls.additional_fee || 0;
+                    } else if (globalOverride !== null) {
+                        af = globalOverride;
+                    } else {
+                        af = cls.additional_fee || 0;
+                    }
+                    
                     total += af;
                     rows.push({label: cls.name + ' (additional)', fee: af});
                 });

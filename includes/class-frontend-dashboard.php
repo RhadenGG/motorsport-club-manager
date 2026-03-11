@@ -172,8 +172,8 @@ class MSC_Frontend_Dashboard {
                         <input type="text" id="ce_location" placeholder="e.g. Kyalami Grand Prix Circuit">
                     </div>
                     <div class="msc-field">
-                        <label>Entry Fee (R)</label>
-                        <input type="number" id="ce_entry_fee" min="0" step="0.01" placeholder="0 = free">
+                        <label>Base Admin Fee</label>
+                        <input type="number" id="ce_entry_fee" min="0" step="0.01" placeholder="0.00">
                     </div>
                     <div class="msc-field">
                         <label>Capacity <small style="font-weight:400">(0 = unlimited)</small></label>
@@ -281,8 +281,8 @@ class MSC_Frontend_Dashboard {
                         <input type="text" id="ee_location" placeholder="e.g. Kyalami Grand Prix Circuit">
                     </div>
                     <div class="msc-field">
-                        <label>Entry Fee (R)</label>
-                        <input type="number" id="ee_entry_fee" min="0" step="0.01" placeholder="0 = free">
+                        <label>Base Admin Fee</label>
+                        <input type="number" id="ee_entry_fee" min="0" step="0.01" placeholder="0.00">
                     </div>
                     <div class="msc-field">
                         <label>Capacity <small style="font-weight:400">(0 = unlimited)</small></label>
@@ -399,7 +399,10 @@ class MSC_Frontend_Dashboard {
                 <td><strong><?php echo esc_html( $event->post_title ); ?></strong></td>
                 <td style="white-space:nowrap"><?php echo $event_date ? esc_html( date( 'd M Y H:i', strtotime( $event_date ) ) ) : '—'; ?></td>
                 <td><?php echo esc_html( $location ?: '—' ); ?></td>
-                <td><?php echo $fee > 0 ? 'R ' . number_format( $fee, 2 ) : 'Free'; ?></td>
+                <td><?php 
+                    $price = MSC_Pricing::get_event_starting_price( $event->ID );
+                    echo $price > 0 ? 'From R ' . number_format( $price, 2 ) : 'Free'; 
+                ?></td>
                 <td>
                     <?php if ( $is_closed ) : ?>
                     <span class="msc-status-badge msc-status-closed">Closed</span>
@@ -1158,15 +1161,19 @@ class MSC_Frontend_Dashboard {
                     <table class="msc-dash-table" style="font-size:13px">
                     <thead><tr>
                         <th>Class</th>
-                        <th>Primary Fee (R)</th>
-                        <th>Additional Fee (R)</th>
+                        <th>Primary</th>
+                        <th>Addit.</th>
+                        <th>Override</th>
+                        <th>Exempt?</th>
                     </tr></thead>
                     <tbody>
                     <?php foreach ( $classes as $term_id => $class_name ) : ?>
                     <tr>
                         <td><?php echo esc_html($class_name); ?></td>
-                        <td><input type="number" class="msc-ps-primary-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:80px"></td>
-                        <td><input type="number" class="msc-ps-additional-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:80px"></td>
+                        <td><input type="number" class="msc-ps-primary-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:70px"></td>
+                        <td><input type="number" class="msc-ps-additional-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:70px"></td>
+                        <td><input type="number" class="msc-ps-override-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="" placeholder="—" style="width:70px"></td>
+                        <td style="text-align:center"><input type="checkbox" class="msc-ps-exempt-fee" data-class="<?php echo (int)$term_id; ?>"></td>
                     </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -1222,6 +1229,8 @@ class MSC_Frontend_Dashboard {
                 $('#msc-ps-id').val('');
                 $('#msc-ps-name').val('');
                 $('.msc-ps-primary-fee, .msc-ps-additional-fee').val('0.00');
+                $('.msc-ps-override-fee').val('');
+                $('.msc-ps-exempt-fee').prop('checked', false);
                 $('#msc-pricing-panel-title').text('New Pricing Set');
                 $('#msc-pricing-form-msg').hide().text('');
             }
@@ -1245,10 +1254,13 @@ class MSC_Frontend_Dashboard {
                 var fees = [];
                 $('.msc-ps-primary-fee').each(function(){
                     var cid = $(this).data('class');
+                    var ovr = $('.msc-ps-override-fee[data-class="' + cid + '"]').val();
                     fees.push({
                         class_id:       cid,
                         primary_fee:    parseFloat($(this).val()) || 0,
-                        additional_fee: parseFloat($('.msc-ps-additional-fee[data-class="' + cid + '"]').val()) || 0
+                        additional_fee: parseFloat($('.msc-ps-additional-fee[data-class="' + cid + '"]').val()) || 0,
+                        override_fee:   ovr !== '' ? parseFloat(ovr) : null,
+                        is_exempt:      $('.msc-ps-exempt-fee[data-class="' + cid + '"]').is(':checked') ? 1 : 0
                     });
                 });
                 btn.prop('disabled', true).text('Saving…');
@@ -1283,6 +1295,8 @@ class MSC_Frontend_Dashboard {
                     $.each(res.data.fees, function(classId, f){
                         $('.msc-ps-primary-fee[data-class="' + classId + '"]').val(parseFloat(f.primary_fee).toFixed(2));
                         $('.msc-ps-additional-fee[data-class="' + classId + '"]').val(parseFloat(f.additional_fee).toFixed(2));
+                        $('.msc-ps-override-fee[data-class="' + classId + '"]').val(f.override !== null ? parseFloat(f.override).toFixed(2) : '');
+                        $('.msc-ps-exempt-fee[data-class="' + classId + '"]').prop('checked', parseInt(f.exempt) === 1);
                     });
                     $('html,body').animate({scrollTop: $('#msc-pricing-form-panel').offset().top - 80}, 200);
                     $('#msc-pricing-form-panel').slideDown(200);

@@ -171,14 +171,39 @@ class MSC_Registration {
         $total_fee      = $base_fee;
         $fee_per_class  = array(); // class_id => fee
 
-        $primary_fee = $pricing_set_id ? MSC_Pricing::get_class_fee( $pricing_set_id, $primary_class_id, true ) : 0.0;
-        $fee_per_class[ $primary_class_id ] = $primary_fee;
-        $total_fee += $primary_fee;
+        if ( $pricing_set_id ) {
+            $primary_data = MSC_Pricing::get_class_pricing_data( $pricing_set_id, $primary_class_id );
+            $primary_fee  = $primary_data ? $primary_data['primary_fee'] : 0.0;
+            $global_override = ( $primary_data && $primary_data['override'] !== null ) ? $primary_data['override'] : null;
 
-        foreach ( $additional_class_ids as $cid ) {
-            $af = $pricing_set_id ? MSC_Pricing::get_class_fee( $pricing_set_id, $cid, false ) : 0.0;
-            $fee_per_class[ $cid ] = $af;
-            $total_fee += $af;
+            $fee_per_class[ $primary_class_id ] = $primary_fee;
+            $total_fee += $primary_fee;
+
+            $all_set_fees = MSC_Pricing::get_set_fees( $pricing_set_id );
+
+            foreach ( $additional_class_ids as $cid ) {
+                $class_data = isset( $all_set_fees[ $cid ] ) ? $all_set_fees[ $cid ] : null;
+                $af = 0.0;
+
+                if ( $class_data ) {
+                    if ( $class_data['exempt'] ) {
+                        $af = $class_data['additional_fee'];
+                    } elseif ( $global_override !== null ) {
+                        $af = $global_override;
+                    } else {
+                        $af = $class_data['additional_fee'];
+                    }
+                }
+
+                $fee_per_class[ $cid ] = $af;
+                $total_fee += $af;
+            }
+        } else {
+            // No pricing set, all classes are free
+            $fee_per_class[ $primary_class_id ] = 0.0;
+            foreach ( $additional_class_ids as $cid ) {
+                $fee_per_class[ $cid ] = 0.0;
+            }
         }
 
         // Handle Proof of Payment upload

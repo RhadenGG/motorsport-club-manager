@@ -57,7 +57,7 @@ class MSC_Shortcodes {
         $date     = get_post_meta($event_id,'_msc_event_date',true);
         $end_date = get_post_meta($event_id,'_msc_event_end_date',true);
         $location = get_post_meta($event_id,'_msc_event_location',true);
-        $fee      = floatval(get_post_meta($event_id,'_msc_entry_fee',true));
+        $price    = MSC_Pricing::get_event_starting_price( $event_id );
         $capacity = get_post_meta($event_id,'_msc_capacity',true);
         $classes  = MSC_Taxonomies::get_event_classes($event_id);
         $class_names = array();
@@ -75,7 +75,7 @@ class MSC_Shortcodes {
         $items = array();
         if ($date)     $items[] = array('📅','Date', date('D d F Y @ H:i', strtotime($date)) . ($end_date ? ' – '.date('H:i', strtotime($end_date)) : ''));
         if ($location) $items[] = array('📍','Location', esc_html($location));
-        $items[] = array('💰','Entry Fee', $fee > 0 ? 'R '.number_format($fee,2) : 'Free');
+        $items[] = array('💰','Entry Fee', $price > 0 ? 'From R '.number_format($price,2) : 'Free');
         if ($capacity) $items[] = array('👥','Entries', esc_html($reg_count.' / '.$capacity));
         else           $items[] = array('👥','Entries', esc_html($reg_count.' registered'));
         if (!empty($class_names)) $items[] = array('🏷','Classes', esc_html(implode(', ', $class_names)));
@@ -123,7 +123,7 @@ class MSC_Shortcodes {
         $e        = $events[0];
         $date     = get_post_meta( $e->ID, '_msc_event_date', true );
         $location = get_post_meta( $e->ID, '_msc_event_location', true );
-        $fee      = floatval( get_post_meta( $e->ID, '_msc_entry_fee', true ) );
+        $price    = MSC_Pricing::get_event_starting_price( $e->ID );
         $thumb_id = get_post_thumbnail_id( $e->ID );
         $url      = get_permalink( $e->ID );
 
@@ -140,7 +140,7 @@ class MSC_Shortcodes {
         $html .= '<h4 class="msc-next-event-title"><a href="' . esc_url( $url ) . '">' . esc_html( $e->post_title ) . '</a></h4>';
         if ( $date )     $html .= '<p class="msc-next-event-meta">📅 ' . esc_html( date_i18n( 'D d F Y', strtotime( $date ) ) ) . '</p>';
         if ( $location ) $html .= '<p class="msc-next-event-meta">📍 ' . esc_html( $location ) . '</p>';
-        $html .= '<p class="msc-next-event-meta">💰 ' . ( $fee > 0 ? 'R ' . number_format( $fee, 2 ) : 'Free' ) . '</p>';
+        $html .= '<p class="msc-next-event-meta">💰 ' . ( $price > 0 ? 'From R ' . number_format( $price, 2 ) : 'Free' ) . '</p>';
         $html .= '<a href="' . esc_url( $url ) . '" class="msc-btn msc-btn-sm" style="margin-top:6px;display:inline-block;">View &amp; Register</a>';
         $html .= '</div>';
         $html .= '</div>';
@@ -175,7 +175,7 @@ class MSC_Shortcodes {
         foreach($events as $e) {
             $date     = get_post_meta($e->ID,'_msc_event_date',true);
             $location = get_post_meta($e->ID,'_msc_event_location',true);
-            $fee      = floatval(get_post_meta($e->ID,'_msc_entry_fee',true));
+            $price    = MSC_Pricing::get_event_starting_price( $e->ID );
             $terms    = get_the_terms($e->ID,'msc_vehicle_class');
             $closed   = MSC_Results::is_closed( $e->ID );
             $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$e->ID));
@@ -201,7 +201,7 @@ class MSC_Shortcodes {
                     <p class="msc-event-classes"><?php foreach($terms as $t) echo "<span class='msc-class-pill'>".esc_html($t->name)."</span> " ?></p>
                     <?php endif ?>
                     <div class="msc-event-footer">
-                        <span class="msc-event-fee"><?php echo $fee>0 ? esc_html('R '.number_format($fee,2)) : 'Free' ?></span>
+                        <span class="msc-event-fee"><?php echo $price>0 ? esc_html('From R '.number_format($price,2)) : 'Free' ?></span>
                         <?php if($closed): ?>
                             <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn">View Results</a>
                         <?php else: ?>
@@ -246,13 +246,15 @@ class MSC_Shortcodes {
         foreach ( $event_class_ids as $cid ) {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
-                $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0 );
+                $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0, 'override' => null, 'exempt' => 0 );
                 $event_classes_for_form[] = array(
                     'id'             => $cid,
                     'name'           => $term->name,
                     'vtype'          => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
                     'primary_fee'    => $fees['primary_fee'],
                     'additional_fee' => $fees['additional_fee'],
+                    'override'       => isset($fees['override']) ? $fees['override'] : null,
+                    'exempt'         => isset($fees['exempt']) ? (int) $fees['exempt'] : 0,
                 );
             }
         }
