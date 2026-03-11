@@ -4,18 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class MSC_Admin_Participants {
 
     public static function init() {
-        add_action( 'admin_menu', array( __CLASS__, 'add_submenu' ) );
-    }
-
-    public static function add_submenu() {
-        add_submenu_page(
-            'motorsport-club',
-            'Participants',
-            'Participants',
-            self::required_cap(),
-            'msc-participants',
-            array( __CLASS__, 'page' )
-        );
     }
 
     public static function page() {

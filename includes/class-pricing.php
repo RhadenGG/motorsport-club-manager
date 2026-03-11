@@ -4,7 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class MSC_Pricing {
 
     public static function init() {
-        add_action( 'admin_menu', array( __CLASS__, 'add_submenu' ) );
         add_action( 'wp_ajax_msc_pricing_save_set',   array( __CLASS__, 'ajax_save_set' ) );
         add_action( 'wp_ajax_msc_pricing_delete_set', array( __CLASS__, 'ajax_delete_set' ) );
         add_action( 'wp_ajax_msc_pricing_get_set',    array( __CLASS__, 'ajax_get_set' ) );
@@ -110,17 +109,6 @@ class MSC_Pricing {
     }
 
     /** ── Admin page ─────────────────────────────────────────────── */
-
-    public static function add_submenu() {
-        add_submenu_page(
-            'motorsport-club',
-            'Pricing Sets',
-            'Pricing',
-            'manage_options',
-            'msc-pricing',
-            array( __CLASS__, 'admin_page' )
-        );
-    }
 
     public static function admin_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
