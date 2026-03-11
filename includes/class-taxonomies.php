@@ -143,39 +143,4 @@ class MSC_Taxonomies {
 
         return $result;
     }
-
-    /** Seed default classes if none exist. Called from MSC_Activator. */
-    public static function seed_defaults() {
-        $existing = get_terms( array( 'taxonomy' => 'msc_vehicle_class', 'hide_empty' => false, 'number' => 1 ) );
-        if ( ! is_wp_error( $existing ) && ! empty( $existing ) ) return;
-
-        $defaults = array(
-            'Car' => array(
-                'Modifieds / Super Modifieds',
-                "Super GT's",
-                'Retro Racing',
-                'Sports Cars',
-                'Porsche Challenge',
-                'Time Challenge',
-            ),
-            'Motorcycle' => array(
-                'Juniors',
-                'Motards / Supermotards',
-                'Powersport',
-                'CBR150',
-                '300 Class',
-                '600/1000',
-                'MiniGP',
-            ),
-        );
-
-        foreach ( $defaults as $type => $classes ) {
-            foreach ( $classes as $class_name ) {
-                $result = wp_insert_term( $class_name, 'msc_vehicle_class' );
-                if ( ! is_wp_error( $result ) ) {
-                    update_term_meta( $result['term_id'], 'msc_vehicle_type', $type );
-                }
-            }
-        }
-    }
 }
