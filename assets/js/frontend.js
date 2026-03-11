@@ -115,9 +115,9 @@ jQuery(function ($) {
                     msc.checkStep1();
                     return;
                 }
+                $('#msc-additional-classes-wrap').hide();
                 populateVehicleSelect($('#msc-primary-vehicle-select'), classId, null);
                 $('#msc-primary-vehicle-wrap').show();
-                $('#msc-additional-classes-wrap').hide();
                 msc.updateFees();
                 msc.checkStep1();
             });
