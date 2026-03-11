@@ -73,7 +73,7 @@ class MSC_Shortcodes {
 
         $html = '<div class="msc-event-meta">';
         $items = array();
-        if ($date)     $items[] = array('📅','Date', date('D d F Y @ H:i', strtotime($date)) . ($end_date ? ' – '.date('H:i', strtotime($end_date)) : ''));
+        if ($date)     $items[] = array('📅','Date', esc_html( date('D d F Y @ H:i', strtotime($date)) . ($end_date ? ' – '.date('H:i', strtotime($end_date)) : '') ));
         if ($location) $items[] = array('📍','Location', esc_html($location));
         $items[] = array('💰','Entry Fee', $price > 0 ? 'From R '.number_format($price,2) : 'Free');
         if ($capacity) $items[] = array('👥','Entries', esc_html($reg_count.' / '.$capacity));
@@ -295,9 +295,13 @@ class MSC_Shortcodes {
         $birthday = get_user_meta( $user_id, 'msc_birthday', true );
 
         // Calculate age
-        $dob = new DateTime($birthday);
-        $now_dt = new DateTime();
-        $age = $now_dt->diff($dob)->y;
+        try {
+            $dob    = new DateTime( $birthday );
+            $now_dt = new DateTime();
+            $age    = $now_dt->diff( $dob )->y;
+        } catch ( Exception $e ) {
+            $age = 99; // Treat invalid/missing birthday as adult
+        }
         $is_minor = ($age < 18);
 
         if (MSC_Registration::user_is_registered($user_id, $event_id)) {

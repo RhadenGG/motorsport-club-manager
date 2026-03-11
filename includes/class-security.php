@@ -319,11 +319,11 @@ class MSC_Security {
         $text_fields = array( 'msc_birthday', 'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_pit_crew_1', 'msc_pit_crew_2' );
         foreach ( $text_fields as $key ) {
             if ( isset( $_POST[ $key ] ) ) {
-                update_user_meta( $user_id, $key, sanitize_text_field( $_POST[ $key ] ) );
+                update_user_meta( $user_id, $key, sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );
             }
         }
-        if ( isset( $_POST['msc_gender'] ) && in_array( $_POST['msc_gender'], array( 'male', 'female', '' ), true ) ) {
-            update_user_meta( $user_id, 'msc_gender', $_POST['msc_gender'] );
+        if ( isset( $_POST['msc_gender'] ) && in_array( wp_unslash( $_POST['msc_gender'] ), array( 'male', 'female', '' ), true ) ) {
+            update_user_meta( $user_id, 'msc_gender', sanitize_key( wp_unslash( $_POST['msc_gender'] ) ) );
         }
     }
 }

@@ -69,7 +69,7 @@ class MSC_Taxonomies {
     public static function save_term_fields( $term_id ) {
         if ( isset( $_POST['msc_vehicle_type'] ) ) {
             $allowed = array( 'Car', 'Motorcycle' );
-            $type    = sanitize_text_field( $_POST['msc_vehicle_type'] );
+            $type    = sanitize_text_field( wp_unslash( $_POST['msc_vehicle_type'] ) );
             if ( in_array( $type, $allowed, true ) ) {
                 update_term_meta( $term_id, 'msc_vehicle_type', $type );
             }

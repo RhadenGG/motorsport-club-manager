@@ -19,9 +19,7 @@ class MSC_Registration {
         $user_id  = get_current_user_id();
         $event_id = intval( $_POST['event_id'] );
 
-        // Count ALL user vehicles (for "none in garage" detection)
-        $total_user_vehicles = (int) wp_count_posts( 'msc_vehicle' )->publish;
-        // More accurate: count posts owned by this user
+        // Count vehicles owned by this user
         $total_user_vehicles = (int) ( new WP_Query( array(
             'post_type'      => 'msc_vehicle',
             'post_status'    => 'publish',
@@ -222,6 +220,10 @@ class MSC_Registration {
             $check = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
             if ( $check['ext'] !== 'pdf' || $check['type'] !== 'application/pdf' ) {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF file.' ) );
+            }
+
+            if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
             $attachment_id = media_handle_upload( 'pop_file', 0 );

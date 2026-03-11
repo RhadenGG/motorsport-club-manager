@@ -75,13 +75,13 @@ class MSC_Admin_Garage {
         if ( ! current_user_can('edit_post',$post_id) ) return;
 
         foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_reg_number') as $f ) {
-            if ( isset($_POST[$f]) ) update_post_meta($post_id,'_'.$f, sanitize_text_field($_POST[$f]));
+            if ( isset($_POST[$f]) ) update_post_meta($post_id,'_'.$f, sanitize_text_field(wp_unslash($_POST[$f])));
         }
         if ( isset($_POST['msc_notes']) ) {
-            update_post_meta($post_id,'_msc_notes', sanitize_textarea_field($_POST['msc_notes']));
+            update_post_meta($post_id,'_msc_notes', sanitize_textarea_field(wp_unslash($_POST['msc_notes'])));
         }
         if ( isset($_POST['msc_engine_size']) ) {
-            update_post_meta($post_id,'_msc_engine_size', sanitize_text_field($_POST['msc_engine_size']));
+            update_post_meta($post_id,'_msc_engine_size', sanitize_text_field(wp_unslash($_POST['msc_engine_size'])));
         }
     }
 

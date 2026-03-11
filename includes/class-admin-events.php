@@ -516,6 +516,7 @@ class MSC_Admin_Events {
 
     public static function settings_page() {
         if ( isset($_POST['msc_save_settings']) ) {
+            if ( ! current_user_can( 'manage_options' ) ) return;
             check_admin_referer('msc_save_settings');
             update_option('msc_banking_details', wp_kses_post(wp_unslash($_POST['msc_banking_details'])));
             update_option('msc_default_indemnity', wp_kses_post(wp_unslash($_POST['msc_default_indemnity'])));

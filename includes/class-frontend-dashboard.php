@@ -1550,6 +1550,13 @@ class MSC_Frontend_Dashboard {
                 $reg_id = absint( $data['registration_id'] ?? 0 );
                 if ( ! $reg_id ) continue;
 
+                // Verify this registration belongs to the target event.
+                $reg_event = (int) $wpdb->get_var( $wpdb->prepare(
+                    "SELECT event_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+                    $reg_id
+                ) );
+                if ( $reg_event !== $event_id ) continue;
+
                 $row = array(
                     'event_id'        => $event_id,
                     'registration_id' => $reg_id,
