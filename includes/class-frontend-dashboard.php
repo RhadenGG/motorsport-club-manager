@@ -221,11 +221,11 @@ class MSC_Frontend_Dashboard {
                 <div style="margin-top:16px">
                     <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
                     <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
-                    <div id="ce-class-boxes">
+                    <div id="ce-class-boxes" class="msc-class-grid">
                     <?php foreach ( $classes_by_type as $type => $classes ) : ?>
-                    <div class="msc-ce-class-group" data-type="<?php echo esc_attr($type); ?>" style="margin-bottom:16px">
+                    <div class="msc-ce-class-group" data-type="<?php echo esc_attr($type); ?>">
                         <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
-                        <table style="width:100%;border-collapse:collapse;max-width:500px">
+                        <table style="width:100%;border-collapse:collapse">
                         <thead><tr>
                             <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
                             <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>
@@ -335,11 +335,11 @@ class MSC_Frontend_Dashboard {
                 <div style="margin-top:16px">
                     <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
                     <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
-                    <div id="ee-class-boxes">
+                    <div id="ee-class-boxes" class="msc-class-grid">
                     <?php foreach ( $classes_by_type as $type => $classes ) : ?>
-                    <div class="msc-ee-class-group" data-type="<?php echo esc_attr($type); ?>" style="margin-bottom:16px">
+                    <div class="msc-ee-class-group" data-type="<?php echo esc_attr($type); ?>">
                         <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
-                        <table style="width:100%;border-collapse:collapse;max-width:500px">
+                        <table style="width:100%;border-collapse:collapse">
                         <thead><tr>
                             <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
                             <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>

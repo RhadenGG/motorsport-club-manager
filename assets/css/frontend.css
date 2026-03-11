@@ -104,8 +104,12 @@
 button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
 .msc-btn-danger { background: #c0392b; border-color: #c0392b; }
 .msc-btn-danger:hover { background: #a93226; border-color: #a93226; }
-.msc-vc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-@media (max-width: 640px) { .msc-vc-grid { grid-template-columns: 1fr; } }
+.msc-vc-grid,
+.msc-class-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 640px) {
+    .msc-vc-grid,
+    .msc-class-grid { grid-template-columns: 1fr; }
+}
 
 /* ── Notices ─────────────────────────────────────────────────────────────── */
 .msc-notice { padding: 12px 16px; border-radius: var(--msc-radius); margin: 12px 0; font-size: 14px; border-left: 4px solid; }
