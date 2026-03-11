@@ -1465,13 +1465,14 @@ class MSC_Frontend_Dashboard {
             </div>
 
             <!-- Classes Table -->
+            <div class="msc-vc-grid">
             <?php foreach ( $classes_by_type as $type => $classes ) : ?>
-            <div class="msc-panel" style="padding:16px;margin-bottom:20px" data-vc-type="<?php echo esc_attr($type); ?>">
+            <div class="msc-panel" style="padding:16px" data-vc-type="<?php echo esc_attr($type); ?>">
                 <h4 style="margin:0 0 12px"><?php echo esc_html($type); ?> Classes</h4>
                 <?php if ( empty($classes) ) : ?>
                 <p style="color:#888;margin:0">No <?php echo esc_html($type); ?> classes yet.</p>
                 <?php else : ?>
-                <table class="msc-dash-table" style="max-width:600px">
+                <table class="msc-dash-table" style="width:100%">
                     <thead><tr><th>Class Name</th><th style="width:120px">Actions</th></tr></thead>
                     <tbody>
                     <?php foreach ( $classes as $term_id => $name ) : ?>
@@ -1496,6 +1497,7 @@ class MSC_Frontend_Dashboard {
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
+            </div><!-- end grid -->
         </div>
 
         <script>
