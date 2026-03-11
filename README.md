@@ -11,7 +11,8 @@ Built for any motorsport club or racing organisation running their website on Wo
 ### Event Management
 - Create events with dates, locations, capacity limits, and registration windows
 - **Base entry fee** applies to all entrants, regardless of class
-- **Per-class additional fees** — each allowed class can have its own additional cost on top of the base fee
+- **Pricing sets** — named fee schedules (e.g. "2026 Season") defining a **primary fee** and **additional fee** per class; events reference a pricing set. Formula: Base fee + primary class fee + sum(additional class fees)
+- Pricing sets managed in both **Motorsport Club → Pricing** (wp-admin) and the **Pricing tab** of the frontend `[msc_event_dashboard]`
 - Per-event configuration of allowed vehicle types (Cars, Motorcycles, or Both) and which classes can enter
 - Instant or manual approval modes for registrations
 - Event lifecycle: open for registration → closed → results published
@@ -24,9 +25,9 @@ Built for any motorsport club or racing organisation running their website on Wo
 
 ### Registration & Indemnity
 - Multi-step registration form with real-time validation
-- **Multi-class entry** — members select one or more classes to enter for the event, each with its own additional fee
-- **Live fee breakdown** — total cost is calculated in real time as classes are selected (Base fee + class fees = Total), displayed above the banking details and proof-of-payment upload
-- One registration, one indemnity, one proof of payment — covers all selected classes
+- **Primary class + per-class vehicle** — members first choose a primary class and the vehicle entering it; then optionally add extra classes each with their own vehicle selection
+- **Multi-class entry** — one registration, one indemnity, one proof of payment covers all selected classes
+- **Live fee breakdown** — total cost is calculated in real time (Base fee + primary class fee + additional class fees = Total), displayed above the banking details and proof-of-payment upload
 - Electronic signature support via `signature_pad` (drawn or typed)
 - Automatic minor detection from date of birth — enforces parent/guardian name and signature
 - Mandatory emergency contact fields (name and phone) pre-filled from user profile
@@ -97,8 +98,10 @@ Built for any motorsport club or racing organisation running their website on Wo
 - **Custom Taxonomy:** `msc_vehicle_class` (shared across post types)
 - **Custom Database Tables:**
     - `{prefix}msc_registrations` — entrant details, signatures, emergency contacts, PoP references
-    - `{prefix}msc_registration_classes` — junction table linking each registration to one or more entered classes, with the class-specific fee recorded at time of registration
+    - `{prefix}msc_registration_classes` — junction table: one row per class per registration, with `class_fee`, `vehicle_id`, and `is_primary` (1 = primary class, 0 = additional)
     - `{prefix}msc_event_results` — lap times, positions, finish status (one row per driver per class)
+    - `{prefix}msc_pricing_sets` — named pricing set records
+    - `{prefix}msc_pricing_set_classes` — per-class primary and additional fees within a pricing set
 - **Frontend:** jQuery + vanilla CSS (all classes prefixed `msc-`)
 - **Libraries:**
     - [`signature_pad`](https://github.com/nicholasgasior/signature_pad) (CDN) — electronic signatures
@@ -235,6 +238,7 @@ Classes are no longer assigned to individual vehicles. Instead, they are assigne
 |---|---|
 | `motorsport-club.php` | Plugin entry point, constants, class loading |
 | `includes/class-taxonomies.php` | Taxonomy registration, term meta UI, and class queries |
+| `includes/class-pricing.php` | Pricing sets CRUD — admin page, AJAX handlers, public fee API |
 | `includes/class-registration.php` | AJAX registration logic and validation |
 | `includes/class-account.php` | Frontend member dashboard |
 | `includes/class-indemnity.php` | PDF generation and email delivery |

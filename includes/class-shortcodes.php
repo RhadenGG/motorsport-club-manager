@@ -234,23 +234,25 @@ class MSC_Shortcodes {
         if ( ! $indemnity ) {
             $indemnity = get_option( 'msc_default_indemnity', msc_get_default_indemnity() );
         }
-        $fee        = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
-        $class_fees = get_post_meta( $event_id, '_msc_class_fees', true );
-        $class_fees = is_array( $class_fees ) ? $class_fees : array();
-        $approval   = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
+        $fee            = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
+        $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
+        $approval       = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
 
-        // Build class data for the registration form
+        // Build class data for the registration form (includes two-tier fees)
+        $set_fees        = $pricing_set_id ? MSC_Pricing::get_set_fees( $pricing_set_id ) : array();
         $event_class_ids = get_post_meta( $event_id, '_msc_event_classes', true );
         $event_class_ids = $event_class_ids ? array_map( 'intval', (array) $event_class_ids ) : array();
         $event_classes_for_form = array();
         foreach ( $event_class_ids as $cid ) {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
+                $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0 );
                 $event_classes_for_form[] = array(
-                    'id'    => $cid,
-                    'name'  => $term->name,
-                    'fee'   => isset( $class_fees[ $cid ] ) ? floatval( $class_fees[ $cid ] ) : 0.0,
-                    'vtype' => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
+                    'id'             => $cid,
+                    'name'           => $term->name,
+                    'vtype'          => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
+                    'primary_fee'    => $fees['primary_fee'],
+                    'additional_fee' => $fees['additional_fee'],
                 );
             }
         }
@@ -312,58 +314,76 @@ class MSC_Shortcodes {
              data-event="<?php echo $event_id; ?>"
              data-minor="<?php echo $is_minor ? '1' : '0'; ?>"
              data-base-fee="<?php echo esc_attr( number_format( $fee, 2, '.', '' ) ); ?>"
-             data-classes="<?php echo esc_attr( wp_json_encode( $event_classes_for_form ) ); ?>">
+             data-classes="<?php echo esc_attr( wp_json_encode( $event_classes_for_form ) ); ?>"
+             data-garage-url="<?php echo esc_attr( msc_get_account_url( 'garage' ) ); ?>">
             <h3 class="msc-section-title">Register for this Event</h3>
 
             <?php if($approval==='manual'): ?>
             <div class="msc-notice msc-notice-info" style="margin-bottom:16px">ℹ️ Registrations for this event require admin approval. You will be notified by email once confirmed.</div>
             <?php endif ?>
 
-            <!-- Step 1: Vehicle + Class Selection -->
+            <!-- Step 1: Class + Vehicle Selection -->
             <div class="msc-step" id="msc-step-1">
-                <div class="msc-step-header"><span class="msc-step-num">1</span> Select Your Vehicle &amp; Classes</div>
+                <div class="msc-step-header"><span class="msc-step-num">1</span> Select Class &amp; Vehicle</div>
                 <div class="msc-step-body">
                     <div id="msc-vehicles-loading">Loading your vehicles…</div>
-                    <div id="msc-vehicles-list" style="display:none"></div>
-                    <div id="msc-vehicles-empty" style="display:none">
-                        <p>No eligible vehicles found in your garage for this event's vehicle type.</p>
-                        <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-outline">Add a Vehicle</a>
+
+                    <!-- No vehicles at all in garage -->
+                    <div id="msc-vehicles-none-at-all" style="display:none">
+                        <p>You have no vehicles in your garage yet.</p>
+                        <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-outline">Add a Vehicle to Your Garage</a>
                     </div>
 
-                    <!-- Class selection — shown after a vehicle is picked -->
-                    <div id="msc-class-selection" style="display:none;margin-top:20px;">
-                        <p style="font-weight:600;margin-bottom:8px">Select classes to enter <span style="color:red">*</span></p>
+                    <!-- Vehicles exist but none eligible for this event type -->
+                    <div id="msc-vehicles-empty" style="display:none">
+                        <p>None of your vehicles are eligible for this event's vehicle type.</p>
+                        <a href="<?php echo esc_url( msc_get_account_url( 'garage' ) ); ?>" class="msc-btn msc-btn-outline">Manage Garage</a>
+                    </div>
+
+                    <!-- Main class+vehicle selection — shown after vehicles load -->
+                    <div id="msc-class-vehicle-wrap" style="display:none">
                         <?php if ( empty( $event_classes_for_form ) ) : ?>
                         <p style="color:#888;font-style:italic;">No classes have been configured for this event.</p>
                         <?php else : ?>
-                        <div class="msc-class-check-list">
-                        <?php foreach ( $event_classes_for_form as $cls ) : ?>
-                            <label class="msc-class-check-label" data-vtype="<?php echo esc_attr( $cls['vtype'] ); ?>">
-                                <input type="checkbox" class="msc-class-check"
-                                       data-id="<?php echo esc_attr( $cls['id'] ); ?>"
-                                       data-fee="<?php echo esc_attr( number_format( $cls['fee'], 2, '.', '' ) ); ?>">
-                                <span class="msc-class-check-name"><?php echo esc_html( $cls['name'] ); ?></span>
-                                <?php if ( $cls['fee'] > 0 ) : ?>
-                                <span class="msc-class-check-fee">+R <?php echo number_format( $cls['fee'], 2 ); ?></span>
-                                <?php else : ?>
-                                <span class="msc-class-check-fee-free">included</span>
-                                <?php endif; ?>
-                            </label>
-                        <?php endforeach; ?>
+
+                        <!-- Primary class selection -->
+                        <div class="msc-field" style="margin-bottom:16px">
+                            <label style="font-weight:600">Primary Class <span class="msc-required">*</span></label>
+                            <select id="msc-primary-class-select">
+                                <option value="">— Select a class —</option>
+                            </select>
+                        </div>
+
+                        <!-- Primary vehicle selection (shown after primary class is chosen) -->
+                        <div id="msc-primary-vehicle-wrap" style="display:none;margin-bottom:16px">
+                            <div class="msc-field">
+                                <label style="font-weight:600">Vehicle for Primary Class <span class="msc-required">*</span></label>
+                                <select id="msc-primary-vehicle-select">
+                                    <option value="">— Select a vehicle —</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Additional classes (shown after primary class + vehicle are chosen) -->
+                        <div id="msc-additional-classes-wrap" style="display:none">
+                            <p style="font-weight:600;margin-bottom:8px">Additional Classes <small style="font-weight:400;color:#666">(optional)</small></p>
+                            <div id="msc-additional-rows"></div>
+                            <button type="button" id="msc-add-class-btn" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-top:8px">+ Add Another Class</button>
                         </div>
 
                         <!-- Live fee breakdown -->
-                        <div id="msc-fee-breakdown" style="display:none;">
-                            <table>
+                        <div id="msc-fee-breakdown" style="display:none;margin-top:16px">
+                            <table style="width:100%;border-collapse:collapse">
                                 <tbody id="msc-fee-breakdown-rows"></tbody>
                                 <tfoot>
-                                    <tr>
-                                        <td style="padding:6px 4px;">Total</td>
-                                        <td style="padding:6px 4px;text-align:right;" id="msc-fee-total">R 0.00</td>
+                                    <tr style="border-top:2px solid #ccc">
+                                        <td style="padding:6px 4px;font-weight:700">Total</td>
+                                        <td style="padding:6px 4px;text-align:right;font-weight:700" id="msc-fee-total">R 0.00</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
+
                         <?php endif; ?>
                     </div>
 

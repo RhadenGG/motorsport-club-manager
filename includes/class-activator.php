@@ -43,11 +43,43 @@ class MSC_Activator {
             registration_id bigint(20) unsigned NOT NULL,
             class_id bigint(20) unsigned NOT NULL,
             class_fee decimal(10,2) NOT NULL DEFAULT 0.00,
+            vehicle_id bigint(20) unsigned NULL,
+            is_primary tinyint(1) NOT NULL DEFAULT 0,
             PRIMARY KEY  (id),
             KEY idx_reg (registration_id),
             UNIQUE KEY reg_class (registration_id, class_id)
         ) $charset;";
         $wpdb->query( $sql2 );
+
+        // Migrate msc_registration_classes: add vehicle_id and is_primary if missing
+        $cols = array_column( $wpdb->get_results( "DESCRIBE {$wpdb->prefix}msc_registration_classes" ), 'Field' );
+        if ( ! in_array( 'vehicle_id', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registration_classes ADD COLUMN vehicle_id bigint(20) unsigned NULL" );
+        }
+        if ( ! in_array( 'is_primary', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registration_classes ADD COLUMN is_primary tinyint(1) NOT NULL DEFAULT 0" );
+        }
+
+        // Pricing sets table
+        $sql3 = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}msc_pricing_sets (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id)
+        ) $charset;";
+        $wpdb->query( $sql3 );
+
+        // Pricing set classes table
+        $sql4 = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}msc_pricing_set_classes (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            pricing_set_id bigint(20) unsigned NOT NULL,
+            class_id bigint(20) unsigned NOT NULL,
+            primary_fee decimal(10,2) NOT NULL DEFAULT 0.00,
+            additional_fee decimal(10,2) NOT NULL DEFAULT 0.00,
+            PRIMARY KEY  (id),
+            UNIQUE KEY pricing_class (pricing_set_id, class_id)
+        ) $charset;";
+        $wpdb->query( $sql4 );
 
         // Results table
         MSC_Results::create_table();

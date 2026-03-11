@@ -78,7 +78,7 @@ class MSC_Frontend_Dashboard {
         wp_enqueue_media();
 
         $tab = isset( $_GET['msc_etab'] ) ? sanitize_key( $_GET['msc_etab'] ) : 'events';
-        $valid_tabs = array( 'events', 'registrations', 'results', 'participants', 'vehicle-classes' );
+        $valid_tabs = array( 'events', 'registrations', 'results', 'participants', 'vehicle-classes', 'pricing' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
 
         $events_args = array(
@@ -108,6 +108,7 @@ class MSC_Frontend_Dashboard {
                 'results'         => 'Results',
                 'participants'    => 'Participants',
                 'vehicle-classes' => 'Vehicle Classes',
+                'pricing'         => 'Pricing',
             );
             foreach ( $tabs as $t => $label ) :
                 $url = add_query_arg( 'msc_etab', $t, get_permalink() );
@@ -125,6 +126,7 @@ class MSC_Frontend_Dashboard {
             case 'results':         self::tab_results( $all_events );       break;
             case 'participants':    self::tab_participants();                break;
             case 'vehicle-classes': self::tab_vehicle_classes();            break;
+            case 'pricing':         self::tab_pricing();                    break;
             default:                self::tab_events( $all_events, $event_counts ); break;
         }
         ?>
@@ -217,36 +219,31 @@ class MSC_Frontend_Dashboard {
                     </div>
                 </div>
 
-                <!-- Class checkboxes + per-class fees -->
+                <!-- Pricing Set + Allowed Classes -->
                 <div style="margin-top:16px">
+                    <div class="msc-field msc-field-full" style="margin-bottom:12px">
+                        <label style="font-weight:600">Pricing Set</label>
+                        <select id="ce_pricing_set_id" style="width:100%">
+                            <option value="">— No pricing set (free classes) —</option>
+                            <?php foreach ( MSC_Pricing::get_all_sets() as $ps ) : ?>
+                            <option value="<?php echo (int) $ps->id; ?>"><?php echo esc_html( $ps->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small style="color:#666">Defines primary and additional fees per class. Manage in the <strong>Pricing</strong> tab.</small>
+                    </div>
                     <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
-                    <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
                     <div id="ce-class-boxes" class="msc-class-grid">
                     <?php foreach ( $classes_by_type as $type => $classes ) : ?>
                     <div class="msc-ce-class-group" data-type="<?php echo esc_attr($type); ?>">
                         <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
-                        <table style="width:100%;border-collapse:collapse">
-                        <thead><tr>
-                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
-                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>
-                        </tr></thead>
-                        <tbody>
+                        <div style="columns:2;column-gap:8px">
                         <?php foreach ( $classes as $term_id => $class_name ) : ?>
-                        <tr>
-                            <td style="padding:3px 8px 3px 0">
-                                <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">
-                                    <input type="checkbox" class="ce-class-cb" value="<?php echo esc_attr($term_id); ?>">
-                                    <?php echo esc_html($class_name); ?>
-                                </label>
-                            </td>
-                            <td style="padding:3px 0">
-                                <input type="number" class="ce-class-fee" data-class-id="<?php echo esc_attr($term_id); ?>"
-                                       min="0" step="0.01" style="width:80px" placeholder="0.00" value="0.00">
-                            </td>
-                        </tr>
+                        <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;break-inside:avoid;padding:2px 0">
+                            <input type="checkbox" class="ce-class-cb" value="<?php echo esc_attr($term_id); ?>">
+                            <?php echo esc_html($class_name); ?>
+                        </label>
                         <?php endforeach; ?>
-                        </tbody>
-                        </table>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                     </div>
@@ -331,36 +328,31 @@ class MSC_Frontend_Dashboard {
                     </div>
                 </div>
 
-                <!-- Class checkboxes + per-class fees -->
+                <!-- Pricing Set + Allowed Classes -->
                 <div style="margin-top:16px">
+                    <div class="msc-field msc-field-full" style="margin-bottom:12px">
+                        <label style="font-weight:600">Pricing Set</label>
+                        <select id="ee_pricing_set_id" style="width:100%">
+                            <option value="">— No pricing set (free classes) —</option>
+                            <?php foreach ( MSC_Pricing::get_all_sets() as $ps ) : ?>
+                            <option value="<?php echo (int) $ps->id; ?>"><?php echo esc_html( $ps->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small style="color:#666">Defines primary and additional fees per class. Manage in the <strong>Pricing</strong> tab.</small>
+                    </div>
                     <label style="font-weight:600;display:block;margin-bottom:4px">Allowed Vehicle Classes</label>
-                    <p style="color:#666;font-size:13px;margin:0 0 10px">Select classes and set any additional fee per class (on top of the base entry fee).</p>
                     <div id="ee-class-boxes" class="msc-class-grid">
                     <?php foreach ( $classes_by_type as $type => $classes ) : ?>
                     <div class="msc-ee-class-group" data-type="<?php echo esc_attr($type); ?>">
                         <strong style="display:block;margin-bottom:6px"><?php echo esc_html($type); ?> Classes</strong>
-                        <table style="width:100%;border-collapse:collapse">
-                        <thead><tr>
-                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 8px 4px 0;width:60%">Class</th>
-                            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 0 4px">Additional Fee (R)</th>
-                        </tr></thead>
-                        <tbody>
+                        <div style="columns:2;column-gap:8px">
                         <?php foreach ( $classes as $term_id => $class_name ) : ?>
-                        <tr>
-                            <td style="padding:3px 8px 3px 0">
-                                <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">
-                                    <input type="checkbox" class="ee-class-cb" value="<?php echo esc_attr($term_id); ?>">
-                                    <?php echo esc_html($class_name); ?>
-                                </label>
-                            </td>
-                            <td style="padding:3px 0">
-                                <input type="number" class="ee-class-fee" data-class-id="<?php echo esc_attr($term_id); ?>"
-                                       min="0" step="0.01" style="width:80px" placeholder="0.00" value="0.00">
-                            </td>
-                        </tr>
+                        <label style="font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer;break-inside:avoid;padding:2px 0">
+                            <input type="checkbox" class="ee-class-cb" value="<?php echo esc_attr($term_id); ?>">
+                            <?php echo esc_html($class_name); ?>
+                        </label>
                         <?php endforeach; ?>
-                        </tbody>
-                        </table>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                     </div>
@@ -400,8 +392,8 @@ class MSC_Frontend_Dashboard {
                 $reg_count    = $event_counts[ $event->ID ] ?? 0;
                 $thumb_id     = get_post_thumbnail_id( $event->ID );
                 $thumb_url    = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'thumbnail' ) : '';
-                $ev_classes   = get_post_meta( $event->ID, '_msc_event_classes', true ) ?: array();
-                $ev_fees      = get_post_meta( $event->ID, '_msc_class_fees', true ) ?: array();
+                $ev_classes     = get_post_meta( $event->ID, '_msc_event_classes', true ) ?: array();
+                $ev_pricing_id  = (int) get_post_meta( $event->ID, '_msc_pricing_set_id', true );
             ?>
             <tr>
                 <td><strong><?php echo esc_html( $event->post_title ); ?></strong></td>
@@ -440,7 +432,7 @@ class MSC_Frontend_Dashboard {
                         data-image-id="<?php echo esc_attr( $thumb_id ?: '' ); ?>"
                         data-image-url="<?php echo esc_attr( $thumb_url ); ?>"
                         data-classes="<?php echo esc_attr( wp_json_encode( array_values( $ev_classes ) ) ); ?>"
-                        data-class-fees="<?php echo esc_attr( wp_json_encode( $ev_fees ) ); ?>"
+                        data-pricing-set-id="<?php echo esc_attr( $ev_pricing_id ); ?>"
                     >Edit</button>
                     <?php if ( $is_closed ) : ?>
                     <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-fe-event-status"
@@ -514,13 +506,7 @@ class MSC_Frontend_Dashboard {
                 var btn = $(this);
                 var msg = $('#msc-create-event-msg');
                 var classes = [];
-                var classFees = {};
-                $('.ce-class-cb:checked').each(function(){
-                    var id = $(this).val();
-                    classes.push(id);
-                    var fee = parseFloat($('.ce-class-fee[data-class-id="'+id+'"]').val()) || 0;
-                    classFees[id] = fee;
-                });
+                $('.ce-class-cb:checked').each(function(){ classes.push($(this).val()); });
 
                 if (!$('#ce_title').val().trim()) {
                     msg.text('Event title is required.').css('color','red').show(); return;
@@ -531,22 +517,22 @@ class MSC_Frontend_Dashboard {
 
                 btn.prop('disabled', true).text('Creating…');
                 $.post(ajaxUrl, {
-                    action:          'msc_fe_create_event',
-                    nonce:           nonce,
-                    title:           $('#ce_title').val(),
-                    event_date:      $('#ce_event_date').val(),
-                    event_end_date:  $('#ce_event_end_date').val(),
-                    location:        $('#ce_location').val(),
-                    entry_fee:       $('#ce_entry_fee').val() || 0,
-                    capacity:        $('#ce_capacity').val() || 0,
-                    reg_open:        $('#ce_reg_open').val(),
-                    reg_close:       $('#ce_reg_close').val(),
-                    approval:           $('#ce_approval').val(),
-                    vehicle_type:       $('#ce_vehicle_type').val(),
-                    indemnity:          $('#ce_indemnity').val(),
-                    featured_image_id:  $('#ce_featured_image_id').val() || 0,
-                    class_ids:          classes,
-                    class_fees:         classFees,
+                    action:           'msc_fe_create_event',
+                    nonce:            nonce,
+                    title:            $('#ce_title').val(),
+                    event_date:       $('#ce_event_date').val(),
+                    event_end_date:   $('#ce_event_end_date').val(),
+                    location:         $('#ce_location').val(),
+                    entry_fee:        $('#ce_entry_fee').val() || 0,
+                    capacity:         $('#ce_capacity').val() || 0,
+                    reg_open:         $('#ce_reg_open').val(),
+                    reg_close:        $('#ce_reg_close').val(),
+                    approval:         $('#ce_approval').val(),
+                    vehicle_type:     $('#ce_vehicle_type').val(),
+                    indemnity:        $('#ce_indemnity').val(),
+                    featured_image_id: $('#ce_featured_image_id').val() || 0,
+                    class_ids:        classes,
+                    pricing_set_id:   $('#ce_pricing_set_id').val() || 0,
                 }, function(res){
                     btn.prop('disabled', false).text('Create Event');
                     if (res.success) {
@@ -622,16 +608,13 @@ class MSC_Frontend_Dashboard {
                     $('#msc-ee-remove-image').hide();
                 }
 
-                // Classes
+                // Classes + pricing set
                 var savedClasses = d.classes || [];
-                var savedFees    = d.classFees || {};
                 $('.ee-class-cb').prop('checked', false);
-                $('.ee-class-fee').val('0.00');
                 $.each(savedClasses, function(i, classId){
                     $('.ee-class-cb[value="'+classId+'"]').prop('checked', true);
-                    var fee = savedFees[classId] || 0;
-                    $('.ee-class-fee[data-class-id="'+classId+'"]').val(parseFloat(fee).toFixed(2));
                 });
+                $('#ee_pricing_set_id').val(d.pricingSetId || '');
                 eeFilterClasses(d.vehicleType || 'Both');
 
                 // Scroll to panel and show
@@ -643,13 +626,7 @@ class MSC_Frontend_Dashboard {
                 var btn = $(this);
                 var msg = $('#msc-edit-event-msg');
                 var classes = [];
-                var classFees = {};
-                $('.ee-class-cb:checked').each(function(){
-                    var id = $(this).val();
-                    classes.push(id);
-                    var fee = parseFloat($('.ee-class-fee[data-class-id="'+id+'"]').val()) || 0;
-                    classFees[id] = fee;
-                });
+                $('.ee-class-cb:checked').each(function(){ classes.push($(this).val()); });
                 if (!$('#ee_title').val().trim()) {
                     msg.text('Event title is required.').css('color','red').show(); return;
                 }
@@ -674,7 +651,7 @@ class MSC_Frontend_Dashboard {
                     indemnity:        $('#ee_indemnity').val(),
                     featured_image_id: $('#ee_featured_image_id').val() || 0,
                     class_ids:        classes,
-                    class_fees:       classFees,
+                    pricing_set_id:   $('#ee_pricing_set_id').val() || 0,
                 }, function(res){
                     btn.prop('disabled', false).text('Save Changes');
                     if (res.success) {
@@ -1147,6 +1124,184 @@ class MSC_Frontend_Dashboard {
         echo MSC_Admin_Participants::frontend_dashboard( array() );
     }
 
+    // ─── Tab: Pricing ─────────────────────────────────────────────────────────
+
+    private static function tab_pricing() {
+        $sets            = MSC_Pricing::get_all_sets();
+        $classes_by_type = MSC_Taxonomies::get_classes_by_type();
+        $nonce           = wp_create_nonce( 'msc_nonce' );
+        $ajax_url        = admin_url( 'admin-ajax.php' );
+        ?>
+        <div class="msc-tab-content">
+            <div class="msc-tab-header">
+                <h3 class="msc-tab-title">Pricing Sets</h3>
+                <button type="button" class="msc-btn" id="msc-toggle-pricing-form">+ New Pricing Set</button>
+            </div>
+
+            <p style="color:#666;font-size:13px;margin-bottom:16px">Pricing sets define primary and additional fees per class. Assign a pricing set to an event when creating or editing it.</p>
+
+            <!-- Create / Edit Pricing Set Form -->
+            <div id="msc-pricing-form-panel" style="display:none;margin-bottom:24px">
+            <div class="msc-panel" style="padding:20px">
+                <h4 style="margin:0 0 12px" id="msc-pricing-panel-title">New Pricing Set</h4>
+                <div id="msc-pricing-form-msg" class="msc-field-msg" style="margin-bottom:10px"></div>
+                <input type="hidden" id="msc-ps-id" value="">
+                <div class="msc-field" style="max-width:400px;margin-bottom:16px">
+                    <label>Set Name <span class="msc-required">*</span></label>
+                    <input type="text" id="msc-ps-name" placeholder="e.g. 2026 Season">
+                </div>
+                <h4 style="margin-bottom:8px">Class Fees</h4>
+                <div class="msc-class-grid">
+                <?php foreach ( $classes_by_type as $type => $classes ) : ?>
+                <div>
+                    <strong style="display:block;margin-bottom:8px"><?php echo $type === 'Car' ? '🚗 Car Classes' : '🏍 Motorcycle Classes'; ?></strong>
+                    <table class="msc-dash-table" style="font-size:13px">
+                    <thead><tr>
+                        <th>Class</th>
+                        <th>Primary Fee (R)</th>
+                        <th>Additional Fee (R)</th>
+                    </tr></thead>
+                    <tbody>
+                    <?php foreach ( $classes as $term_id => $class_name ) : ?>
+                    <tr>
+                        <td><?php echo esc_html($class_name); ?></td>
+                        <td><input type="number" class="msc-ps-primary-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:80px"></td>
+                        <td><input type="number" class="msc-ps-additional-fee" data-class="<?php echo (int)$term_id; ?>" min="0" step="0.01" value="0.00" style="width:80px"></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                    </table>
+                </div>
+                <?php endforeach; ?>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:10px">
+                    <button type="button" class="msc-btn" id="msc-ps-save-btn">Save</button>
+                    <button type="button" class="msc-btn msc-btn-outline" id="msc-ps-cancel-btn">Cancel</button>
+                </div>
+            </div>
+            </div>
+
+            <!-- Pricing Sets Table -->
+            <?php if ( empty( $sets ) ) : ?>
+            <p style="color:#888">No pricing sets yet. Create your first one above.</p>
+            <?php else : ?>
+            <div style="overflow-x:auto">
+            <table class="msc-dash-table">
+            <thead><tr><th>Name</th><th>Actions</th></tr></thead>
+            <tbody>
+            <?php foreach ( $sets as $ps ) : ?>
+            <tr id="msc-ps-row-<?php echo (int)$ps->id; ?>">
+                <td><?php echo esc_html($ps->name); ?></td>
+                <td>
+                    <div style="display:flex;gap:6px">
+                        <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-ps-edit-btn"
+                                data-id="<?php echo (int)$ps->id; ?>"
+                                data-name="<?php echo esc_attr($ps->name); ?>">Edit</button>
+                        <button type="button" class="msc-btn msc-btn-sm msc-btn-danger msc-ps-delete-btn"
+                                data-id="<?php echo (int)$ps->id; ?>">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+            </table>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <script>
+        (function($){
+            var nonce   = '<?php echo esc_js( $nonce ); ?>';
+            var ajaxUrl = '<?php echo esc_js( $ajax_url ); ?>';
+
+            function psMsg(text, ok) {
+                $('#msc-pricing-form-msg').text(text).css('color', ok ? 'green' : 'red').show();
+            }
+
+            function resetForm() {
+                $('#msc-ps-id').val('');
+                $('#msc-ps-name').val('');
+                $('.msc-ps-primary-fee, .msc-ps-additional-fee').val('0.00');
+                $('#msc-pricing-panel-title').text('New Pricing Set');
+                $('#msc-pricing-form-msg').hide().text('');
+            }
+
+            $('#msc-toggle-pricing-form').on('click', function(){
+                if ($('#msc-pricing-form-panel').is(':visible')) {
+                    $('#msc-pricing-form-panel').slideUp(200);
+                } else {
+                    resetForm();
+                    $('#msc-pricing-form-panel').slideDown(200);
+                }
+            });
+            $('#msc-ps-cancel-btn').on('click', function(){
+                $('#msc-pricing-form-panel').slideUp(200);
+            });
+
+            $('#msc-ps-save-btn').on('click', function(){
+                var btn  = $(this);
+                var name = $.trim($('#msc-ps-name').val());
+                if (!name) { psMsg('Set name is required.', false); return; }
+                var fees = [];
+                $('.msc-ps-primary-fee').each(function(){
+                    var cid = $(this).data('class');
+                    fees.push({
+                        class_id:       cid,
+                        primary_fee:    parseFloat($(this).val()) || 0,
+                        additional_fee: parseFloat($('.msc-ps-additional-fee[data-class="' + cid + '"]').val()) || 0
+                    });
+                });
+                btn.prop('disabled', true).text('Saving…');
+                $.post(ajaxUrl, {
+                    action: 'msc_pricing_save_set',
+                    nonce:  nonce,
+                    set_id: $('#msc-ps-id').val(),
+                    name:   name,
+                    fees:   JSON.stringify(fees)
+                }, function(res){
+                    btn.prop('disabled', false).text('Save');
+                    if (res.success) {
+                        psMsg(res.data.message, true);
+                        setTimeout(function(){ location.reload(); }, 800);
+                    } else {
+                        psMsg(res.data || 'Error.', false);
+                    }
+                });
+            });
+
+            $(document).on('click', '.msc-ps-edit-btn', function(){
+                var btn  = $(this);
+                var id   = btn.data('id');
+                var name = btn.data('name');
+                resetForm();
+                $('#msc-ps-id').val(id);
+                $('#msc-ps-name').val(name);
+                $('#msc-pricing-panel-title').text('Edit: ' + name);
+                // Load fees
+                $.post(ajaxUrl, { action: 'msc_pricing_get_set', nonce: nonce, set_id: id }, function(res){
+                    if (!res.success) return;
+                    $.each(res.data.fees, function(classId, f){
+                        $('.msc-ps-primary-fee[data-class="' + classId + '"]').val(parseFloat(f.primary_fee).toFixed(2));
+                        $('.msc-ps-additional-fee[data-class="' + classId + '"]').val(parseFloat(f.additional_fee).toFixed(2));
+                    });
+                    $('html,body').animate({scrollTop: $('#msc-pricing-form-panel').offset().top - 80}, 200);
+                    $('#msc-pricing-form-panel').slideDown(200);
+                });
+            });
+
+            $(document).on('click', '.msc-ps-delete-btn', function(){
+                var id = $(this).data('id');
+                if (!confirm('Delete this pricing set? Events assigned to it will have no class fees.')) return;
+                $.post(ajaxUrl, { action: 'msc_pricing_delete_set', nonce: nonce, set_id: id }, function(res){
+                    if (res.success) { $('#msc-ps-row-' + id).fadeOut(200, function(){ $(this).remove(); }); }
+                    else { alert(res.data || 'Error deleting.'); }
+                });
+            });
+        })(jQuery);
+        </script>
+        <?php
+    }
+
     // ─── AJAX: Create Event ───────────────────────────────────────────────────
 
     public static function ajax_create_event() {
@@ -1205,14 +1360,12 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $post_id, '_msc_event_classes', $valid_ids );
         wp_set_post_terms( $post_id, $valid_ids, 'msc_vehicle_class' );
 
-        // Per-class additional fees
-        $class_fees = array();
-        if ( ! empty( $_POST['class_fees'] ) && is_array( $_POST['class_fees'] ) ) {
-            foreach ( $_POST['class_fees'] as $class_id => $fee ) {
-                $class_fees[ intval( $class_id ) ] = round( floatval( $fee ), 2 );
-            }
+        $pricing_set_id = absint( $_POST['pricing_set_id'] ?? 0 );
+        if ( $pricing_set_id ) {
+            update_post_meta( $post_id, '_msc_pricing_set_id', $pricing_set_id );
+        } else {
+            delete_post_meta( $post_id, '_msc_pricing_set_id' );
         }
-        update_post_meta( $post_id, '_msc_class_fees', $class_fees );
 
         wp_send_json_success( array( 'message' => 'Event created.', 'post_id' => $post_id ) );
     }
@@ -1284,13 +1437,12 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $event_id, '_msc_event_classes', $valid_ids );
         wp_set_post_terms( $event_id, $valid_ids, 'msc_vehicle_class' );
 
-        $class_fees = array();
-        if ( ! empty( $_POST['class_fees'] ) && is_array( $_POST['class_fees'] ) ) {
-            foreach ( $_POST['class_fees'] as $class_id => $fee ) {
-                $class_fees[ intval( $class_id ) ] = round( floatval( $fee ), 2 );
-            }
+        $pricing_set_id = absint( $_POST['pricing_set_id'] ?? 0 );
+        if ( $pricing_set_id ) {
+            update_post_meta( $event_id, '_msc_pricing_set_id', $pricing_set_id );
+        } else {
+            delete_post_meta( $event_id, '_msc_pricing_set_id' );
         }
-        update_post_meta( $event_id, '_msc_class_fees', $class_fees );
 
         wp_send_json_success( array( 'message' => 'Event updated.' ) );
     }

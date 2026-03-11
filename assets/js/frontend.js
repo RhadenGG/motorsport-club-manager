@@ -5,13 +5,17 @@ jQuery(function ($) {
     var editPhotoFiles = {};
 
     var msc = {
-        eventId:   null,
-        vehicleId: null,
-        sigPad:    null,
-        parentSigPad: null,
-        sigType:   'draw',
-        parentSigType: 'draw',
-        totalFee:  0,
+        eventId:        null,
+        sigPad:         null,
+        parentSigPad:   null,
+        sigType:        'draw',
+        parentSigType:  'draw',
+        totalFee:       0,
+        allVehicles:    [],     // all eligible vehicles from server
+        primaryClassId: null,
+        primaryVehicleId: null,
+        additionalRows: [],     // array of {classId, vehicleId, rowId}
+        rowCounter:     0,
 
         init: function () {
             msc.eventId = $('#msc-reg-wrap').data('event');
@@ -31,149 +35,319 @@ jQuery(function ($) {
                 event_id: msc.eventId
             }, function (res) {
                 $('#msc-vehicles-loading').hide();
-                if (!res.success || !res.data.length) {
+                if (!res.success) {
                     $('#msc-vehicles-empty').show();
                     return;
                 }
-                var $cards = $('<div>').addClass('msc-vehicle-cards');
-                $.each(res.data, function (i, v) {
-                    var icons = {Car:'🚗',Bike:'🚲',Motorcycle:'🏍',Quad:'🛻',Kart:'🏎',Truck:'🚚',Other:'🚙'};
-                    var $card = $('<div>').addClass('msc-vehicle-card').attr({'data-id': v.id, 'data-vtype': v.type});
-                    $card.append($('<div>').addClass('msc-vehicle-card-icon').text(icons[v.type] || '🚗'));
-                    $card.append($('<div>').addClass('msc-vehicle-card-title').text(v.title));
-                    $card.append($('<div>').addClass('msc-vehicle-card-sub').text(v.label));
-                    if (v.engine_size) {
-                        $card.append($('<span>').addClass('msc-vehicle-card-class').text(v.engine_size));
-                    }
-                    $cards.append($card);
-                });
-                $('#msc-vehicles-list').empty().append($cards).show();
+                var total    = res.data.total_user_vehicles || 0;
+                var vehicles = res.data.vehicles || [];
+
+                if (total === 0) {
+                    $('#msc-vehicles-none-at-all').show();
+                    return;
+                }
+                if (!vehicles.length) {
+                    $('#msc-vehicles-empty').show();
+                    return;
+                }
+                msc.allVehicles = vehicles;
+                $('#msc-class-vehicle-wrap').show();
+                msc.renderPrimaryClassOptions();
             });
         },
 
         // ─── Registration flow ────────────────────────────────────────
         bindRegistration: function () {
 
-            var $wrap    = $('#msc-reg-wrap');
-            var baseFee  = parseFloat($wrap.data('base-fee')) || 0;
-            var classes  = $wrap.data('classes') || [];
+            var $wrap   = $('#msc-reg-wrap');
+            var baseFee = parseFloat($wrap.data('base-fee')) || 0;
+            var classes = $wrap.data('classes') || [];  // [{id, name, vtype, primary_fee, additional_fee}]
 
-            // Update fee breakdown in step 1 and step 2 whenever class selection changes
-            function updateFees() {
-                var selected = [];
-                $('.msc-class-check:checked').each(function() {
-                    var id  = $(this).data('id');
-                    var fee = parseFloat($(this).data('fee')) || 0;
-                    var name = $(this).closest('.msc-class-check-label').find('.msc-class-check-name').text();
-                    selected.push({id: id, name: name, fee: fee});
+            // Populate the primary class dropdown, filtered to classes whose vtype
+            // matches at least one of the user's eligible vehicles
+            msc.renderPrimaryClassOptions = function() {
+                var availableVtypes = {};
+                msc.allVehicles.forEach(function(v) { availableVtypes[v.type] = true; });
+
+                var $sel = $('#msc-primary-class-select');
+                $sel.find('option:not(:first)').remove();
+                classes.forEach(function(cls) {
+                    var compatible = !cls.vtype || availableVtypes[cls.vtype];
+                    if (compatible) {
+                        $sel.append($('<option>').val(cls.id).text(cls.name));
+                    }
+                });
+            };
+
+            // Helper: get vehicles compatible with a given class vtype
+            function getVehiclesForClass(classId) {
+                var cls = classes.find(function(c) { return c.id == classId; });
+                var vtype = cls ? cls.vtype : '';
+                return msc.allVehicles.filter(function(v) {
+                    return !vtype || v.type === vtype;
+                });
+            }
+
+            // Populate a vehicle select with vehicles compatible with a class
+            function populateVehicleSelect($sel, classId, selectedVid) {
+                var compatible = getVehiclesForClass(classId);
+                $sel.find('option:not(:first)').remove();
+                compatible.forEach(function(v) {
+                    var $opt = $('<option>').val(v.id).text(v.label);
+                    if (selectedVid && v.id == selectedVid) $opt.prop('selected', true);
+                    $sel.append($opt);
+                });
+                if (compatible.length === 1) {
+                    $sel.val(compatible[0].id).trigger('change');
+                }
+            }
+
+            // Primary class change
+            $('#msc-primary-class-select').on('change', function() {
+                var classId = $(this).val();
+                msc.primaryClassId = classId ? parseInt(classId) : null;
+                msc.primaryVehicleId = null;
+                $('#msc-primary-vehicle-select').val('');
+                if (!classId) {
+                    $('#msc-primary-vehicle-wrap').hide();
+                    $('#msc-additional-classes-wrap').hide();
+                    msc.updateFees();
+                    msc.checkStep1();
+                    return;
+                }
+                populateVehicleSelect($('#msc-primary-vehicle-select'), classId, null);
+                $('#msc-primary-vehicle-wrap').show();
+                $('#msc-additional-classes-wrap').hide();
+                msc.updateFees();
+                msc.checkStep1();
+            });
+
+            // Primary vehicle change
+            $('#msc-primary-vehicle-select').on('change', function() {
+                var vid = $(this).val();
+                msc.primaryVehicleId = vid ? parseInt(vid) : null;
+                if (msc.primaryVehicleId) {
+                    $('#msc-additional-classes-wrap').show();
+                } else {
+                    $('#msc-additional-classes-wrap').hide();
+                }
+                msc.updateFees();
+                msc.checkStep1();
+            });
+
+            // Add additional class row
+            $('#msc-add-class-btn').on('click', function() {
+                var rowId = ++msc.rowCounter;
+                var $row  = $('<div>').addClass('msc-additional-row').attr('id', 'msc-add-row-' + rowId);
+                $row.css({display:'flex', gap:'8px', alignItems:'flex-end', marginBottom:'8px', flexWrap:'wrap'});
+
+                var $classSel = $('<select>').addClass('msc-add-class-sel').css('flex', '1').attr('data-row', rowId);
+                $classSel.append($('<option>').val('').text('— Select class —'));
+
+                // Get selected class IDs (primary + existing additional rows)
+                var usedIds = msc.getSelectedClassIds();
+
+                classes.forEach(function(cls) {
+                    var isUsed = usedIds.indexOf(cls.id) !== -1;
+                    $classSel.append(
+                        $('<option>').val(cls.id).text(cls.name).prop('disabled', isUsed)
+                    );
                 });
 
-                var total = baseFee;
-                selected.forEach(function(c) { total += c.fee; });
+                var $vehicleSel = $('<select>').addClass('msc-add-vehicle-sel').css('flex', '1').attr('data-row', rowId);
+                $vehicleSel.append($('<option>').val('').text('— Select vehicle —'));
+                $vehicleSel.hide();
+
+                var $removeBtn = $('<button>').attr('type', 'button').addClass('msc-btn msc-btn-sm msc-btn-danger').text('Remove')
+                    .attr('data-row', rowId);
+
+                $row.append($classSel, $vehicleSel, $removeBtn);
+                $('#msc-additional-rows').append($row);
+                msc.additionalRows.push({rowId: rowId, classId: null, vehicleId: null});
+            });
+
+            // Additional class select change
+            $(document).on('change', '.msc-add-class-sel', function() {
+                var rowId   = parseInt($(this).data('row'));
+                var classId = $(this).val();
+                var $vehicleSel = $('.msc-add-vehicle-sel[data-row="' + rowId + '"]');
+                var row = msc.additionalRows.find(function(r) { return r.rowId === rowId; });
+                if (row) { row.classId = classId ? parseInt(classId) : null; row.vehicleId = null; }
+
+                if (!classId) { $vehicleSel.hide().val(''); msc.updateFees(); msc.checkStep1(); return; }
+                populateVehicleSelect($vehicleSel, classId, null);
+                $vehicleSel.show();
+
+                // Disable the selected class in all OTHER additional rows' dropdowns
+                msc.refreshAdditionalClassOptions();
+                msc.updateFees();
+                msc.checkStep1();
+            });
+
+            // Additional vehicle select change
+            $(document).on('change', '.msc-add-vehicle-sel', function() {
+                var rowId = parseInt($(this).data('row'));
+                var vid   = $(this).val();
+                var row   = msc.additionalRows.find(function(r) { return r.rowId === rowId; });
+                if (row) row.vehicleId = vid ? parseInt(vid) : null;
+                msc.updateFees();
+                msc.checkStep1();
+            });
+
+            // Remove additional row
+            $(document).on('click', '.msc-add-row-remove', function() {
+                var rowId = parseInt($(this).data('row'));
+                $('#msc-add-row-' + rowId).remove();
+                msc.additionalRows = msc.additionalRows.filter(function(r) { return r.rowId !== rowId; });
+                msc.refreshAdditionalClassOptions();
+                msc.updateFees();
+                msc.checkStep1();
+            });
+            // Also handle via delegated click with msc-btn-danger class on remove buttons
+            $(document).on('click', '#msc-additional-rows .msc-btn-danger', function() {
+                var rowId = parseInt($(this).data('row'));
+                $('#msc-add-row-' + rowId).remove();
+                msc.additionalRows = msc.additionalRows.filter(function(r) { return r.rowId !== rowId; });
+                msc.refreshAdditionalClassOptions();
+                msc.updateFees();
+                msc.checkStep1();
+            });
+
+            // Get all currently selected class IDs (primary + additional)
+            msc.getSelectedClassIds = function() {
+                var ids = [];
+                if (msc.primaryClassId) ids.push(msc.primaryClassId);
+                msc.additionalRows.forEach(function(r) { if (r.classId) ids.push(r.classId); });
+                return ids;
+            };
+
+            // Refresh disabled state on all additional class dropdowns
+            msc.refreshAdditionalClassOptions = function() {
+                var usedIds = msc.getSelectedClassIds();
+                $('.msc-add-class-sel').each(function() {
+                    var rowId = parseInt($(this).data('row'));
+                    var rowClassId = null;
+                    var row = msc.additionalRows.find(function(r) { return r.rowId === rowId; });
+                    if (row) rowClassId = row.classId;
+                    $(this).find('option').each(function() {
+                        var optId = parseInt($(this).val());
+                        if (!optId) return;
+                        var isThisRow = (optId === rowClassId);
+                        $(this).prop('disabled', !isThisRow && usedIds.indexOf(optId) !== -1);
+                    });
+                });
+            };
+
+            // Update fee breakdown
+            msc.updateFees = function() {
+                var primaryCls = classes.find(function(c) { return c.id == msc.primaryClassId; });
+                var primaryFee = primaryCls ? (primaryCls.primary_fee || 0) : 0;
+                var total = baseFee + primaryFee;
+
+                var rows = [];
+                if (baseFee > 0) rows.push({label: 'Base entry fee', fee: baseFee});
+                if (primaryCls) {
+                    rows.push({label: primaryCls.name + ' (primary)', fee: primaryFee});
+                }
+
+                msc.additionalRows.forEach(function(r) {
+                    if (!r.classId) return;
+                    var cls = classes.find(function(c) { return c.id == r.classId; });
+                    if (!cls) return;
+                    var af = cls.additional_fee || 0;
+                    total += af;
+                    rows.push({label: cls.name + ' (additional)', fee: af});
+                });
+
                 msc.totalFee = total;
 
-                // Step-1 fee breakdown table
+                // Step-1 fee breakdown
                 var $rows1 = $('#msc-fee-breakdown-rows');
                 $rows1.empty();
-                if (baseFee > 0 || selected.length > 0) {
+                rows.forEach(function(r) {
                     $rows1.append($('<tr>').append(
-                        $('<td>').css('padding','4px').text('Base entry fee'),
-                        $('<td>').css({padding:'4px','text-align':'right'}).text('R ' + baseFee.toFixed(2))
-                    ));
-                }
-                selected.forEach(function(c) {
-                    $rows1.append($('<tr>').append(
-                        $('<td>').css('padding','4px').text('+ ' + c.name),
-                        $('<td>').css({padding:'4px','text-align':'right'}).text(c.fee > 0 ? 'R ' + c.fee.toFixed(2) : 'Included')
+                        $('<td>').css('padding', '4px').text(r.label),
+                        $('<td>').css({padding:'4px','text-align':'right'}).text(r.fee > 0 ? 'R ' + r.fee.toFixed(2) : 'Included')
                     ));
                 });
                 $('#msc-fee-total').text('R ' + total.toFixed(2));
-                if (selected.length > 0) {
+                if (primaryCls) {
                     $('#msc-fee-breakdown').show();
                 } else {
                     $('#msc-fee-breakdown').hide();
                 }
 
-                // Step-2 payment breakdown table
+                // Step-2 payment breakdown
                 var $rows2 = $('#msc-payment-breakdown-rows');
                 $rows2.empty();
-                if (baseFee > 0) {
+                rows.forEach(function(r) {
                     $rows2.append($('<tr>').append(
-                        $('<td>').css('padding','4px').text('Base entry fee'),
-                        $('<td>').css({padding:'4px','text-align':'right'}).text('R ' + baseFee.toFixed(2))
-                    ));
-                }
-                selected.forEach(function(c) {
-                    $rows2.append($('<tr>').append(
-                        $('<td>').css('padding','4px').text('+ ' + c.name),
-                        $('<td>').css({padding:'4px','text-align':'right'}).text(c.fee > 0 ? 'R ' + c.fee.toFixed(2) : 'Included')
+                        $('<td>').css('padding', '4px').text(r.label),
+                        $('<td>').css({padding:'4px','text-align':'right'}).text(r.fee > 0 ? 'R ' + r.fee.toFixed(2) : 'Included')
                     ));
                 });
                 $('#msc-payment-total').text('R ' + total.toFixed(2));
 
-                // Show/hide payment section
                 if (total > 0) {
                     $('#msc-payment-section').show();
                 } else {
                     $('#msc-payment-section').hide();
-                    // Clear any previously uploaded file so PoP is not required
                     $('#msc-pop-file').val('');
                 }
 
                 msc.checkRegValidity();
-            }
+            };
 
-            $(document).on('click', '.msc-vehicle-card', function () {
-                $('.msc-vehicle-card').removeClass('selected');
-                $(this).addClass('selected');
-                msc.vehicleId = $(this).data('id');
-                var vtype = $(this).data('vtype') || '';
-
-                // Filter class cards to only show those matching the vehicle type
-                $('.msc-class-check-label').each(function () {
-                    var ctype = $(this).data('vtype') || '';
-                    // Show if class type matches vehicle type, or if either is unset/empty
-                    var visible = !ctype || !vtype || ctype === vtype;
-                    $(this).toggle(visible);
-                    if (!visible) {
-                        $(this).find('.msc-class-check').prop('checked', false);
-                    }
-                });
-
-                $('#msc-class-selection').show();
-                updateFees();
-                msc.checkStep1();
-            });
-
-            $(document).on('change', '.msc-class-check', function() {
-                updateFees();
-                msc.checkStep1();
-            });
-
-            // Enable Next only when vehicle + at least one class is selected
+            // Enable Next only when primary class + primary vehicle are selected
             msc.checkStep1 = function() {
-                var hasVehicle = !!msc.vehicleId;
-                var hasClass   = $('.msc-class-check:checked').length > 0;
-                $('#msc-step1-next').prop('disabled', !(hasVehicle && hasClass));
+                var ready = !!msc.primaryClassId && !!msc.primaryVehicleId;
+                // Also check all additional rows have both class and vehicle selected
+                if (ready) {
+                    msc.additionalRows.forEach(function(r) {
+                        if (r.classId && !r.vehicleId) ready = false;
+                    });
+                }
+                $('#msc-step1-next').prop('disabled', !ready);
             };
 
             $('#msc-step1-next').on('click', function () {
-                if (!msc.vehicleId || !$('.msc-class-check:checked').length) return;
-                var card  = $('.msc-vehicle-card.selected');
-                var vname = card.find('.msc-vehicle-card-title').text();
-                var vsub  = card.find('.msc-vehicle-card-sub').text();
+                if (!msc.primaryClassId || !msc.primaryVehicleId) return;
 
-                // Collect selected classes for summary
-                var classNames = [];
-                $('.msc-class-check:checked').each(function() {
-                    classNames.push($(this).closest('.msc-class-check-label').find('.msc-class-check-name').text());
+                // Build summary
+                var primaryCls = classes.find(function(c) { return c.id == msc.primaryClassId; });
+                var primaryVeh = msc.allVehicles.find(function(v) { return v.id == msc.primaryVehicleId; });
+                var $table = $('<table style="width:100%;border-collapse:collapse">');
+                var pFee = primaryCls ? (primaryCls.primary_fee || 0) : 0;
+                $table.append($('<tr>').append(
+                    $('<td>').css('padding','4px 8px 4px 0').text(primaryCls ? primaryCls.name : ''),
+                    $('<td>').css('padding','4px').text(primaryVeh ? primaryVeh.label : ''),
+                    $('<td>').css({padding:'4px','text-align':'right'}).text(pFee > 0 ? 'R ' + pFee.toFixed(2) : 'Included')
+                ));
+
+                msc.additionalRows.forEach(function(r) {
+                    if (!r.classId || !r.vehicleId) return;
+                    var cls = classes.find(function(c) { return c.id == r.classId; });
+                    var veh = msc.allVehicles.find(function(v) { return v.id == r.vehicleId; });
+                    var af  = cls ? (cls.additional_fee || 0) : 0;
+                    $table.append($('<tr>').append(
+                        $('<td>').css('padding','4px 8px 4px 0').text((cls ? cls.name : '') + ' (additional)'),
+                        $('<td>').css('padding','4px').text(veh ? veh.label : ''),
+                        $('<td>').css({padding:'4px','text-align':'right'}).text(af > 0 ? 'R ' + af.toFixed(2) : 'Included')
+                    ));
                 });
 
-                var $table = $('<table>');
-                $table.append($('<tr>').append($('<td>').text('Vehicle'), $('<td>').append($('<strong>').text(vname))));
-                $table.append($('<tr>').append($('<td>').text('Details'), $('<td>').text(vsub)));
-                $table.append($('<tr>').append($('<td>').text('Classes'), $('<td>').text(classNames.join(', '))));
-                $table.append($('<tr>').append($('<td>').text('Total Fee'), $('<td>').append($('<strong>').text('R ' + msc.totalFee.toFixed(2)))));
+                if (baseFee > 0) {
+                    $table.append($('<tr>').append(
+                        $('<td>').css('padding','4px 8px 4px 0').text('Base entry fee'),
+                        $('<td>'), $('<td>').css({padding:'4px','text-align':'right'}).text('R ' + baseFee.toFixed(2))
+                    ));
+                }
+                $table.append($('<tr style="border-top:2px solid #ccc">').append(
+                    $('<td>').css('padding','6px 8px 4px 0').append($('<strong>').text('Total')),
+                    $('<td>'),
+                    $('<td>').css({padding:'6px 4px','text-align':'right'}).append($('<strong>').text('R ' + msc.totalFee.toFixed(2)))
+                ));
+
                 $('#msc-summary').empty().append($table);
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
@@ -267,13 +441,16 @@ jQuery(function ($) {
                 btn.prop('disabled', true).text('Submitting…');
 
                 var fd = new FormData();
-                fd.append('action',           'msc_submit_registration');
-                fd.append('nonce',            mscData.nonce);
-                fd.append('event_id',         msc.eventId);
-                fd.append('vehicle_id',       msc.vehicleId);
-                // Append all selected class IDs
-                $('.msc-class-check:checked').each(function() {
-                    fd.append('class_ids[]', $(this).data('id'));
+                fd.append('action',              'msc_submit_registration');
+                fd.append('nonce',               mscData.nonce);
+                fd.append('event_id',            msc.eventId);
+                fd.append('primary_class_id',    msc.primaryClassId);
+                fd.append('primary_vehicle_id',  msc.primaryVehicleId);
+                msc.additionalRows.forEach(function(r) {
+                    if (r.classId && r.vehicleId) {
+                        fd.append('additional_class_ids[]',   r.classId);
+                        fd.append('additional_vehicle_ids[]', r.vehicleId);
+                    }
                 });
                 fd.append('indemnity_method', 'signed');
                 fd.append('indemnity_sig',    sig);

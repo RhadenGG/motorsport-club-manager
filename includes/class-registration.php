@@ -16,8 +16,21 @@ class MSC_Registration {
 
     public static function ajax_get_vehicles() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
+        $user_id  = get_current_user_id();
         $event_id = intval( $_POST['event_id'] );
-        $vehicles = MSC_Admin_Garage::get_user_vehicles_for_event( get_current_user_id(), $event_id );
+
+        // Count ALL user vehicles (for "none in garage" detection)
+        $total_user_vehicles = (int) wp_count_posts( 'msc_vehicle' )->publish;
+        // More accurate: count posts owned by this user
+        $total_user_vehicles = (int) ( new WP_Query( array(
+            'post_type'      => 'msc_vehicle',
+            'post_status'    => 'publish',
+            'author'         => $user_id,
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+        ) ) )->found_posts;
+
+        $vehicles = MSC_Admin_Garage::get_user_vehicles_for_event( $user_id, $event_id );
         $out = array();
         foreach ( $vehicles as $v ) {
             $make        = get_post_meta( $v->ID, '_msc_make',        true );
@@ -35,22 +48,32 @@ class MSC_Registration {
                 'engine_size' => $engine_size,
             );
         }
-        wp_send_json_success( $out );
+        wp_send_json_success( array(
+            'vehicles'           => $out,
+            'total_user_vehicles' => $total_user_vehicles,
+        ) );
     }
 
     public static function ajax_submit() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
         global $wpdb;
 
-        $user_id    = get_current_user_id();
-        $event_id   = intval( $_POST['event_id'] );
-        $vehicle_id = intval( $_POST['vehicle_id'] );
+        $user_id          = get_current_user_id();
+        $event_id         = absint( $_POST['event_id'] ?? 0 );
+        $primary_class_id = absint( $_POST['primary_class_id'] ?? 0 );
+        $primary_vehicle_id = absint( $_POST['primary_vehicle_id'] ?? 0 );
 
-        // Validate class selection — must have at least one
-        $raw_class_ids = isset( $_POST['class_ids'] ) ? (array) $_POST['class_ids'] : array();
-        $class_ids     = array_values( array_filter( array_map( 'absint', $raw_class_ids ) ) );
-        if ( empty( $class_ids ) ) {
-            wp_send_json_error( array( 'message' => 'Please select at least one class to enter.' ) );
+        // Additional class IDs and their vehicle IDs
+        $raw_add_class_ids   = isset( $_POST['additional_class_ids'] )   ? (array) $_POST['additional_class_ids']   : array();
+        $raw_add_vehicle_ids = isset( $_POST['additional_vehicle_ids'] ) ? (array) $_POST['additional_vehicle_ids'] : array();
+        $additional_class_ids   = array_values( array_filter( array_map( 'absint', $raw_add_class_ids ) ) );
+        $additional_vehicle_ids = array_values( array_filter( array_map( 'absint', $raw_add_vehicle_ids ) ) );
+
+        if ( ! $primary_class_id ) {
+            wp_send_json_error( array( 'message' => 'Please select a primary class to enter.' ) );
+        }
+        if ( ! $primary_vehicle_id ) {
+            wp_send_json_error( array( 'message' => 'Please select a vehicle for the primary class.' ) );
         }
 
         $ind_method = sanitize_key( $_POST['indemnity_method'] ?? '' );
@@ -79,7 +102,7 @@ class MSC_Registration {
         $ind_full = $user_obj ? $user_obj->display_name : 'Unknown';
 
         // Validations
-        if ( ! $event_id || ! $vehicle_id || ! $em_name || ! $em_phone ) {
+        if ( ! $event_id || ! $em_name || ! $em_phone ) {
             wp_send_json_error( array( 'message' => 'Please complete all required emergency contact fields.' ) );
         }
         if ( $ind_method !== 'signed' || ! $ind_sig ) {
@@ -119,32 +142,43 @@ class MSC_Registration {
         ) );
         if ( $exists ) wp_send_json_error( array( 'message' => 'You are already registered for this event.' ) );
 
-        // Vehicle ownership
-        $vehicle = get_post( $vehicle_id );
-        if ( ! $vehicle || (int) $vehicle->post_author !== $user_id ) {
-            wp_send_json_error( array( 'message' => 'Invalid vehicle selection.' ) );
-        }
-
-        // Validate class IDs belong to this event
+        // Validate all class IDs belong to this event
         $allowed_classes = get_post_meta( $event_id, '_msc_event_classes', true );
         $allowed_classes = $allowed_classes ? array_map( 'intval', (array) $allowed_classes ) : array();
-        foreach ( $class_ids as $cid ) {
+        $all_entered_class_ids = array_merge( array( $primary_class_id ), $additional_class_ids );
+        foreach ( $all_entered_class_ids as $cid ) {
             if ( ! in_array( $cid, $allowed_classes, true ) ) {
                 wp_send_json_error( array( 'message' => 'One or more selected classes are not allowed for this event.' ) );
             }
         }
 
-        // Calculate total fee
-        $base_fee   = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
-        $class_fees = get_post_meta( $event_id, '_msc_class_fees', true );
-        $class_fees = is_array( $class_fees ) ? $class_fees : array();
+        // Validate vehicle ownership — primary
+        $primary_vehicle = get_post( $primary_vehicle_id );
+        if ( ! $primary_vehicle || (int) $primary_vehicle->post_author !== $user_id ) {
+            wp_send_json_error( array( 'message' => 'Invalid primary vehicle selection.' ) );
+        }
+        // Validate additional vehicle ownership
+        foreach ( $additional_vehicle_ids as $vid ) {
+            $av = get_post( $vid );
+            if ( ! $av || (int) $av->post_author !== $user_id ) {
+                wp_send_json_error( array( 'message' => 'Invalid vehicle selection for additional class.' ) );
+            }
+        }
 
-        $total_fee = $base_fee;
-        $fee_per_class = array(); // class_id => fee paid for that class
-        foreach ( $class_ids as $cid ) {
-            $cf = isset( $class_fees[ $cid ] ) ? floatval( $class_fees[ $cid ] ) : 0.0;
-            $fee_per_class[ $cid ] = $cf;
-            $total_fee += $cf;
+        // Calculate total fee using pricing set
+        $base_fee       = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
+        $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
+        $total_fee      = $base_fee;
+        $fee_per_class  = array(); // class_id => fee
+
+        $primary_fee = $pricing_set_id ? MSC_Pricing::get_class_fee( $pricing_set_id, $primary_class_id, true ) : 0.0;
+        $fee_per_class[ $primary_class_id ] = $primary_fee;
+        $total_fee += $primary_fee;
+
+        foreach ( $additional_class_ids as $cid ) {
+            $af = $pricing_set_id ? MSC_Pricing::get_class_fee( $pricing_set_id, $cid, false ) : 0.0;
+            $fee_per_class[ $cid ] = $af;
+            $total_fee += $af;
         }
 
         // Handle Proof of Payment upload
@@ -171,11 +205,11 @@ class MSC_Registration {
         $approval = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
         $status   = ( $approval === 'manual' ) ? 'pending' : 'confirmed';
 
-        // Insert main registration row
+        // Insert main registration row (primary vehicle stored for backwards compat)
         $inserted = $wpdb->insert( "{$wpdb->prefix}msc_registrations", array(
             'event_id'            => $event_id,
             'user_id'             => $user_id,
-            'vehicle_id'          => $vehicle_id,
+            'vehicle_id'          => $primary_vehicle_id,
             'status'              => $status,
             'entry_fee'           => $total_fee,
             'fee_paid'            => 0,
@@ -201,16 +235,32 @@ class MSC_Registration {
 
         $reg_id = $wpdb->insert_id;
 
-        // Insert per-class rows into junction table
-        foreach ( $class_ids as $cid ) {
+        // Insert primary class row
+        $wpdb->insert(
+            "{$wpdb->prefix}msc_registration_classes",
+            array(
+                'registration_id' => $reg_id,
+                'class_id'        => $primary_class_id,
+                'class_fee'       => $fee_per_class[ $primary_class_id ],
+                'vehicle_id'      => $primary_vehicle_id,
+                'is_primary'      => 1,
+            ),
+            array( '%d', '%d', '%f', '%d', '%d' )
+        );
+
+        // Insert additional class rows
+        foreach ( $additional_class_ids as $i => $cid ) {
+            $vid = isset( $additional_vehicle_ids[ $i ] ) ? $additional_vehicle_ids[ $i ] : $primary_vehicle_id;
             $wpdb->insert(
                 "{$wpdb->prefix}msc_registration_classes",
                 array(
                     'registration_id' => $reg_id,
                     'class_id'        => $cid,
                     'class_fee'       => $fee_per_class[ $cid ],
+                    'vehicle_id'      => $vid,
+                    'is_primary'      => 0,
                 ),
-                array( '%d', '%d', '%f' )
+                array( '%d', '%d', '%f', '%d', '%d' )
             );
         }
 

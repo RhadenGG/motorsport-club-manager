@@ -38,6 +38,7 @@ class MSC_Admin_Events {
             'msc-participants',                                                 // Participants
             'edit.php?post_type=msc_vehicle',                                   // Vehicles
             'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle',   // Vehicle Classes
+            'msc-pricing',                                                      // Pricing
             'msc-settings',                                                     // Settings
         );
 
@@ -170,15 +171,16 @@ class MSC_Admin_Events {
     }
 
     public static function meta_box_classes( $post ) {
-        $vehicle_types = MSC_Taxonomies::get_classes_by_type();
+        $vehicle_types   = MSC_Taxonomies::get_classes_by_type();
+        $pricing_sets    = MSC_Pricing::get_all_sets();
 
-        $saved_type    = get_post_meta( $post->ID, '_msc_event_vehicle_type', true ) ?: 'Both';
-        $saved_classes = get_post_meta( $post->ID, '_msc_event_classes', true );
-        $saved_classes = array_map( 'intval', $saved_classes ? (array) $saved_classes : array() );
-        $saved_fees    = get_post_meta( $post->ID, '_msc_class_fees', true );
-        $saved_fees    = is_array( $saved_fees ) ? $saved_fees : array();
+        $saved_type       = get_post_meta( $post->ID, '_msc_event_vehicle_type', true ) ?: 'Both';
+        $saved_classes    = get_post_meta( $post->ID, '_msc_event_classes', true );
+        $saved_classes    = array_map( 'intval', $saved_classes ? (array) $saved_classes : array() );
+        $saved_pricing_id = (int) get_post_meta( $post->ID, '_msc_pricing_set_id', true );
         ?>
-        <p class="description" style="margin-top:0">Select classes and set any additional fee per class (on top of the base entry fee).</p>
+        <p class="description" style="margin-top:0">Select allowed classes and assign a pricing set to define class fees.</p>
+
         <p style="margin-bottom:8px">
         <label style="font-weight:600;display:block;margin-bottom:4px">Vehicle Types Allowed</label>
         <select name="msc_event_vehicle_type" id="msc_event_vehicle_type" style="width:100%">
@@ -187,38 +189,34 @@ class MSC_Admin_Events {
         <option value="Motorcycle" <?php selected($saved_type,'Motorcycle'); ?>>🏍 Motorcycles only</option>
         </select>
         </p>
+
+        <p style="margin-bottom:8px">
+        <label style="font-weight:600;display:block;margin-bottom:4px">Pricing Set</label>
+        <select name="msc_pricing_set_id" style="width:100%">
+        <option value="">— No pricing set (free classes) —</option>
+        <?php foreach ( $pricing_sets as $ps ) : ?>
+        <option value="<?php echo (int) $ps->id; ?>" <?php selected( $saved_pricing_id, (int) $ps->id ); ?>><?php echo esc_html( $ps->name ); ?></option>
+        <?php endforeach; ?>
+        </select>
+        <span class="description">Fees per class are defined in <a href="<?php echo esc_url( admin_url('admin.php?page=msc-pricing') ); ?>">Motorsport Club → Pricing</a>.</span>
+        </p>
+
         <div id="msc-class-checkboxes" style="margin-top:12px">
         <?php foreach ( $vehicle_types as $type => $classes ) :
         $show = ( $saved_type === 'Both' || $saved_type === $type ) ? '' : 'display:none;';
         ?>
         <div class="msc-class-group" data-type="<?php echo esc_attr( $type ); ?>" style="<?php echo esc_attr( $show ); ?>margin-bottom:10px">
         <strong style="display:block;margin-bottom:6px;color:#1d2327"><?php echo $type === 'Car' ? '🚗 Car Classes' : '🏍 Motorcycle Classes'; ?></strong>
-        <table style="width:100%;border-collapse:collapse;">
-        <thead><tr>
-            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 4px;width:60%">Class</th>
-            <th style="text-align:left;font-weight:600;font-size:12px;padding:2px 4px">Additional Fee (R)</th>
-        </tr></thead>
-        <tbody>
+        <div style="columns:2;column-gap:8px">
         <?php foreach ( $classes as $term_id => $class_name ) :
-        $checked   = in_array( $term_id, $saved_classes ) ? 'checked' : '';
-        $class_fee = isset( $saved_fees[ $term_id ] ) ? floatval( $saved_fees[ $term_id ] ) : 0;
+        $checked = in_array( $term_id, $saved_classes ) ? 'checked' : '';
         ?>
-        <tr>
-            <td style="padding:3px 4px">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                    <input type="checkbox" name="msc_event_classes[]" value="<?php echo esc_attr($term_id); ?>" <?php echo $checked; ?>>
-                    <?php echo esc_html($class_name); ?>
-                </label>
-            </td>
-            <td style="padding:3px 4px">
-                <input type="number" name="msc_class_fees[<?php echo esc_attr($term_id); ?>]"
-                       value="<?php echo esc_attr( number_format( $class_fee, 2, '.', '' ) ); ?>"
-                       min="0" step="0.01" style="width:80px" placeholder="0.00">
-            </td>
-        </tr>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;break-inside:avoid;padding:2px 0">
+            <input type="checkbox" name="msc_event_classes[]" value="<?php echo esc_attr($term_id); ?>" <?php echo $checked; ?>>
+            <?php echo esc_html($class_name); ?>
+        </label>
         <?php endforeach; ?>
-        </tbody>
-        </table>
+        </div>
         <div style="margin-top:4px">
         <a href="#" class="msc-select-all"   data-type="<?php echo esc_attr( $type ); ?>" style="font-size:11px">Select all</a> &middot;
         <a href="#" class="msc-deselect-all" data-type="<?php echo esc_attr( $type ); ?>" style="font-size:11px">Deselect all</a>
@@ -272,14 +270,13 @@ class MSC_Admin_Events {
         update_post_meta( $post_id, '_msc_event_classes', $event_classes );
         wp_set_post_terms( $post_id, $event_classes, 'msc_vehicle_class' );
 
-        // Per-class additional fees
-        $class_fees = array();
-        if ( isset( $_POST['msc_class_fees'] ) && is_array( $_POST['msc_class_fees'] ) ) {
-            foreach ( $_POST['msc_class_fees'] as $class_id => $fee ) {
-                $class_fees[ intval( $class_id ) ] = round( floatval( $fee ), 2 );
-            }
+        // Pricing set
+        $pricing_set_id = absint( $_POST['msc_pricing_set_id'] ?? 0 );
+        if ( $pricing_set_id ) {
+            update_post_meta( $post_id, '_msc_pricing_set_id', $pricing_set_id );
+        } else {
+            delete_post_meta( $post_id, '_msc_pricing_set_id' );
         }
-        update_post_meta( $post_id, '_msc_class_fees', $class_fees );
     }
 
     public static function columns( $cols ) {

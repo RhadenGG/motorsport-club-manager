@@ -3,7 +3,7 @@
  * Plugin Name: Motorsport Club Manager
  * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
- * Version:     0.6.3
+ * Version:     0.6.4
  * Author:      Trevor Botha
  * Author URI:  https://trevorbotha.net
  * Text Domain: motorsport-club
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '0.6.3' );
+define( 'MSC_VERSION',  '0.6.4' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
@@ -22,6 +22,7 @@ require_once MSC_PATH . 'includes/lib/class-msc-pdf.php';
 require_once MSC_PATH . 'includes/class-activator.php';
 require_once MSC_PATH . 'includes/class-post-types.php';
 require_once MSC_PATH . 'includes/class-taxonomies.php';
+require_once MSC_PATH . 'includes/class-pricing.php';
 require_once MSC_PATH . 'includes/class-admin-events.php';
 require_once MSC_PATH . 'includes/class-admin-garage.php';
 require_once MSC_PATH . 'includes/class-registration.php';
@@ -42,6 +43,7 @@ add_action( 'plugins_loaded', 'msc_init' );
 function msc_init() {
     MSC_Post_Types::init();
     MSC_Taxonomies::init();
+    MSC_Pricing::init();
     MSC_Admin_Events::init();
     MSC_Admin_Garage::init();
     MSC_Registration::init();
