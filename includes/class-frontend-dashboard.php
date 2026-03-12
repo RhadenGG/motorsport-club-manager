@@ -164,6 +164,10 @@ class MSC_Frontend_Dashboard {
                         <label>Event Title <span class="msc-required">*</span></label>
                         <input type="text" id="ce_title" placeholder="e.g. Round 3 — Kyalami">
                     </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Description</label>
+                        <textarea id="ce_content" rows="5" placeholder="Event details, schedule, rules, etc."></textarea>
+                    </div>
                     <div class="msc-field">
                         <label>Start Date &amp; Time <span class="msc-required">*</span></label>
                         <input type="datetime-local" id="ce_event_date">
@@ -272,6 +276,10 @@ class MSC_Frontend_Dashboard {
                     <div class="msc-field msc-field-full">
                         <label>Event Title <span class="msc-required">*</span></label>
                         <input type="text" id="ee_title" placeholder="e.g. Round 3 — Kyalami">
+                    </div>
+                    <div class="msc-field msc-field-full">
+                        <label>Description</label>
+                        <textarea id="ee_content" rows="5" placeholder="Event details, schedule, rules, etc."></textarea>
                     </div>
                     <div class="msc-field">
                         <label>Start Date &amp; Time <span class="msc-required">*</span></label>
@@ -427,6 +435,7 @@ class MSC_Frontend_Dashboard {
                     <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-fe-edit-event"
                         data-id="<?php echo esc_attr( $event->ID ); ?>"
                         data-title="<?php echo esc_attr( $event->post_title ); ?>"
+                        data-content="<?php echo esc_attr( $event->post_content ); ?>"
                         data-date="<?php echo esc_attr( $event_date ); ?>"
                         data-end-date="<?php echo esc_attr( $event_end ); ?>"
                         data-location="<?php echo esc_attr( $location ); ?>"
@@ -528,6 +537,7 @@ class MSC_Frontend_Dashboard {
                     action:           'msc_fe_create_event',
                     nonce:            nonce,
                     title:            $('#ce_title').val(),
+                    content:          $('#ce_content').val(),
                     event_date:       $('#ce_event_date').val(),
                     event_end_date:   $('#ce_event_end_date').val(),
                     location:         $('#ce_location').val(),
@@ -594,6 +604,7 @@ class MSC_Frontend_Dashboard {
                 $('#msc-edit-event-msg').hide().text('');
                 $('#ee_event_id').val(d.id);
                 $('#ee_title').val(d.title);
+                $('#ee_content').val(d.content || '');
                 $('#ee_event_date').val(d.date);
                 $('#ee_event_end_date').val(d.endDate || '');
                 $('#ee_location').val(d.location || '');
@@ -647,6 +658,7 @@ class MSC_Frontend_Dashboard {
                     nonce:            nonce,
                     event_id:         $('#ee_event_id').val(),
                     title:            $('#ee_title').val(),
+                    content:          $('#ee_content').val(),
                     event_date:       $('#ee_event_date').val(),
                     event_end_date:   $('#ee_event_end_date').val(),
                     location:         $('#ee_location').val(),
@@ -1418,11 +1430,14 @@ class MSC_Frontend_Dashboard {
         $title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
         if ( ! $title ) wp_send_json_error( array( 'message' => 'Event title is required.' ) );
 
+        $content = wp_kses_post( wp_unslash( $_POST['content'] ?? '' ) );
+
         $post_id = wp_insert_post( array(
-            'post_title'  => $title,
-            'post_type'   => 'msc_event',
-            'post_status' => 'publish',
-            'post_author' => get_current_user_id(),
+            'post_title'   => $title,
+            'post_content' => $content,
+            'post_type'    => 'msc_event',
+            'post_status'  => 'publish',
+            'post_author'  => get_current_user_id(),
         ), true );
 
         if ( is_wp_error( $post_id ) ) {
@@ -1495,12 +1510,14 @@ class MSC_Frontend_Dashboard {
             wp_send_json_error( array( 'message' => 'You cannot modify this event.' ) );
         }
 
-        $title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
+        $title   = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
         if ( ! $title ) wp_send_json_error( array( 'message' => 'Event title is required.' ) );
+        $content = wp_kses_post( wp_unslash( $_POST['content'] ?? '' ) );
 
         wp_update_post( array(
-            'ID'         => $event_id,
-            'post_title' => $title,
+            'ID'           => $event_id,
+            'post_title'   => $title,
+            'post_content' => $content,
         ) );
 
         $text_meta = array(
