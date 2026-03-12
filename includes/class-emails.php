@@ -162,7 +162,7 @@ class MSC_Emails {
         self::send_mail( $reg->user_email, "Entry Confirmed - {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
     }
 
-    public static function send_rejection( $reg_id ) {
+    public static function send_rejection( $reg_id, $reason = '' ) {
         $reg = self::get_reg( $reg_id );
         if ( ! $reg || ! $reg->user_email ) return;
 
@@ -171,11 +171,20 @@ class MSC_Emails {
         $site_name   = get_bloginfo( 'name' );
         $account_url = esc_url( msc_get_account_url( 'registrations' ) );
 
+        $reason_block = '';
+        if ( $reason !== '' ) {
+            $reason_block = "<div style='background:#f8d7da;border-left:4px solid #842029;padding:12px 16px;margin:16px 0;border-radius:0 4px 4px 0'>"
+                . "<strong style='display:block;margin-bottom:4px;color:#842029'>Reason:</strong>"
+                . "<span style='color:#2d3436'>" . nl2br( esc_html( $reason ) ) . "</span>"
+                . "</div>";
+        }
+
         $body = "
         <p>Hi {$user_name},</p>
         <p>We regret to inform you that your entry for <strong>{$event_name}</strong> has been <strong style='color:#842029'>rejected</strong>.</p>
-        <p>If you believe this is an error or would like more information, please contact the event organiser.</p>
-        <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
+        {$reason_block}
+        <p>If you have any questions, please contact the event organiser.</p>
+        <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Entries</a></p>
         <p>Regards,<br>" . esc_html( $site_name ) . "</p>";
 
         $headers = self::get_headers();

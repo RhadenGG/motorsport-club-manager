@@ -341,11 +341,12 @@ class MSC_Admin_Events {
                 ? array_filter( array_map( 'intval', $_POST['bulk_ids'] ) )
                 : array();
             if ( in_array( $bulk_status, $valid_bulk, true ) && ! empty( $bulk_ids ) ) {
+                $bulk_rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
                 $updated = 0;
                 foreach ( $bulk_ids as $rid ) {
                     $wpdb->update( $table, array( 'status' => $bulk_status ), array( 'id' => $rid ), array( '%s' ), array( '%d' ) );
                     if ( $bulk_status === 'confirmed' )  MSC_Emails::send_confirmation( $rid );
-                    if ( $bulk_status === 'rejected' )   MSC_Emails::send_rejection( $rid );
+                    if ( $bulk_status === 'rejected' )   MSC_Emails::send_rejection( $rid, $bulk_rejection_reason );
                     if ( $bulk_status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $rid );
                     $updated++;
                 }
@@ -370,12 +371,13 @@ class MSC_Admin_Events {
             isset( $_POST['_wpnonce'] ) &&
             wp_verify_nonce( $_POST['_wpnonce'], 'msc_reg_action' )
         ) {
-            $reg_id   = intval( $_POST['reg_id'] );
-            $status   = sanitize_key( $_POST['new_status'] );
-            $fee_paid = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
+            $reg_id           = intval( $_POST['reg_id'] );
+            $status           = sanitize_key( $_POST['new_status'] );
+            $fee_paid         = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
+            $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
             $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ), array( '%s', '%d' ), array( '%d' ) );
             if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
-            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
             echo '<div class="updated notice is-dismissible"><p>Entry updated.</p></div>';
         }
@@ -453,7 +455,7 @@ class MSC_Admin_Events {
         <a href="<?php echo esc_url( add_query_arg( $csv_args, admin_url('admin.php') ) ); ?>" class="button" style="margin-top:-4px">Export CSV</a>
 
         <!-- Bulk controls — no wrapping form to avoid nesting with per-row forms -->
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
             <label><input type="checkbox" id="msc-admin-select-all"> Select All</label>
             <select id="msc-bulk-status" style="height:30px">
                 <option value="">— Bulk Action —</option>
@@ -463,11 +465,18 @@ class MSC_Admin_Events {
             </select>
             <button type="button" id="msc-bulk-apply" class="button">Apply to Selected</button>
         </div>
+        <div id="msc-bulk-rej-wrap" style="display:none;margin-bottom:10px;max-width:480px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#842029">Reason for rejection (optional — sent to all selected entrants):</label>
+            <textarea id="msc-bulk-rej-reason" rows="2"
+                style="width:100%;box-sizing:border-box;font-size:12px;border:1px solid #f5c6cb;border-radius:4px;padding:4px 6px;resize:vertical"
+                placeholder="e.g. Vehicle class is not eligible for this event."></textarea>
+        </div>
         <!-- Hidden bulk form submitted programmatically by JS -->
         <form method="post" id="msc-bulk-form" style="display:none">
         <?php wp_nonce_field( 'msc_bulk_reg_action', '_wpnonce_bulk' ); ?>
         <input type="hidden" name="msc_bulk_update_status" value="1">
         <input type="hidden" name="bulk_status" id="msc-bulk-status-hidden">
+        <input type="hidden" name="rejection_reason" id="msc-bulk-rej-reason-hidden">
         </form>
 
         <!-- Table -->
@@ -544,11 +553,12 @@ class MSC_Admin_Events {
         </td>
         <td><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
         <td>
-        <form method="post" style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;"
+        <form method="post" style="flex-wrap:wrap;gap:4px;" class="msc-admin-row-form"
         onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
         <?php wp_nonce_field('msc_reg_action') ?>
         <input type="hidden" name="reg_id" value="<?php echo $r->id ?>">
-        <select name="new_status" style="height:28px;line-height:28px;">
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <select name="new_status" class="msc-admin-status-sel" style="height:28px;line-height:28px;">
         <?php foreach(array('pending','confirmed','rejected','cancelled') as $s): ?>
         <option value="<?php echo $s ?>" <?php selected($r->status,$s) ?>><?php echo ucfirst($s) ?></option>
         <?php endforeach; ?>
@@ -557,6 +567,10 @@ class MSC_Admin_Events {
             <input type="checkbox" name="new_fee_paid" value="1" <?php checked($r->fee_paid,1) ?>> $
         </label>
         <button type="submit" name="msc_update_status" class="button button-small">Update</button>
+        </div>
+        <textarea name="rejection_reason" class="msc-admin-rej-reason" rows="2"
+            style="display:none;width:100%;box-sizing:border-box;margin-top:4px;font-size:12px;border:1px solid #f5c6cb;border-radius:4px;padding:4px 6px;resize:vertical"
+            placeholder="Reason for rejection (optional — sent to entrant)"></textarea>
         <?php if ($r->indemnity_method === 'signed' && $r->indemnity_sig): ?>
         <a href="<?php echo esc_url( add_query_arg(array('msc_indemnity_pdf'=>$r->id), home_url()) ) ?>"
         class="button button-small" target="_blank">PDF</a>
@@ -592,17 +606,37 @@ class MSC_Admin_Events {
         </div>
         <script>
         (function(){
-            var sa    = document.getElementById('msc-admin-select-all');
-            var apply = document.getElementById('msc-bulk-apply');
-            var form  = document.getElementById('msc-bulk-form');
-            var bstat = document.getElementById('msc-bulk-status');
-            var bsth  = document.getElementById('msc-bulk-status-hidden');
+            var sa       = document.getElementById('msc-admin-select-all');
+            var apply    = document.getElementById('msc-bulk-apply');
+            var form     = document.getElementById('msc-bulk-form');
+            var bstat    = document.getElementById('msc-bulk-status');
+            var bsth     = document.getElementById('msc-bulk-status-hidden');
+            var rejWrap  = document.getElementById('msc-bulk-rej-wrap');
+            var rejText  = document.getElementById('msc-bulk-rej-reason');
+            var rejHidden= document.getElementById('msc-bulk-rej-reason-hidden');
 
             if (sa) {
                 sa.addEventListener('change', function(){
                     document.querySelectorAll('.msc-admin-bulk-cb').forEach(function(cb){ cb.checked = sa.checked; });
                 });
             }
+
+            // Show/hide bulk rejection reason textarea
+            if (bstat && rejWrap) {
+                bstat.addEventListener('change', function(){
+                    rejWrap.style.display = (this.value === 'rejected') ? 'block' : 'none';
+                });
+            }
+
+            // Show/hide per-row rejection reason textarea
+            document.querySelectorAll('.msc-admin-status-sel').forEach(function(sel){
+                sel.addEventListener('change', function(){
+                    var textarea = sel.closest('form').querySelector('.msc-admin-rej-reason');
+                    if (textarea) {
+                        textarea.style.display = (sel.value === 'rejected') ? 'block' : 'none';
+                    }
+                });
+            });
 
             if (apply && form && bstat && bsth) {
                 apply.addEventListener('click', function(){
@@ -615,6 +649,9 @@ class MSC_Admin_Events {
                     form.querySelectorAll('input[name="bulk_ids[]"]').forEach(function(el){ el.remove(); });
 
                     bsth.value = status;
+                    if (rejHidden && rejText) {
+                        rejHidden.value = (status === 'rejected') ? rejText.value : '';
+                    }
                     checked.forEach(function(cb){
                         var inp = document.createElement('input');
                         inp.type = 'hidden';

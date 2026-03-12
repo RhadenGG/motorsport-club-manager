@@ -867,26 +867,62 @@ class MSC_Frontend_Dashboard {
             var nonce   = '<?php echo wp_create_nonce('msc_nonce'); ?>';
             var ajaxUrl = '<?php echo esc_js( admin_url('admin-ajax.php') ); ?>';
 
+            // Helper: show an inline rejection-reason panel beneath an element, then call back with the reason
+            function getRejectionReason(anchorEl, onConfirm) {
+                var panelId = 'msc-rej-panel';
+                $('#' + panelId).remove();
+                var $panel = $(
+                    '<div id="' + panelId + '" style="background:#fff3f3;border:1px solid #f5c6cb;border-radius:6px;padding:12px;margin-top:8px;max-width:480px">' +
+                    '<label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:#842029">Reason for rejection (optional — will be included in the email):</label>' +
+                    '<textarea id="msc-rej-reason-text" rows="3" style="width:100%;box-sizing:border-box;font-size:13px;border:1px solid #ddd;border-radius:4px;padding:6px;resize:vertical" placeholder="e.g. Vehicle class is not eligible for this event."></textarea>' +
+                    '<div style="display:flex;gap:8px;margin-top:8px">' +
+                    '<button type="button" id="msc-rej-confirm" class="msc-btn" style="background:#842029;border-color:#842029">Confirm Rejection</button>' +
+                    '<button type="button" id="msc-rej-cancel" class="msc-btn msc-btn-outline">Cancel</button>' +
+                    '</div></div>'
+                );
+                $(anchorEl).after($panel);
+                $('#msc-rej-reason-text').focus();
+
+                $('#msc-rej-confirm').on('click', function(){
+                    var reason = $('#msc-rej-reason-text').val().trim();
+                    $('#' + panelId).remove();
+                    onConfirm(reason);
+                });
+                $('#msc-rej-cancel').on('click', function(){
+                    $('#' + panelId).remove();
+                });
+            }
+
             // Individual status save
             $(document).on('click', '.msc-reg-status-save', function(){
                 var btn    = $(this);
                 var reg_id = btn.data('id');
                 var status = $('.msc-reg-status-select[data-id="'+reg_id+'"]').val();
-                btn.prop('disabled', true).text('…');
-                $.post(ajaxUrl, {
-                    action:  'msc_fe_update_reg_status',
-                    nonce:   nonce,
-                    reg_id:  reg_id,
-                    status:  status,
-                }, function(res){
-                    btn.prop('disabled', false).text('Save');
-                    if (res.success) {
-                        $('#msc-reg-msg').text('Entry updated.').css('color','green').show();
-                        setTimeout(function(){ location.reload(); }, 800);
-                    } else {
-                        $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
-                    }
-                });
+
+                function doSave(rejection_reason) {
+                    btn.prop('disabled', true).text('…');
+                    $.post(ajaxUrl, {
+                        action:           'msc_fe_update_reg_status',
+                        nonce:            nonce,
+                        reg_id:           reg_id,
+                        status:           status,
+                        rejection_reason: rejection_reason,
+                    }, function(res){
+                        btn.prop('disabled', false).text('Save');
+                        if (res.success) {
+                            $('#msc-reg-msg').text('Entry updated.').css('color','green').show();
+                            setTimeout(function(){ location.reload(); }, 800);
+                        } else {
+                            $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
+                        }
+                    });
+                }
+
+                if (status === 'rejected') {
+                    getRejectionReason(btn[0], doSave);
+                } else {
+                    doSave('');
+                }
             });
 
             // Bulk: track selection and show/hide the bulk bar
@@ -917,23 +953,33 @@ class MSC_Frontend_Dashboard {
                 var ids = [];
                 $('.msc-bulk-cb:checked').each(function(){ ids.push($(this).val()); });
                 if (!ids.length) { alert('No registrations selected.'); return; }
-                if (!confirm('Set ' + ids.length + ' registration(s) to "' + status + '"?')) return;
-                var btn = $(this);
-                btn.prop('disabled', true).text('…');
-                $.post(ajaxUrl, {
-                    action: 'msc_fe_bulk_reg_status',
-                    nonce:  nonce,
-                    status: status,
-                    ids:    ids,
-                }, function(res){
-                    btn.prop('disabled', false).text('Apply');
-                    if (res.success) {
-                        $('#msc-reg-msg').text(res.data.message).css('color','green').show();
-                        setTimeout(function(){ location.reload(); }, 900);
-                    } else {
-                        $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
-                    }
-                });
+
+                function doBulk(rejection_reason) {
+                    if (!confirm('Set ' + ids.length + ' registration(s) to "' + status + '"?')) return;
+                    var btn = $('#msc-bulk-apply');
+                    btn.prop('disabled', true).text('…');
+                    $.post(ajaxUrl, {
+                        action:           'msc_fe_bulk_reg_status',
+                        nonce:            nonce,
+                        status:           status,
+                        ids:              ids,
+                        rejection_reason: rejection_reason,
+                    }, function(res){
+                        btn.prop('disabled', false).text('Apply');
+                        if (res.success) {
+                            $('#msc-reg-msg').text(res.data.message).css('color','green').show();
+                            setTimeout(function(){ location.reload(); }, 900);
+                        } else {
+                            $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
+                        }
+                    });
+                }
+
+                if (status === 'rejected') {
+                    getRejectionReason(document.getElementById('msc-bulk-apply'), doBulk);
+                } else {
+                    doBulk('');
+                }
             });
         })(jQuery);
         </script>
@@ -1627,8 +1673,10 @@ class MSC_Frontend_Dashboard {
             array( '%d' )
         );
 
+        $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
+
         if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
-        if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+        if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
         if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
 
         wp_send_json_success( array( 'message' => 'Registration updated.' ) );
@@ -1650,6 +1698,8 @@ class MSC_Frontend_Dashboard {
             wp_send_json_error( array( 'message' => 'Invalid request.' ) );
         }
 
+        $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
+
         $updated = 0;
         foreach ( $ids as $reg_id ) {
             $event_id = (int) $wpdb->get_var( $wpdb->prepare(
@@ -1665,7 +1715,7 @@ class MSC_Frontend_Dashboard {
                 array( '%d' )
             );
             if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
-            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
             $updated++;
         }
