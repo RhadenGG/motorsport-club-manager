@@ -24,15 +24,17 @@ A comprehensive WordPress plugin for managing motorsport events, vehicle garages
   - Electronic signatures (drawn or typed) via `signature_pad`.
   - Automatic minor detection with mandatory parent/guardian fields.
   - Pre-filled emergency contact and pit crew details from profile.
-- **Entry Editing:** Entrants can add or remove classes after submitting. Rules enforced: no downgrade below original paid amount; same total saves immediately; higher total prompts a top-up PoP upload for the delta. Per-class vehicle assignments are preserved on edit.
-- **Proof of Payment:** Required PDF upload for paid events; stored persistently and viewable by event staff in both wp-admin and the frontend dashboard.
+- **Entry Editing:** Entrants can add or remove classes after submitting. Rules enforced: no downgrade below original paid amount; same total saves immediately; higher total prompts a top-up PoP upload for the delta. Each class has an independent vehicle selector; assignments are preserved on edit.
+- **Proof of Payment:** PDF, PNG, or JPG upload accepted (entrants can upload EFT confirmations or payment screenshots). Stored persistently and viewable by event staff in both wp-admin and the frontend dashboard.
 - **Document Access:** Signed indemnity PDFs and PoPs are accessible to entrants, event creators, and admins at any time via view buttons in admin and the staff dashboard.
 - **Custom Auth:** Styled login, registration (with email verification), and password-set pages. CAPTCHA/Turnstile compatible.
 
-### Event Cards & Dashboard UX (v0.7.0)
+### Event Cards & Dashboard UX (v0.7.x)
 - **Smart CTAs:** Event cards show "Enter Now" for unentered events and "View your entry" for already-entered users.
 - **Entered Class Display:** Entry cards in "My Entries" and the event page "already entered" notice both show the class names the entrant is entered in.
 - **Role Display:** The member profile card shows the user's actual WordPress role (subscriber → Guest, msc_event_creator → Event Creator, etc.).
+- **Per-class Vehicle Selection:** When editing an entry, each class (primary and additional) has its own vehicle dropdown, pre-populated from the entrant's garage.
+- **Entry Approval Defaults to Manual:** New events default to manual approval; organisers can opt into automatic confirmation per event.
 
 ### Management & Results
 - **Event Dashboard:** Unified staff interface for managing Events, Entries, Results, and Participants.

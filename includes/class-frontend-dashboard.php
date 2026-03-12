@@ -185,18 +185,18 @@ class MSC_Frontend_Dashboard {
                         <input type="number" id="ce_capacity" min="0" placeholder="0">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Opens</label>
+                        <label>Entry Window Opens</label>
                         <input type="datetime-local" id="ce_reg_open">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Closes</label>
+                        <label>Entry Window Closes</label>
                         <input type="datetime-local" id="ce_reg_close">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Approval</label>
+                        <label>Entry Approval</label>
                         <select id="ce_approval">
-                            <option value="instant">Instant (auto-confirmed)</option>
-                            <option value="manual">Manual (admin approval)</option>
+                            <option value="manual" selected>Manual (admin approval)</option>
+                            <option value="instant">Automatic (instant confirmation)</option>
                         </select>
                     </div>
                     <div class="msc-field">
@@ -294,18 +294,18 @@ class MSC_Frontend_Dashboard {
                         <input type="number" id="ee_capacity" min="0" placeholder="0">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Opens</label>
+                        <label>Entry Window Opens</label>
                         <input type="datetime-local" id="ee_reg_open">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Closes</label>
+                        <label>Entry Window Closes</label>
                         <input type="datetime-local" id="ee_reg_close">
                     </div>
                     <div class="msc-field">
-                        <label>Registration Approval</label>
+                        <label>Entry Approval</label>
                         <select id="ee_approval">
-                            <option value="instant">Instant (auto-confirmed)</option>
                             <option value="manual">Manual (admin approval)</option>
+                            <option value="instant">Automatic (instant confirmation)</option>
                         </select>
                     </div>
                     <div class="msc-field">
@@ -434,7 +434,7 @@ class MSC_Frontend_Dashboard {
                         data-capacity="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_capacity', true ) ); ?>"
                         data-reg-open="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_reg_open', true ) ); ?>"
                         data-reg-close="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_reg_close', true ) ); ?>"
-                        data-approval="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_approval', true ) ?: 'instant' ); ?>"
+                        data-approval="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_approval', true ) ?: 'manual' ); ?>"
                         data-vehicle-type="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_event_vehicle_type', true ) ?: 'Both' ); ?>"
                         data-indemnity="<?php echo esc_attr( get_post_meta( $event->ID, '_msc_indemnity_text', true ) ); ?>"
                         data-image-id="<?php echo esc_attr( $thumb_id ?: '' ); ?>"
@@ -601,7 +601,7 @@ class MSC_Frontend_Dashboard {
                 $('#ee_capacity').val(d.capacity || 0);
                 $('#ee_reg_open').val(d.regOpen || '');
                 $('#ee_reg_close').val(d.regClose || '');
-                $('#ee_approval').val(d.approval || 'instant');
+                $('#ee_approval').val(d.approval || 'manual');
                 $('#ee_vehicle_type').val(d.vehicleType || 'Both');
                 $('#ee_indemnity').val(d.indemnity || '');
 
@@ -1442,7 +1442,7 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $post_id, '_msc_entry_fee', floatval( $_POST['entry_fee'] ?? 0 ) );
         update_post_meta( $post_id, '_msc_capacity',  absint(  $_POST['capacity']   ?? 0 ) );
 
-        $approval = in_array( $_POST['approval'] ?? '', array( 'instant', 'manual' ), true ) ? $_POST['approval'] : 'instant';
+        $approval = in_array( $_POST['approval'] ?? '', array( 'instant', 'manual' ), true ) ? $_POST['approval'] : 'manual';
         update_post_meta( $post_id, '_msc_approval', $approval );
 
         $vehicle_type = in_array( $_POST['vehicle_type'] ?? '', array( 'Both', 'Car', 'Motorcycle' ), true ) ? $_POST['vehicle_type'] : 'Both';
@@ -1516,7 +1516,7 @@ class MSC_Frontend_Dashboard {
         update_post_meta( $event_id, '_msc_entry_fee', floatval( $_POST['entry_fee'] ?? 0 ) );
         update_post_meta( $event_id, '_msc_capacity',  absint(  $_POST['capacity']   ?? 0 ) );
 
-        $approval = in_array( $_POST['approval'] ?? '', array( 'instant', 'manual' ), true ) ? $_POST['approval'] : 'instant';
+        $approval = in_array( $_POST['approval'] ?? '', array( 'instant', 'manual' ), true ) ? $_POST['approval'] : 'manual';
         update_post_meta( $event_id, '_msc_approval', $approval );
 
         $vehicle_type = in_array( $_POST['vehicle_type'] ?? '', array( 'Both', 'Car', 'Motorcycle' ), true ) ? $_POST['vehicle_type'] : 'Both';

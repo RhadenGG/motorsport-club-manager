@@ -125,7 +125,7 @@ class MSC_Admin_Events {
                    'event_location' => get_post_meta( $post->ID, '_msc_event_location', true ),
                    'entry_fee'      => get_post_meta( $post->ID, '_msc_entry_fee', true ),
                    'capacity'       => get_post_meta( $post->ID, '_msc_capacity', true ),
-                   'approval'       => get_post_meta( $post->ID, '_msc_approval', true ) ?: 'instant',
+                   'approval'       => get_post_meta( $post->ID, '_msc_approval', true ) ?: 'manual',
                    'reg_open'       => get_post_meta( $post->ID, '_msc_reg_open', true ),
                    'reg_close'      => get_post_meta( $post->ID, '_msc_reg_close', true ),
                    'indemnity_text' => get_post_meta( $post->ID, '_msc_indemnity_text', true ),
@@ -149,16 +149,16 @@ class MSC_Admin_Events {
         <td><input type="number" name="msc_capacity" value="<?php echo esc_attr($d['capacity']); ?>" min="0" class="small-text" placeholder="Unlimited"></td>
         </tr>
         <tr>
-        <th><label>Registration Opens</label></th>
+        <th><label>Entry Window Opens</label></th>
         <td><input type="datetime-local" name="msc_reg_open" value="<?php echo esc_attr($d['reg_open']); ?>" class="regular-text"></td>
-        <th><label>Registration Closes</label></th>
+        <th><label>Entry Window Closes</label></th>
         <td><input type="datetime-local" name="msc_reg_close" value="<?php echo esc_attr($d['reg_close']); ?>" class="regular-text"></td>
         </tr>
         <tr>
-        <th><label>Registration Approval</label></th>
+        <th><label>Entry Approval</label></th>
         <td colspan="3">
-        <label><input type="radio" name="msc_approval" value="instant" <?php checked($d['approval'],'instant'); ?>> Instant (auto-confirmed)</label>&nbsp;&nbsp;
-        <label><input type="radio" name="msc_approval" value="manual"  <?php checked($d['approval'],'manual'); ?>>  Requires admin approval</label>
+        <label><input type="radio" name="msc_approval" value="manual"  <?php checked($d['approval'],'manual'); ?>> Manual (requires admin approval)</label>&nbsp;&nbsp;
+        <label><input type="radio" name="msc_approval" value="instant" <?php checked($d['approval'],'instant'); ?>> Automatic (instant confirmation)</label>
         </td>
         </tr>
         <tr>
@@ -316,8 +316,8 @@ class MSC_Admin_Events {
                 echo $price > 0 ? esc_html('R '.number_format($price,2)) : 'Free';
                 break;
             case 'approval':
-                $ap = get_post_meta($post_id,'_msc_approval',true) ?: 'instant';
-                echo $ap === 'manual' ? '<span style="color:#d63638">Manual</span>' : '<span style="color:#00a32a">Instant</span>';
+                $ap = get_post_meta($post_id,'_msc_approval',true) ?: 'manual';
+                echo $ap === 'instant' ? '<span style="color:#00a32a">Auto</span>' : '<span style="color:#d63638">Manual</span>';
                 break;
         }
     }

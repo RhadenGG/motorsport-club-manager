@@ -858,6 +858,14 @@ jQuery(function ($) {
                 for (var i = 0; i < additionalIds.length; i++) {
                     fd.append('additional_class_ids[]', additionalIds[i]);
                 }
+                // Per-class vehicle IDs
+                var primaryVehicleId = parseInt($('#msc-edit-primary-vehicle').val()) || 0;
+                fd.append('vehicle_ids[' + primaryId + ']', primaryVehicleId);
+                $('.msc-edit-additional:checked:not(:disabled)').each(function() {
+                    var cid = parseInt($(this).val());
+                    var vid = parseInt($(this).closest('.msc-edit-add-row').find('.msc-edit-add-vehicle').val()) || 0;
+                    fd.append('vehicle_ids[' + cid + ']', vid);
+                });
                 if ($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files[0]) {
                     fd.append('pop_file', $('#msc-edit-pop-file')[0].files[0]);
                 }
@@ -1101,15 +1109,32 @@ jQuery(function ($) {
         var pricing     = data.pricing;
         var baseFee     = parseFloat(data.base_fee);
         var originalFee = parseFloat(reg.entry_fee);
+        var vehicles    = data.user_vehicles || [];
 
+        // Build maps from current selection
         var currentPrimary    = 0;
         var currentAdditional = [];
+        var currentVehicleMap = {}; // class_id → vehicle_id
         for (var i = 0; i < data.current_classes.length; i++) {
             var cc = data.current_classes[i];
             if (cc.is_primary) currentPrimary = cc.class_id;
             else currentAdditional.push(cc.class_id);
+            currentVehicleMap[cc.class_id] = cc.vehicle_id;
         }
 
+        // Helper: build vehicle <option> list
+        function vehicleOptions(selectedId) {
+            if (!vehicles.length) return '<option value="0">No vehicles in garage</option>';
+            var html = '';
+            for (var v = 0; v < vehicles.length; v++) {
+                var veh = vehicles[v];
+                html += '<option value="' + veh.id + '"' + (veh.id === selectedId ? ' selected' : '') + '>'
+                    + $('<span>').text(veh.label).html() + '</option>';
+            }
+            return html;
+        }
+
+        // Primary class options
         var primaryOptions = '';
         for (var i = 0; i < classes.length; i++) {
             var cls = classes[i];
@@ -1117,43 +1142,60 @@ jQuery(function ($) {
                 + $('<span>').text(cls.name).html() + '</option>';
         }
 
-        var addCheckboxes = '';
+        // Additional classes — each with an inline vehicle select shown when checked
+        var addRows = '';
         for (var i = 0; i < classes.length; i++) {
             var cls = classes[i];
             var p   = pricing[cls.id];
             if (p && p.primary_only == 1) continue;
             var isCurrentPrimary = (cls.id === currentPrimary);
-            var chk = (currentAdditional.indexOf(cls.id) !== -1) ? ' checked' : '';
-            var dis = isCurrentPrimary ? ' disabled' : '';
-            addCheckboxes += '<label style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
-                + '<input type="checkbox" class="msc-edit-additional" value="' + cls.id + '"' + chk + dis + '> '
-                + $('<span>').text(cls.name).html()
-                + '</label>';
+            var chk     = (currentAdditional.indexOf(cls.id) !== -1) ? ' checked' : '';
+            var dis     = isCurrentPrimary ? ' disabled' : '';
+            var selVeh  = currentVehicleMap[cls.id] || (vehicles.length ? vehicles[0].id : 0);
+            var vehShow = (!isCurrentPrimary && currentAdditional.indexOf(cls.id) !== -1) ? '' : 'display:none;';
+            addRows += '<div class="msc-edit-add-row" data-class="' + cls.id + '" style="margin-bottom:8px">'
+                + '  <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:0">'
+                + '    <input type="checkbox" class="msc-edit-additional" value="' + cls.id + '"' + chk + dis + '>'
+                + '    <span>' + $('<span>').text(cls.name).html() + '</span>'
+                + '  </label>'
+                + '  <div class="msc-edit-add-vehicle-wrap" style="' + vehShow + 'margin-top:6px;padding-left:26px">'
+                + '    <div class="msc-field" style="max-width:360px">'
+                + '      <label>Vehicle</label>'
+                + '      <select class="msc-edit-add-vehicle" data-class="' + cls.id + '">'
+                + vehicleOptions(selVeh)
+                + '      </select>'
+                + '    </div>'
+                + '  </div>'
+                + '</div>';
         }
-        if (!addCheckboxes) {
-            addCheckboxes = '<p style="color:#888;font-size:13px;margin:0">No additional classes available.</p>';
+        if (!addRows) {
+            addRows = '<p style="color:#888;font-size:13px;margin:0">No additional classes available.</p>';
         }
+
+        var primaryVehicle = currentVehicleMap[currentPrimary] || (vehicles.length ? vehicles[0].id : 0);
 
         var panel = $('<div class="msc-entry-edit-panel" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:8px;padding:20px;margin-top:10px"></div>');
         panel.html(
             '<h4 style="margin:0 0 16px">Edit Entry: ' + $('<span>').text(reg.event_name).html() + '</h4>'
-            + '<div class="msc-form-grid" style="margin-bottom:16px">'
+            + '<div style="margin-bottom:16px">'
             + '  <div class="msc-field">'
-            + '    <label style="font-weight:600">Primary Class</label>'
-            + '    <select id="msc-edit-primary-class" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;margin-top:4px">'
-            + primaryOptions
-            + '    </select>'
+            + '    <label>Primary Class</label>'
+            + '    <select id="msc-edit-primary-class">' + primaryOptions + '</select>'
+            + '  </div>'
+            + '  <div class="msc-field" style="margin-top:8px;max-width:360px">'
+            + '    <label>Vehicle for Primary Class</label>'
+            + '    <select id="msc-edit-primary-vehicle">' + vehicleOptions(primaryVehicle) + '</select>'
             + '  </div>'
             + '</div>'
             + '<div class="msc-field" style="margin-bottom:16px">'
-            + '  <label style="font-weight:600">Additional Classes <span style="font-weight:normal;color:#888">(optional)</span></label>'
-            + '  <div id="msc-edit-additional-classes" style="margin-top:8px">' + addCheckboxes + '</div>'
+            + '  <label>Additional Classes <span style="font-weight:normal;color:#888">(optional)</span></label>'
+            + '  <div id="msc-edit-additional-classes" style="margin-top:8px">' + addRows + '</div>'
             + '</div>'
             + '<div id="msc-edit-fee-summary" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px;margin-bottom:16px"></div>'
             + '<div id="msc-edit-pop-wrap" style="display:none;margin-bottom:16px">'
             + '  <label style="font-weight:600">Proof of Payment for amount owed <span style="color:#d63638">*</span></label>'
-            + '  <input type="file" id="msc-edit-pop-file" accept="application/pdf" style="display:block;margin-top:6px">'
-            + '  <p style="font-size:12px;color:#888;margin:4px 0 0">PDF only, max 5MB.</p>'
+            + '  <input type="file" id="msc-edit-pop-file" accept="application/pdf,image/png,image/jpeg" style="display:block;margin-top:6px">'
+            + '  <p style="font-size:12px;color:#888;margin:4px 0 0">PDF, PNG or JPG, max 5MB.</p>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'
             + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
@@ -1169,17 +1211,26 @@ jQuery(function ($) {
         card.after(panel);
         updateEditFeeSummary();
 
-        // Disable the current primary class in additional list on primary dropdown change
+        // On primary class change: disable that class in additional list, hide its vehicle wrap
         panel.on('change', '#msc-edit-primary-class', function() {
             var pv = parseInt($(this).val());
             $('.msc-edit-additional').each(function() {
                 var isP = (parseInt($(this).val()) === pv);
-                if (isP) { $(this).prop('checked', false).prop('disabled', true); }
-                else     { $(this).prop('disabled', false); }
+                if (isP) {
+                    $(this).prop('checked', false).prop('disabled', true);
+                    $(this).closest('.msc-edit-add-row').find('.msc-edit-add-vehicle-wrap').hide();
+                } else {
+                    $(this).prop('disabled', false);
+                }
             });
             updateEditFeeSummary();
         });
+
+        // On additional checkbox change: show/hide per-class vehicle select
         panel.on('change', '.msc-edit-additional', function() {
+            var wrap = $(this).closest('.msc-edit-add-row').find('.msc-edit-add-vehicle-wrap');
+            if ($(this).is(':checked')) wrap.show();
+            else wrap.hide();
             updateEditFeeSummary();
         });
     }

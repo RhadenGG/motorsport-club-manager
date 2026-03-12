@@ -246,7 +246,7 @@ class MSC_Shortcodes {
         }
         $fee            = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
         $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
-        $approval       = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
+        $approval       = get_post_meta( $event_id, '_msc_approval', true ) ?: 'manual';
 
         // Build class data for the registration form (includes two-tier fees)
         $set_fees        = $pricing_set_id ? MSC_Pricing::get_set_fees( $pricing_set_id ) : array();
@@ -495,9 +495,9 @@ class MSC_Shortcodes {
                         <?php endif; ?>
 
                         <div class="msc-field-group">
-                            <label style="font-weight:700">Upload Proof of Payment (PDF only) <span style="color:red">*</span></label>
-                            <input type="file" id="msc-pop-file" accept="application/pdf" style="width:100%;padding:10px;background:#fff;border:1px solid #ccc;border-radius:4px;">
-                            <p class="description" style="font-size:0.85em;margin-top:4px;">Please upload your EFT confirmation PDF to complete your entry.</p>
+                            <label style="font-weight:700">Upload Proof of Payment <span style="color:red">*</span></label>
+                            <input type="file" id="msc-pop-file" accept="application/pdf,image/png,image/jpeg" style="width:100%;padding:10px;background:#fff;border:1px solid #ccc;border-radius:4px;">
+                            <p class="description" style="font-size:0.85em;margin-top:4px;">PDF, PNG or JPG, max 5MB. (e.g. EFT confirmation or payment screenshot)</p>
                         </div>
                     </div>
 

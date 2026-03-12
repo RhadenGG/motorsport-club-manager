@@ -254,9 +254,11 @@ class MSC_Registration {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
 
-            $check = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
-            if ( $check['ext'] !== 'pdf' || $check['type'] !== 'application/pdf' ) {
-                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF file.' ) );
+            $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+            $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
+            $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
+            if ( ! in_array( $check['ext'], $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
             }
 
             if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
@@ -272,7 +274,7 @@ class MSC_Registration {
             wp_send_json_error( array( 'message' => 'Proof of Payment is required for this event.' ) );
         }
 
-        $approval = get_post_meta( $event_id, '_msc_approval', true ) ?: 'instant';
+        $approval = get_post_meta( $event_id, '_msc_approval', true ) ?: 'manual';
         $status   = ( $approval === 'manual' ) ? 'pending' : 'confirmed';
 
         // Insert main registration row (primary vehicle stored for backwards compat)
@@ -431,6 +433,21 @@ class MSC_Registration {
             $current_classes[] = array(
                 'class_id'   => (int) $row->class_id,
                 'is_primary' => (int) $row->is_primary,
+                'vehicle_id' => (int) $row->vehicle_id,
+            );
+        }
+
+        // User's vehicles for this event
+        $vehicles_raw  = MSC_Admin_Garage::get_user_vehicles_for_event( $user_id, $reg->event_id );
+        $user_vehicles = array();
+        foreach ( $vehicles_raw as $v ) {
+            $make   = get_post_meta( $v->ID, '_msc_make',       true );
+            $model  = get_post_meta( $v->ID, '_msc_model',      true );
+            $year   = get_post_meta( $v->ID, '_msc_year',       true );
+            $reg_no = get_post_meta( $v->ID, '_msc_reg_number', true );
+            $user_vehicles[] = array(
+                'id'    => $v->ID,
+                'label' => trim( "$year $make $model" ) . ( $reg_no ? " ($reg_no)" : '' ),
             );
         }
 
@@ -461,6 +478,7 @@ class MSC_Registration {
             'event_classes'   => $event_classes,
             'pricing'         => $pricing,
             'base_fee'        => $base_fee,
+            'user_vehicles'   => $user_vehicles,
         ) );
     }
 
@@ -474,6 +492,13 @@ class MSC_Registration {
         $additional_ids   = isset( $_POST['additional_class_ids'] ) && is_array( $_POST['additional_class_ids'] )
             ? array_values( array_filter( array_map( 'absint', $_POST['additional_class_ids'] ) ) )
             : array();
+
+        // Per-class vehicle overrides submitted from the edit form
+        $vehicle_ids_raw    = isset( $_POST['vehicle_ids'] ) && is_array( $_POST['vehicle_ids'] ) ? $_POST['vehicle_ids'] : array();
+        $posted_vehicle_ids = array();
+        foreach ( $vehicle_ids_raw as $cid => $vid ) {
+            $posted_vehicle_ids[ absint( $cid ) ] = absint( $vid );
+        }
 
         if ( ! $reg_id || ! $primary_class_id ) {
             wp_send_json_error( array( 'message' => 'Invalid request.' ) );
@@ -533,9 +558,11 @@ class MSC_Registration {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
 
-            $check = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
-            if ( $check['ext'] !== 'pdf' || $check['type'] !== 'application/pdf' ) {
-                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF file.' ) );
+            $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+            $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
+            $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
+            if ( ! in_array( $check['ext'], $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
             }
             if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
@@ -584,7 +611,9 @@ class MSC_Registration {
                 'registration_id' => $reg_id,
                 'class_id'        => $primary_class_id,
                 'class_fee'       => $result['per_class'][ $primary_class_id ],
-                'vehicle_id'      => isset( $existing_vehicles[ $primary_class_id ] ) ? $existing_vehicles[ $primary_class_id ] : $primary_vehicle_id,
+                'vehicle_id'      => ( isset( $posted_vehicle_ids[ $primary_class_id ] ) && $posted_vehicle_ids[ $primary_class_id ] )
+                                        ? $posted_vehicle_ids[ $primary_class_id ]
+                                        : ( isset( $existing_vehicles[ $primary_class_id ] ) ? $existing_vehicles[ $primary_class_id ] : $primary_vehicle_id ),
                 'is_primary'      => 1,
             ),
             array( '%d', '%d', '%f', '%d', '%d' )
@@ -596,7 +625,9 @@ class MSC_Registration {
                     'registration_id' => $reg_id,
                     'class_id'        => $cid,
                     'class_fee'       => $result['per_class'][ $cid ],
-                    'vehicle_id'      => isset( $existing_vehicles[ $cid ] ) ? $existing_vehicles[ $cid ] : $primary_vehicle_id,
+                    'vehicle_id'      => ( isset( $posted_vehicle_ids[ $cid ] ) && $posted_vehicle_ids[ $cid ] )
+                                            ? $posted_vehicle_ids[ $cid ]
+                                            : ( isset( $existing_vehicles[ $cid ] ) ? $existing_vehicles[ $cid ] : $primary_vehicle_id ),
                     'is_primary'      => 0,
                 ),
                 array( '%d', '%d', '%f', '%d', '%d' )
