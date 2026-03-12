@@ -8,6 +8,58 @@ class MSC_Registration {
         add_action( 'wp_ajax_nopriv_msc_submit_registration', array( __CLASS__, 'ajax_submit_nopriv' ) );
         add_action( 'wp_ajax_msc_get_vehicles',               array( __CLASS__, 'ajax_get_vehicles' ) );
         add_action( 'wp_ajax_msc_cancel_registration',        array( __CLASS__, 'ajax_cancel' ) );
+        add_action( 'wp_ajax_msc_get_entry_edit_data',        array( __CLASS__, 'ajax_get_entry_edit_data' ) );
+        add_action( 'wp_ajax_msc_update_entry_classes',       array( __CLASS__, 'ajax_update_entry_classes' ) );
+    }
+
+    /**
+     * Calculate the total entry fee for a given class selection.
+     * Extracted from ajax_submit() so it can be reused for entry edits.
+     *
+     * @param int   $event_id
+     * @param int   $primary_class_id
+     * @param int[] $additional_class_ids
+     * @return array { 'total' => float, 'per_class' => array<int,float> }
+     */
+    public static function calculate_fee( $event_id, $primary_class_id, $additional_class_ids ) {
+        $base_fee       = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
+        $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
+        $total          = $base_fee;
+        $per_class      = array();
+
+        if ( $pricing_set_id ) {
+            $primary_data    = MSC_Pricing::get_class_pricing_data( $pricing_set_id, $primary_class_id );
+            $primary_fee     = $primary_data ? $primary_data['primary_fee'] : 0.0;
+            $global_override = ( $primary_data && $primary_data['override'] !== null ) ? $primary_data['override'] : null;
+
+            $per_class[ $primary_class_id ] = $primary_fee;
+            $total += $primary_fee;
+
+            $all_set_fees = MSC_Pricing::get_set_fees( $pricing_set_id );
+
+            foreach ( $additional_class_ids as $cid ) {
+                $class_data = isset( $all_set_fees[ $cid ] ) ? $all_set_fees[ $cid ] : null;
+                $af = 0.0;
+                if ( $class_data ) {
+                    if ( $class_data['exempt'] ) {
+                        $af = $class_data['additional_fee'];
+                    } elseif ( $global_override !== null ) {
+                        $af = $global_override;
+                    } else {
+                        $af = $class_data['additional_fee'];
+                    }
+                }
+                $per_class[ $cid ] = $af;
+                $total += $af;
+            }
+        } else {
+            $per_class[ $primary_class_id ] = 0.0;
+            foreach ( $additional_class_ids as $cid ) {
+                $per_class[ $cid ] = 0.0;
+            }
+        }
+
+        return array( 'total' => round( $total, 2 ), 'per_class' => $per_class );
     }
 
     public static function ajax_submit_nopriv() {
@@ -74,8 +126,16 @@ class MSC_Registration {
             wp_send_json_error( array( 'message' => 'Please select a vehicle for the primary class.' ) );
         }
 
-        $ind_method = sanitize_key( $_POST['indemnity_method'] ?? '' );
-        $ind_sig    = sanitize_textarea_field( $_POST['indemnity_sig'] ?? '' );
+        $ind_method  = sanitize_key( $_POST['indemnity_method'] ?? '' );
+        $ind_sig_raw = isset( $_POST['indemnity_sig'] ) ? $_POST['indemnity_sig'] : '';
+        if ( strpos( $ind_sig_raw, 'data:image/' ) === 0 ) {
+            if ( ! preg_match( '/^data:image\/png;base64,[A-Za-z0-9+\/=\r\n]+$/', $ind_sig_raw ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid signature data.' ) );
+            }
+            $ind_sig = $ind_sig_raw;
+        } else {
+            $ind_sig = sanitize_text_field( wp_unslash( $ind_sig_raw ) );
+        }
 
         $birthday = get_user_meta( $user_id, 'msc_birthday', true );
         $is_minor = 0;
@@ -87,8 +147,16 @@ class MSC_Registration {
             if ( $age < 18 ) $is_minor = 1;
         }
 
-        $parent     = sanitize_text_field( $_POST['parent_name']    ?? '' );
-        $parent_sig = sanitize_textarea_field( $_POST['parent_sig'] ?? '' );
+        $parent         = sanitize_text_field( wp_unslash( $_POST['parent_name'] ?? '' ) );
+        $parent_sig_raw = isset( $_POST['parent_sig'] ) ? $_POST['parent_sig'] : '';
+        if ( strpos( $parent_sig_raw, 'data:image/' ) === 0 ) {
+            if ( ! preg_match( '/^data:image\/png;base64,[A-Za-z0-9+\/=\r\n]+$/', $parent_sig_raw ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid parent signature data.' ) );
+            }
+            $parent_sig = $parent_sig_raw;
+        } else {
+            $parent_sig = sanitize_text_field( wp_unslash( $parent_sig_raw ) );
+        }
         $em_name    = sanitize_text_field( $_POST['emergency_name']  ?? '' );
         $em_phone   = sanitize_text_field( $_POST['emergency_phone'] ?? '' );
         $em_rel     = sanitize_text_field( $_POST['emergency_rel']   ?? '' );
@@ -120,8 +188,8 @@ class MSC_Registration {
         $reg_open  = get_post_meta( $event_id, '_msc_reg_open',  true );
         $reg_close = get_post_meta( $event_id, '_msc_reg_close', true );
         $now       = current_time( 'timestamp' );
-        if ( $reg_open  && strtotime( $reg_open )  > $now ) wp_send_json_error( array( 'message' => 'Registration has not opened yet.' ) );
-        if ( $reg_close && strtotime( $reg_close ) < $now ) wp_send_json_error( array( 'message' => 'Registration is closed.' ) );
+        if ( $reg_open  && strtotime( $reg_open )  > $now ) wp_send_json_error( array( 'message' => 'Entry window has not opened yet.' ) );
+        if ( $reg_close && strtotime( $reg_close ) < $now ) wp_send_json_error( array( 'message' => 'Entry window is closed.' ) );
 
         // Capacity
         $capacity = intval( get_post_meta( $event_id, '_msc_capacity', true ) );
@@ -138,7 +206,7 @@ class MSC_Registration {
             "SELECT id FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND user_id=%d AND status NOT IN ('rejected','cancelled')",
             $event_id, $user_id
         ) );
-        if ( $exists ) wp_send_json_error( array( 'message' => 'You are already registered for this event.' ) );
+        if ( $exists ) wp_send_json_error( array( 'message' => 'You have already entered this event.' ) );
 
         // Validate all class IDs belong to this event
         $allowed_classes = get_post_meta( $event_id, '_msc_event_classes', true );
@@ -163,52 +231,21 @@ class MSC_Registration {
             }
         }
 
-        // Calculate total fee using pricing set
-        $base_fee       = floatval( get_post_meta( $event_id, '_msc_entry_fee', true ) );
-        $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true );
-        $total_fee      = $base_fee;
-        $fee_per_class  = array(); // class_id => fee
-
-        if ( $pricing_set_id ) {
-            $primary_data = MSC_Pricing::get_class_pricing_data( $pricing_set_id, $primary_class_id );
-            $primary_fee  = $primary_data ? $primary_data['primary_fee'] : 0.0;
-            $global_override = ( $primary_data && $primary_data['override'] !== null ) ? $primary_data['override'] : null;
-
-            $fee_per_class[ $primary_class_id ] = $primary_fee;
-            $total_fee += $primary_fee;
-
+        // Security check: cannot use primary-only class as additional
+        if ( $pricing_set_id = (int) get_post_meta( $event_id, '_msc_pricing_set_id', true ) ) {
             $all_set_fees = MSC_Pricing::get_set_fees( $pricing_set_id );
-
             foreach ( $additional_class_ids as $cid ) {
                 $class_data = isset( $all_set_fees[ $cid ] ) ? $all_set_fees[ $cid ] : null;
-                
-                // Security check: cannot use primary-only class as additional
                 if ( $class_data && ! empty( $class_data['primary_only'] ) ) {
-                    wp_send_json_error( array( 'message' => 'The class "' . get_term($cid)->name . '" can only be a primary class.' ) );
+                    wp_send_json_error( array( 'message' => 'The class "' . get_term( $cid )->name . '" can only be a primary class.' ) );
                 }
-
-                $af = 0.0;
-
-                if ( $class_data ) {
-                    if ( $class_data['exempt'] ) {
-                        $af = $class_data['additional_fee'];
-                    } elseif ( $global_override !== null ) {
-                        $af = $global_override;
-                    } else {
-                        $af = $class_data['additional_fee'];
-                    }
-                }
-
-                $fee_per_class[ $cid ] = $af;
-                $total_fee += $af;
-            }
-        } else {
-            // No pricing set, all classes are free
-            $fee_per_class[ $primary_class_id ] = 0.0;
-            foreach ( $additional_class_ids as $cid ) {
-                $fee_per_class[ $cid ] = 0.0;
             }
         }
+
+        // Calculate total fee
+        $fee_result    = self::calculate_fee( $event_id, $primary_class_id, $additional_class_ids );
+        $total_fee     = $fee_result['total'];
+        $fee_per_class = $fee_result['per_class'];
 
         // Handle Proof of Payment upload
         $pop_file_id = null;
@@ -263,7 +300,7 @@ class MSC_Registration {
 
         if ( false === $inserted ) {
             error_log( 'MSC Registration Error: ' . $wpdb->last_error );
-            wp_send_json_error( array( 'message' => 'Failed to save registration. Please contact the administrator.' ) );
+            wp_send_json_error( array( 'message' => 'Failed to save your entry. Please contact the administrator.' ) );
         }
 
         $reg_id = $wpdb->insert_id;
@@ -311,7 +348,7 @@ class MSC_Registration {
 
         $message = ( $status === 'confirmed' )
             ? 'You\'re registered! A confirmation email has been sent.'
-            : 'Your registration has been submitted and is awaiting approval. We\'ll email you once confirmed.';
+            : 'Your entry has been submitted and is awaiting approval. We\'ll email you once confirmed.';
 
         wp_send_json_success( array( 'message' => $message, 'status' => $status, 'reg_id' => $reg_id ) );
     }
@@ -362,6 +399,211 @@ class MSC_Registration {
             if ( $term && ! is_wp_error( $term ) ) $names[] = $term->name;
         }
         return $names;
+    }
+
+    /** Return data needed to render the entry edit form */
+    public static function ajax_get_entry_edit_data() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+
+        $reg_id  = absint( $_POST['reg_id'] ?? 0 );
+        $user_id = get_current_user_id();
+        global $wpdb;
+
+        $reg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d AND user_id = %d",
+            $reg_id, $user_id
+        ) );
+        if ( ! $reg || ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
+            wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
+        }
+
+        $event = get_post( $reg->event_id );
+        if ( ! $event ) wp_send_json_error( array( 'message' => 'Event not found.' ) );
+
+        // Current class rows
+        $class_rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT class_id, is_primary, vehicle_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d ORDER BY is_primary DESC",
+            $reg_id
+        ) );
+        $current_classes = array();
+        foreach ( $class_rows as $row ) {
+            $current_classes[] = array(
+                'class_id'   => (int) $row->class_id,
+                'is_primary' => (int) $row->is_primary,
+            );
+        }
+
+        // Event's allowed classes
+        $allowed_ids = get_post_meta( $reg->event_id, '_msc_event_classes', true );
+        $allowed_ids = $allowed_ids ? array_map( 'intval', (array) $allowed_ids ) : array();
+
+        $event_classes = array();
+        foreach ( $allowed_ids as $cid ) {
+            $term = get_term( $cid, 'msc_vehicle_class' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $event_classes[] = array( 'id' => $cid, 'name' => $term->name );
+            }
+        }
+
+        $pricing_set_id = (int) get_post_meta( $reg->event_id, '_msc_pricing_set_id', true );
+        $base_fee       = floatval( get_post_meta( $reg->event_id, '_msc_entry_fee', true ) );
+        $pricing        = $pricing_set_id ? MSC_Pricing::get_set_fees( $pricing_set_id ) : array();
+
+        wp_send_json_success( array(
+            'reg'             => array(
+                'id'         => (int) $reg->id,
+                'entry_fee'  => (float) $reg->entry_fee,
+                'status'     => $reg->status,
+                'event_name' => $event->post_title,
+            ),
+            'current_classes' => $current_classes,
+            'event_classes'   => $event_classes,
+            'pricing'         => $pricing,
+            'base_fee'        => $base_fee,
+        ) );
+    }
+
+    /** Save updated class selection for an existing entry */
+    public static function ajax_update_entry_classes() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+
+        $reg_id           = absint( $_POST['reg_id'] ?? 0 );
+        $primary_class_id = absint( $_POST['primary_class_id'] ?? 0 );
+        $additional_ids   = isset( $_POST['additional_class_ids'] ) && is_array( $_POST['additional_class_ids'] )
+            ? array_values( array_filter( array_map( 'absint', $_POST['additional_class_ids'] ) ) )
+            : array();
+
+        if ( ! $reg_id || ! $primary_class_id ) {
+            wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+        }
+
+        $user_id = get_current_user_id();
+        global $wpdb;
+
+        $reg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d AND user_id = %d",
+            $reg_id, $user_id
+        ) );
+        if ( ! $reg || ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
+            wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
+        }
+
+        // Validate classes are allowed for this event
+        $allowed = get_post_meta( $reg->event_id, '_msc_event_classes', true );
+        $allowed = $allowed ? array_map( 'intval', (array) $allowed ) : array();
+        foreach ( array_merge( array( $primary_class_id ), $additional_ids ) as $cid ) {
+            if ( ! in_array( $cid, $allowed, true ) ) {
+                wp_send_json_error( array( 'message' => 'One or more selected classes are not allowed for this event.' ) );
+            }
+        }
+
+        // Check primary-only constraint for additional classes
+        $pricing_set_id = (int) get_post_meta( $reg->event_id, '_msc_pricing_set_id', true );
+        if ( $pricing_set_id ) {
+            $all_set_fees = MSC_Pricing::get_set_fees( $pricing_set_id );
+            foreach ( $additional_ids as $cid ) {
+                $cd = isset( $all_set_fees[ $cid ] ) ? $all_set_fees[ $cid ] : null;
+                if ( $cd && ! empty( $cd['primary_only'] ) ) {
+                    $t = get_term( $cid, 'msc_vehicle_class' );
+                    wp_send_json_error( array( 'message' => 'The class "' . ( $t ? $t->name : $cid ) . '" can only be a primary class.' ) );
+                }
+            }
+        }
+
+        // Calculate new fee and compare
+        $result       = self::calculate_fee( $reg->event_id, $primary_class_id, $additional_ids );
+        $new_total    = $result['total'];
+        $original_fee = round( (float) $reg->entry_fee, 2 );
+        $difference   = round( $new_total - $original_fee, 2 );
+
+        // Block downgrades
+        if ( $difference < -0.005 ) {
+            wp_send_json_error( array( 'message' => 'You cannot reduce your entry below the amount already paid.' ) );
+        }
+
+        // Require PoP for any additional amount owed
+        $new_pop_file_id = null;
+        if ( $difference > 0.005 ) {
+            if ( empty( $_FILES['pop_file'] ) || empty( $_FILES['pop_file']['name'] ) ) {
+                wp_send_json_error( array( 'message' => 'Please upload proof of payment for the additional R ' . number_format( $difference, 2 ) . ' owed.' ) );
+            }
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+
+            $check = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+            if ( $check['ext'] !== 'pdf' || $check['type'] !== 'application/pdf' ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF file.' ) );
+            }
+            if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
+                wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
+            }
+
+            $attachment_id = media_handle_upload( 'pop_file', 0 );
+            if ( is_wp_error( $attachment_id ) ) {
+                wp_send_json_error( array( 'message' => 'Failed to upload proof of payment: ' . $attachment_id->get_error_message() ) );
+            }
+            $new_pop_file_id = $attachment_id;
+        }
+
+        // Persist updated fee (and new PoP if supplied)
+        $update_data    = array( 'entry_fee' => $new_total );
+        $update_formats = array( '%f' );
+        if ( $new_pop_file_id !== null ) {
+            $update_data['pop_file_id'] = $new_pop_file_id;
+            $update_formats[]           = '%d';
+        }
+        $wpdb->update(
+            "{$wpdb->prefix}msc_registrations",
+            $update_data,
+            array( 'id' => $reg_id ),
+            $update_formats,
+            array( '%d' )
+        );
+
+        // Snapshot existing vehicle-per-class before deleting, so unchanged classes keep their vehicle.
+        $existing_vehicles = array(); // class_id => vehicle_id
+        $existing_rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT class_id, vehicle_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
+            $reg_id
+        ) );
+        foreach ( $existing_rows as $row ) {
+            $existing_vehicles[ (int) $row->class_id ] = (int) $row->vehicle_id;
+        }
+
+        $primary_vehicle_id = (int) $reg->vehicle_id; // fallback for newly added classes
+
+        // Replace junction table rows
+        $wpdb->delete( "{$wpdb->prefix}msc_registration_classes", array( 'registration_id' => $reg_id ), array( '%d' ) );
+
+        $wpdb->insert(
+            "{$wpdb->prefix}msc_registration_classes",
+            array(
+                'registration_id' => $reg_id,
+                'class_id'        => $primary_class_id,
+                'class_fee'       => $result['per_class'][ $primary_class_id ],
+                'vehicle_id'      => isset( $existing_vehicles[ $primary_class_id ] ) ? $existing_vehicles[ $primary_class_id ] : $primary_vehicle_id,
+                'is_primary'      => 1,
+            ),
+            array( '%d', '%d', '%f', '%d', '%d' )
+        );
+        foreach ( $additional_ids as $cid ) {
+            $wpdb->insert(
+                "{$wpdb->prefix}msc_registration_classes",
+                array(
+                    'registration_id' => $reg_id,
+                    'class_id'        => $cid,
+                    'class_fee'       => $result['per_class'][ $cid ],
+                    'vehicle_id'      => isset( $existing_vehicles[ $cid ] ) ? $existing_vehicles[ $cid ] : $primary_vehicle_id,
+                    'is_primary'      => 0,
+                ),
+                array( '%d', '%d', '%f', '%d', '%d' )
+            );
+        }
+
+        wp_send_json_success( array( 'message' => 'Your entry has been updated successfully.' ) );
     }
 
     /** Check if user is already registered for event */

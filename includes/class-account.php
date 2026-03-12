@@ -24,7 +24,7 @@ class MSC_Account {
                 <div class="msc-login-prompt-inner">
                     <div class="msc-login-icon">🏁</div>
                     <h3>Members Area</h3>
-                    <p>Please log in to access your account, manage your vehicles and view your registrations.</p>
+                    <p>Please log in to access your account, manage your vehicles and view your event entries.</p>
                     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
                         <a href="' . esc_url( add_query_arg( 'redirect_to', rawurlencode( get_permalink() ), MSC_Auth::login_url() ) ) . '" class="msc-btn">Log In to Your Account</a>
                         <a href="' . esc_url( MSC_Auth::register_url() ) . '" class="msc-btn">Create an Account</a>
@@ -71,9 +71,21 @@ class MSC_Account {
                 <div class="msc-profile-info">
                     <h2 class="msc-profile-name"><?php echo esc_html( $user->display_name ); ?></h2>
                     <p class="msc-profile-meta">
-                        <span class="msc-profile-badge">🏎 Club Member</span>
+                        <?php
+                        $role_map = array(
+                            'administrator'     => 'Administrator',
+                            'editor'            => 'Editor',
+                            'msc_event_creator' => 'Event Creator',
+                            'subscriber'        => 'Guest',
+                        );
+                        $user_role = ! empty( $user->roles ) ? $user->roles[0] : 'subscriber';
+                        $role_label = isset( $role_map[ $user_role ] )
+                            ? $role_map[ $user_role ]
+                            : ucwords( str_replace( '_', ' ', $user_role ) );
+                        ?>
+                        <span class="msc-profile-badge">🏎 <?php echo esc_html( $role_label ); ?></span>
                         <span class="msc-profile-stat"><?php echo count( $vehicles ); ?> Vehicle<?php echo count( $vehicles ) !== 1 ? 's' : ''; ?></span>
-                        <span class="msc-profile-stat"><?php echo count( $regs ); ?> Registration<?php echo count( $regs ) !== 1 ? 's' : ''; ?></span>
+                        <span class="msc-profile-stat"><?php echo count( $regs ); ?> <?php echo count( $regs ) !== 1 ? 'Entries' : 'Entry'; ?></span>
                     </p>
                 </div>
             </div>
@@ -83,7 +95,7 @@ class MSC_Account {
                 <?php
                 $tabs = array(
                     'garage'        => '🚗 My Garage',
-                    'registrations' => '🏁 My Registrations',
+                    'registrations' => '🏁 My Entries',
                     'profile'       => '👤 My Profile',
                 );
                 foreach ( $tabs as $t => $label ) :
@@ -352,14 +364,14 @@ class MSC_Account {
             <?php elseif ( $tab === 'registrations' ) : ?>
             <div class="msc-tab-content">
                 <div class="msc-tab-header">
-                    <h3 class="msc-tab-title">My Registrations</h3>
+                    <h3 class="msc-tab-title">My Entries</h3>
                 </div>
 
                 <?php if ( empty( $regs ) ) : ?>
                 <div class="msc-empty-state">
                     <div class="msc-empty-icon">🏁</div>
-                    <h4>No registrations yet</h4>
-                    <p>You haven't registered for any events yet.</p>
+                    <h4>No entries yet</h4>
+                    <p>You haven't entered any events yet.</p>
                     <a href="<?php echo esc_url( get_post_type_archive_link( 'msc_event' ) ); ?>" class="msc-btn">Browse Events →</a>
                 </div>
                 <?php else : ?>
@@ -371,7 +383,8 @@ class MSC_Account {
                             'rejected'  => array( 'label' => 'Rejected',  'cls' => 'status-rejected' ),
                             'cancelled' => array( 'label' => 'Cancelled', 'cls' => 'status-cancelled' ),
                         );
-                        $s = isset( $sm[ $r->status ] ) ? $sm[ $r->status ] : array( 'label' => ucfirst( $r->status ), 'cls' => '' );
+                        $s           = isset( $sm[ $r->status ] ) ? $sm[ $r->status ] : array( 'label' => ucfirst( $r->status ), 'cls' => '' );
+                        $class_names = MSC_Registration::get_class_names_for_registration( $r->id );
                     ?>
                     <div class="msc-reg-card">
                         <div class="msc-reg-card-icon">🏁</div>
@@ -383,12 +396,16 @@ class MSC_Account {
                             <div class="msc-reg-meta">
                                 <span>🚗 <?php echo esc_html( $r->vehicle_name ); ?></span>
                                 <span>💰 <?php echo $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free'; ?></span>
+                                <?php if ( ! empty( $class_names ) ) : ?>
+                                <span>🏷️ <?php echo esc_html( implode( ', ', $class_names ) ); ?></span>
+                                <?php endif; ?>
                                 <span><?php echo $r->indemnity_method === 'signed' ? '✅ Indemnity signed' : '📄 Bring on day'; ?></span>
                             </div>
                         </div>
                         <div class="msc-reg-card-actions">
                             <a href="<?php echo esc_url( add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ) ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>
                             <?php if ( in_array( $r->status, array( 'pending', 'confirmed' ) ) ) : ?>
+                            <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-edit-entry" data-id="<?php echo $r->id; ?>">Edit Entry</button>
                             <a href="#" class="msc-cancel-reg msc-danger-link" data-id="<?php echo $r->id; ?>">Cancel</a>
                             <?php endif; ?>
                         </div>

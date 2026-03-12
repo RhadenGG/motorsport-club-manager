@@ -32,13 +32,14 @@ class MSC_Indemnity {
 
         if ( ! $reg ) wp_die( 'Registration not found.' );
 
-        // 2. Security Check: Only the participant, the event author (organizer), or a site admin can see this.
+        // 2. Security Check: participant, event author, admin, or any event creator with view cap.
         $current_user_id = get_current_user_id();
-        $is_owner  = ( (int)$reg->user_id === $current_user_id );
-        $is_admin  = current_user_can( 'manage_options' );
-        $is_author = ( (int)$reg->event_author === $current_user_id );
+        $is_owner     = ( (int)$reg->user_id === $current_user_id );
+        $is_admin     = current_user_can( 'manage_options' );
+        $is_author    = ( (int)$reg->event_author === $current_user_id );
+        $is_organizer = current_user_can( 'msc_view_participants' );
 
-        if ( ! $is_owner && ! $is_admin && ! $is_author ) {
+        if ( ! $is_owner && ! $is_admin && ! $is_author && ! $is_organizer ) {
             wp_die( 'You do not have permission to view this indemnity form.' );
         }
 
@@ -71,11 +72,18 @@ class MSC_Indemnity {
         $location   = get_post_meta( $reg->event_id, '_msc_event_location', true );
         $site_name  = get_bloginfo( 'name' );
 
-        $logo_url   = '';
+        $logo_path      = '';
         $custom_logo_id = get_theme_mod( 'custom_logo' );
         if ( $custom_logo_id ) {
-            $logo_data = wp_get_attachment_image_src( $custom_logo_id, 'full' );
-            if ( $logo_data ) { $logo_url = $logo_data[0]; }
+            $local = get_attached_file( $custom_logo_id );
+            if ( $local && file_exists( $local ) ) {
+                $logo_path = $local;  // local file preferred — no HTTP request
+            } else {
+                $src = wp_get_attachment_image_src( $custom_logo_id, 'full' );
+                if ( $src ) {
+                    $logo_path = $src[0];  // URL fallback for offloaded/CDN media
+                }
+            }
         }
 
         $pdf = new MSC_PDF();
@@ -92,8 +100,8 @@ class MSC_Indemnity {
         $pdf->rect( 0, 65, 595, 2, 'F' );
 
         $header_y = 20;
-        if ( $logo_url ) {
-            $pdf->image_from_file( $logo_url, $lm, $header_y, 35, 35 );
+        if ( $logo_path ) {
+            $pdf->image_from_file( $logo_path, $lm, $header_y, 35, 35 );
             $text_x = $lm + 50;
         } else {
             $text_x = $lm;
@@ -121,18 +129,18 @@ class MSC_Indemnity {
         // Put core info into tighter tables
         self::section_header( $pdf, $lm, $rw, 'EVENT & PARTICIPANT SUMMARY' );
         
-        $make  = get_post_meta( $vehicle->ID, '_msc_make',       true );
-        $model = get_post_meta( $vehicle->ID, '_msc_model',      true );
-        $year  = get_post_meta( $vehicle->ID, '_msc_year',       true );
-        $regn  = get_post_meta( $vehicle->ID, '_msc_reg_number', true );
+        $make  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_make',       true ) : '';
+        $model = $vehicle ? get_post_meta( $vehicle->ID, '_msc_model',      true ) : '';
+        $year  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_year',       true ) : '';
+        $regn  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_reg_number', true ) : '';
 
         // Use the class stored at registration time if available
         if ( ! empty( $reg->class_id ) ) {
             $term  = get_term( $reg->class_id, 'msc_vehicle_class' );
             $class = ( $term && ! is_wp_error( $term ) ) ? $term->name : '—';
         } else {
-            $terms = wp_get_post_terms( $vehicle->ID, 'msc_vehicle_class', array( 'fields' => 'names' ) );
-            $class = ! empty( $terms ) ? implode( ', ', $terms ) : '—';
+            $names = MSC_Registration::get_class_names_for_registration( $reg->id );
+            $class = ! empty( $names ) ? implode( ', ', $names ) : '—';
         }
 
         $rows = array(
@@ -142,7 +150,7 @@ class MSC_Indemnity {
             'Email'        => $user->user_email,
             'Emergency'    => $reg->emergency_name . ' (' . $reg->emergency_phone . ')',
             'Guardian'     => $reg->is_minor ? $reg->parent_name : 'N/A (Adult)',
-            'Vehicle'      => trim( "$year $make $model" ) ?: $vehicle->post_title,
+            'Vehicle'      => trim( "$year $make $model" ) ?: ( $vehicle ? $vehicle->post_title : '—' ),
             'Reg / Number' => $regn ?: '—',
             'Class'        => $class,
         );
@@ -389,13 +397,13 @@ class MSC_Indemnity {
         }
 
         $admin_message = "
-            <p>A new registration has been received and the indemnity form has been signed.</p>
+            <p>A new event entry has been received and the indemnity form has been signed.</p>
             <p><strong>Participant:</strong> {$user_name}<br>
             <strong>Event:</strong> {$event_name}</p>
-            <p>The signed indemnity form" . ( $pop_file_id ? ' and proof of payment are' : ' is' ) . " attached.</p>
+            <p>The signed indemnity form" . ( $pop_file_id ? ' and proof of payment are' : ' is' ) . " attached. You can also view both documents any time from the entries dashboard.</p>
             <p><a href='" . esc_url( admin_url('admin.php?page=msc-registrations') ) . "'>View in admin dashboard &rarr;</a></p>";
 
-        $admin_subject = 'New Registration: ' . $reg->event_name . ' - ' . $reg->user_name;
+        $admin_subject = 'New Entry: ' . $reg->event_name . ' - ' . $reg->user_name;
 
         // Collect unique recipients (admin + event creator, deduplicated)
         $admin_email     = get_option( 'admin_email' );
@@ -409,18 +417,15 @@ class MSC_Indemnity {
             MSC_Emails::send_mail(
                 $recipient,
                 $admin_subject,
-                MSC_Emails::wrap( 'New Registration', $admin_message ),
+                MSC_Emails::wrap( 'New Entry', $admin_message ),
                 $headers,
                 $admin_attachments
             );
         }
 
-        // ── Cleanup: delete temp files from server ──────────────────────
+        // ── Cleanup: delete only the temp indemnity PDF; PoP is kept for dashboard viewing ──
         if ( ! @unlink( $tmp ) ) {
             error_log( 'MSC: Failed to delete temp indemnity PDF: ' . $tmp );
-        }
-        if ( $pop_file_id ) {
-            wp_delete_attachment( $pop_file_id, true );
         }
     }
 }

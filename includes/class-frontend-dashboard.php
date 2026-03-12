@@ -24,9 +24,14 @@ class MSC_Frontend_Dashboard {
 
         // AJAX: Registrations
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
+        add_action( 'wp_ajax_msc_fe_bulk_reg_status',   array( __CLASS__, 'ajax_bulk_reg_status' ) );
 
         // AJAX: Results
         add_action( 'wp_ajax_msc_fe_save_results',      array( __CLASS__, 'ajax_save_results' ) );
+
+        // CSV export (fires on both frontend pages and wp-admin)
+        add_action( 'template_redirect', array( __CLASS__, 'maybe_export_csv' ) );
+        add_action( 'admin_init',        array( __CLASS__, 'maybe_export_csv' ) );
     }
 
     // ─── Access guard ─────────────────────────────────────────────────────────
@@ -709,6 +714,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
+                       r.pop_file_id, r.indemnity_method,
                        p.post_title AS event_name, v.post_title AS vehicle_name, u.display_name AS user_name
                 FROM $table r
                 LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
@@ -722,7 +728,7 @@ class MSC_Frontend_Dashboard {
         ?>
         <div class="msc-tab-content">
             <div class="msc-tab-header">
-                <h3 class="msc-tab-title">Registrations</h3>
+                <h3 class="msc-tab-title">Entries</h3>
             </div>
 
             <!-- Filters -->
@@ -747,15 +753,34 @@ class MSC_Frontend_Dashboard {
                 <a href="<?php echo esc_url( add_query_arg( 'msc_etab', 'registrations', get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline">Clear</a>
                 <?php endif; ?>
             </form>
+            <?php
+            $csv_args = array( 'msc_export_regs' => 1, 'msc_export_nonce' => wp_create_nonce('msc_export_regs') );
+            if ( $event_filter )  $csv_args['event_id'] = $event_filter;
+            if ( $status_filter ) $csv_args['status']   = $status_filter;
+            ?>
+            <a href="<?php echo esc_url( add_query_arg( $csv_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Export CSV</a>
 
             <div id="msc-reg-msg" class="msc-field-msg" style="margin-bottom:10px"></div>
 
             <?php if ( empty( $regs ) ) : ?>
-            <p style="color:#888">No registrations found.</p>
+            <p style="color:#888">No entries found.</p>
             <?php else : ?>
+            <!-- Bulk action bar (shown when items are checked) -->
+            <div id="msc-bulk-bar" style="display:none;margin-bottom:10px;gap:10px;align-items:center;flex-wrap:wrap">
+                <label style="font-weight:600">Bulk action:</label>
+                <select id="msc-bulk-status" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px">
+                    <option value="">— Set Status —</option>
+                    <?php foreach ( $valid_statuses as $s ) : ?>
+                    <option value="<?php echo $s; ?>"><?php echo ucfirst($s); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" id="msc-bulk-apply" class="msc-btn msc-btn-sm">Apply</button>
+                <span id="msc-bulk-count" style="color:#888;font-size:13px"></span>
+            </div>
             <div style="overflow-x:auto">
             <table class="msc-dash-table">
                 <thead><tr>
+                    <th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th>
                     <th>Entrant</th>
                     <th>Event</th>
                     <th>Vehicle</th>
@@ -763,6 +788,7 @@ class MSC_Frontend_Dashboard {
                     <th>Fee</th>
                     <th>Date</th>
                     <th>Status</th>
+                    <th>Docs</th>
                     <th>Actions</th>
                 </tr></thead>
                 <tbody>
@@ -774,8 +800,13 @@ class MSC_Frontend_Dashboard {
                         $term = get_term( (int) $r->class_id, 'msc_vehicle_class' );
                         if ( $term && ! is_wp_error($term) ) $class_name = $term->name;
                     }
+                    if ( $class_name === '—' ) {
+                        $fallback_names = MSC_Registration::get_class_names_for_registration( $r->id );
+                        if ( ! empty( $fallback_names ) ) $class_name = implode( ', ', $fallback_names );
+                    }
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
+                    <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
                     <td><?php echo esc_html( $r->user_name ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
                     <td><?php echo esc_html( $r->vehicle_name ?: '—' ); ?></td>
@@ -783,14 +814,24 @@ class MSC_Frontend_Dashboard {
                     <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
                     <td style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
                     <td>
-                        <span class="msc-status-badge" style="background:<?php echo $sb;?>;color:<?php echo $sc;?>">
+                        <span class="msc-status-badge" style="background:<?php echo esc_attr($sb);?>;color:<?php echo esc_attr($sc);?>">
                             <?php echo esc_html( ucfirst($r->status) ); ?>
                         </span>
                     </td>
+                    <td style="white-space:nowrap">
+                        <?php if ( $r->indemnity_method === 'signed' ) : ?>
+                        <a href="<?php echo esc_url( add_query_arg('msc_indemnity_pdf', $r->id, home_url()) ); ?>"
+                           target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View signed indemnity PDF">Indemnity</a>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $r->pop_file_id ) ) :
+                            $pop_url = wp_get_attachment_url( (int) $r->pop_file_id );
+                            if ( $pop_url ) : ?>
+                        <a href="<?php echo esc_url( $pop_url ); ?>"
+                           target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View proof of payment">PoP</a>
+                        <?php endif; endif; ?>
+                    </td>
                     <td>
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                        <a href="<?php echo esc_url( add_query_arg('msc_indemnity_pdf', $r->id, home_url()) ); ?>"
-                           target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">PDF</a>
                         <?php if ( in_array($r->status, array('pending','confirmed'), true) ) : ?>
                         <select class="msc-reg-status-select" data-id="<?php echo $r->id; ?>"
                                 style="padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:12px">
@@ -815,6 +856,7 @@ class MSC_Frontend_Dashboard {
             var nonce   = '<?php echo wp_create_nonce('msc_nonce'); ?>';
             var ajaxUrl = '<?php echo esc_js( admin_url('admin-ajax.php') ); ?>';
 
+            // Individual status save
             $(document).on('click', '.msc-reg-status-save', function(){
                 var btn    = $(this);
                 var reg_id = btn.data('id');
@@ -828,8 +870,55 @@ class MSC_Frontend_Dashboard {
                 }, function(res){
                     btn.prop('disabled', false).text('Save');
                     if (res.success) {
-                        $('#msc-reg-msg').text('Registration updated.').css('color','green').show();
+                        $('#msc-reg-msg').text('Entry updated.').css('color','green').show();
                         setTimeout(function(){ location.reload(); }, 800);
+                    } else {
+                        $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
+                    }
+                });
+            });
+
+            // Bulk: track selection and show/hide the bulk bar
+            function updateBulkBar() {
+                var checked = $('.msc-bulk-cb:checked').length;
+                if (checked > 0) {
+                    $('#msc-bulk-bar').css('display','flex');
+                    $('#msc-bulk-count').text(checked + ' selected');
+                } else {
+                    $('#msc-bulk-bar').css('display','none');
+                }
+            }
+            $(document).on('change', '#msc-select-all', function(){
+                $('.msc-bulk-cb').prop('checked', this.checked);
+                updateBulkBar();
+            });
+            $(document).on('change', '.msc-bulk-cb', function(){
+                var all = $('.msc-bulk-cb').length;
+                var chk = $('.msc-bulk-cb:checked').length;
+                $('#msc-select-all').prop('checked', all === chk);
+                updateBulkBar();
+            });
+
+            // Bulk apply
+            $('#msc-bulk-apply').on('click', function(){
+                var status = $('#msc-bulk-status').val();
+                if (!status) { alert('Please select a status.'); return; }
+                var ids = [];
+                $('.msc-bulk-cb:checked').each(function(){ ids.push($(this).val()); });
+                if (!ids.length) { alert('No registrations selected.'); return; }
+                if (!confirm('Set ' + ids.length + ' registration(s) to "' + status + '"?')) return;
+                var btn = $(this);
+                btn.prop('disabled', true).text('…');
+                $.post(ajaxUrl, {
+                    action: 'msc_fe_bulk_reg_status',
+                    nonce:  nonce,
+                    status: status,
+                    ids:    ids,
+                }, function(res){
+                    btn.prop('disabled', false).text('Apply');
+                    if (res.success) {
+                        $('#msc-reg-msg').text(res.data.message).css('color','green').show();
+                        setTimeout(function(){ location.reload(); }, 900);
                     } else {
                         $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
                     }
@@ -1341,13 +1430,14 @@ class MSC_Frontend_Dashboard {
         }
 
         $text_meta = array(
-            'msc_event_date', 'msc_event_end_date', 'msc_event_location',
+            'msc_event_date', 'msc_event_end_date',
             'msc_reg_open', 'msc_reg_close',
         );
         foreach ( $text_meta as $key ) {
             $val = sanitize_text_field( wp_unslash( $_POST[ str_replace( 'msc_', '', $key ) ] ?? '' ) );
             if ( $val ) update_post_meta( $post_id, '_' . $key, $val );
         }
+        update_post_meta( $post_id, '_msc_event_location', sanitize_text_field( wp_unslash( $_POST['location'] ?? '' ) ) );
 
         update_post_meta( $post_id, '_msc_entry_fee', floatval( $_POST['entry_fee'] ?? 0 ) );
         update_post_meta( $post_id, '_msc_capacity',  absint(  $_POST['capacity']   ?? 0 ) );
@@ -1414,13 +1504,14 @@ class MSC_Frontend_Dashboard {
         ) );
 
         $text_meta = array(
-            'msc_event_date', 'msc_event_end_date', 'msc_event_location',
+            'msc_event_date', 'msc_event_end_date',
             'msc_reg_open', 'msc_reg_close',
         );
         foreach ( $text_meta as $key ) {
             $val = sanitize_text_field( wp_unslash( $_POST[ str_replace( 'msc_', '', $key ) ] ?? '' ) );
             update_post_meta( $event_id, '_' . $key, $val );
         }
+        update_post_meta( $event_id, '_msc_event_location', sanitize_text_field( wp_unslash( $_POST['location'] ?? '' ) ) );
 
         update_post_meta( $event_id, '_msc_entry_fee', floatval( $_POST['entry_fee'] ?? 0 ) );
         update_post_meta( $event_id, '_msc_capacity',  absint(  $_POST['capacity']   ?? 0 ) );
@@ -1520,11 +1611,50 @@ class MSC_Frontend_Dashboard {
             array( '%d' )
         );
 
-        if ( $status === 'confirmed' ) {
-            MSC_Emails::send_confirmation( $reg_id );
-        }
+        if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+        if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+        if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
 
         wp_send_json_success( array( 'message' => 'Registration updated.' ) );
+    }
+
+    // ─── AJAX: Bulk Update Registration Status ────────────────────────────────
+
+    public static function ajax_bulk_reg_status() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        global $wpdb;
+        $valid   = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
+        $status  = in_array( $_POST['status'] ?? '', $valid, true ) ? $_POST['status'] : '';
+        $ids_raw = isset( $_POST['ids'] ) && is_array( $_POST['ids'] ) ? $_POST['ids'] : array();
+        $ids     = array_filter( array_map( 'absint', $ids_raw ) );
+
+        if ( ! $status || empty( $ids ) ) {
+            wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+        }
+
+        $updated = 0;
+        foreach ( $ids as $reg_id ) {
+            $event_id = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT event_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d", $reg_id
+            ) );
+            if ( ! $event_id || ! self::can_manage_event( $event_id ) ) continue;
+
+            $wpdb->update(
+                $wpdb->prefix . 'msc_registrations',
+                array( 'status' => $status ),
+                array( 'id'     => $reg_id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+            if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+            if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
+            $updated++;
+        }
+
+        wp_send_json_success( array( 'message' => $updated . ' registration(s) updated.' ) );
     }
 
     // ─── AJAX: Save Results ───────────────────────────────────────────────────
@@ -1855,5 +1985,83 @@ class MSC_Frontend_Dashboard {
             $counts[ $r->event_id ] = (int) $r->cnt;
         }
         return $counts;
+    }
+
+    // ─── CSV Export ───────────────────────────────────────────────────────────
+
+    public static function maybe_export_csv() {
+        if ( ! isset( $_GET['msc_export_regs'] ) ) return;
+        if ( ! self::can_access() ) wp_die( 'Unauthorized.' );
+        if ( ! isset( $_GET['msc_export_nonce'] ) || ! wp_verify_nonce( $_GET['msc_export_nonce'], 'msc_export_regs' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'msc_registrations';
+
+        $event_filter   = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
+        $status_filter  = isset( $_GET['status'] ) && in_array( $_GET['status'], $valid_statuses, true ) ? $_GET['status'] : '';
+
+        $conditions = array( '1=1' );
+        $values     = array();
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
+            $conditions[] = 'p.post_author = %d';
+            $values[]     = get_current_user_id();
+        }
+        if ( $event_filter )  { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
+        if ( $status_filter ) { $conditions[] = 'r.status = %s';   $values[] = $status_filter; }
+
+        $where = implode( ' AND ', $conditions );
+        $sql = "SELECT r.id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
+                       r.emergency_name, r.emergency_phone,
+                       p.post_title AS event_name, v.post_title AS vehicle_name,
+                       u.display_name AS user_name, u.user_email
+                FROM $table r
+                LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
+                LEFT JOIN {$wpdb->posts}  v ON v.ID = r.vehicle_id
+                LEFT JOIN {$wpdb->users}  u ON u.ID = r.user_id
+                WHERE $where ORDER BY r.created_at DESC";
+        $regs = $values ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) ) : $wpdb->get_results( $sql );
+
+        $event_slug = $event_filter ? sanitize_title( get_the_title( $event_filter ) ) : 'all-events';
+        $filename   = 'registrations-' . $event_slug . '-' . date( 'Y-m-d' ) . '.csv';
+
+        header( 'Content-Type: text/csv; charset=UTF-8' );
+        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+
+        $out = fopen( 'php://output', 'w' );
+        fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+
+        $i = 1;
+        foreach ( $regs as $r ) {
+            $class_name = '—';
+            if ( ! empty( $r->class_id ) ) {
+                $term = get_term( (int) $r->class_id, 'msc_vehicle_class' );
+                if ( $term && ! is_wp_error( $term ) ) $class_name = $term->name;
+            }
+            if ( $class_name === '—' ) {
+                $names = MSC_Registration::get_class_names_for_registration( $r->id );
+                if ( ! empty( $names ) ) $class_name = implode( ', ', $names );
+            }
+            fputcsv( $out, array(
+                $i++,
+                $r->user_name,
+                $r->user_email,
+                $r->event_name,
+                $r->vehicle_name ?: '—',
+                $class_name,
+                $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
+                $r->fee_paid ? 'Yes' : 'No',
+                trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
+                ucfirst( $r->status ),
+                date( 'd M Y', strtotime( $r->created_at ) ),
+            ) );
+        }
+        fclose( $out );
+        exit;
     }
 }

@@ -141,7 +141,11 @@ class MSC_Shortcodes {
         if ( $date )     $html .= '<p class="msc-next-event-meta">📅 ' . esc_html( date_i18n( 'D d F Y', strtotime( $date ) ) ) . '</p>';
         if ( $location ) $html .= '<p class="msc-next-event-meta">📍 ' . esc_html( $location ) . '</p>';
         $html .= '<p class="msc-next-event-meta">💰 ' . ( $price > 0 ? 'From R ' . number_format( $price, 2 ) : 'Free' ) . '</p>';
-        $html .= '<a href="' . esc_url( $url ) . '" class="msc-btn msc-btn-sm" style="margin-top:6px;display:inline-block;">View &amp; Register</a>';
+        $uid          = get_current_user_id();
+        $next_entered = $uid && MSC_Registration::user_is_registered( $uid, $e->ID );
+        $next_label   = $next_entered ? 'View your entry' : 'Enter Now';
+        $next_href    = $next_entered ? msc_get_account_url('registrations') : $url;
+        $html .= '<a href="' . esc_url( $next_href ) . '" class="msc-btn msc-btn-sm" style="margin-top:6px;display:inline-block;">' . esc_html( $next_label ) . '</a>';
         $html .= '</div>';
         $html .= '</div>';
 
@@ -170,6 +174,8 @@ class MSC_Shortcodes {
         $events = get_posts($args);
         if (empty($events)) return '<p class="msc-no-events">No upcoming events at the moment. Check back soon!</p>';
 
+        $current_user_id = get_current_user_id();
+
         ob_start();
         echo '<div class="msc-events-grid">';
         foreach($events as $e) {
@@ -181,6 +187,7 @@ class MSC_Shortcodes {
             $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$e->ID));
             $capacity  = get_post_meta($e->ID,'_msc_capacity',true);
             $full      = $capacity && $reg_count >= $capacity;
+            $user_entered = $current_user_id && MSC_Registration::user_is_registered( $current_user_id, $e->ID );
             ?>
             <div class="msc-event-card <?php echo $full ? 'msc-event-full' : ''; ?> <?php echo $closed ? 'msc-event-closed' : ''; ?>">
                 <?php if(has_post_thumbnail($e->ID)): ?>
@@ -204,8 +211,10 @@ class MSC_Shortcodes {
                         <span class="msc-event-fee"><?php echo $price>0 ? esc_html('From R '.number_format($price,2)) : 'Free' ?></span>
                         <?php if($closed): ?>
                             <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn">View Results</a>
+                        <?php elseif($user_entered): ?>
+                            <a href="<?php echo esc_url( msc_get_account_url('registrations') ) ?>" class="msc-btn msc-btn-outline">View your entry</a>
                         <?php else: ?>
-                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn <?php echo $full?'msc-btn-disabled':'' ?>"><?php echo $full?'View Event':'Register Now' ?></a>
+                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn <?php echo $full?'msc-btn-disabled':'' ?>"><?php echo $full?'View Event':'Enter Now' ?></a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -217,6 +226,7 @@ class MSC_Shortcodes {
     }
 
     public static function register_form( $atts = array() ) {
+        global $wpdb;
         $atts     = shortcode_atts( array('event_id' => get_the_ID()), $atts );
         $event_id = intval($atts['event_id']);
         $event    = get_post($event_id);
@@ -260,8 +270,8 @@ class MSC_Shortcodes {
             }
         }
 
-        if ($reg_open  && strtotime($reg_open)  > $now) return '<div class="msc-notice msc-notice-info">Registration opens on '.date('D d F Y @ H:i',strtotime($reg_open)).'.</div>';
-        if ($reg_close && strtotime($reg_close) < $now) return '<div class="msc-notice msc-notice-warning">Registration for this event is now closed.</div>';
+        if ($reg_open  && strtotime($reg_open)  > $now) return '<div class="msc-notice msc-notice-info">Entry window opens on '.date('D d F Y @ H:i',strtotime($reg_open)).'.</div>';
+        if ($reg_close && strtotime($reg_close) < $now) return '<div class="msc-notice msc-notice-warning">Entry window for this event has closed.</div>';
 
         if (!is_user_logged_in()) {
             $login_url    = add_query_arg( 'redirect_to', urlencode( get_permalink() ), MSC_Auth::login_url() );
@@ -304,11 +314,16 @@ class MSC_Shortcodes {
         }
         $is_minor = ($age < 18);
 
-        if (MSC_Registration::user_is_registered($user_id, $event_id)) {
-            return '<div class="msc-notice msc-notice-success">✓ You are already registered for this event. <a href="' . esc_url( msc_get_account_url( 'registrations' ) ) . '">View your registration</a></div>';
+        $existing_reg_id = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}msc_registrations WHERE user_id=%d AND event_id=%d AND status NOT IN ('rejected','cancelled')",
+            $user_id, $event_id
+        ) );
+        if ( $existing_reg_id ) {
+            $entered_classes = MSC_Registration::get_class_names_for_registration( (int) $existing_reg_id );
+            $class_str = ! empty( $entered_classes ) ? ' <span style="color:#0a3622">(' . esc_html( implode( ', ', $entered_classes ) ) . ')</span>' : '';
+            return '<div class="msc-notice msc-notice-success">✓ You are already entered for this event' . $class_str . '. <a href="' . esc_url( msc_get_account_url( 'registrations' ) ) . '">View your entry</a></div>';
         }
 
-        global $wpdb;
         $capacity  = intval(get_post_meta($event_id,'_msc_capacity',true));
         $reg_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE event_id=%d AND status NOT IN ('rejected','cancelled')",$event_id));
         if ($capacity && $reg_count >= $capacity) {
@@ -323,10 +338,10 @@ class MSC_Shortcodes {
              data-base-fee="<?php echo esc_attr( number_format( $fee, 2, '.', '' ) ); ?>"
              data-classes="<?php echo esc_attr( wp_json_encode( $event_classes_for_form ) ); ?>"
              data-garage-url="<?php echo esc_attr( msc_get_account_url( 'garage' ) ); ?>">
-            <h3 class="msc-section-title">Register for this Event</h3>
+            <h3 class="msc-section-title">Enter this Event</h3>
 
             <?php if($approval==='manual'): ?>
-            <div class="msc-notice msc-notice-info" style="margin-bottom:16px">ℹ️ Registrations for this event require admin approval. You will be notified by email once confirmed.</div>
+            <div class="msc-notice msc-notice-info" style="margin-bottom:16px">ℹ️ Entries for this event require admin approval. You will be notified by email once confirmed.</div>
             <?php endif ?>
 
             <!-- Step 1: Class + Vehicle Selection -->
@@ -482,7 +497,7 @@ class MSC_Shortcodes {
                         <div class="msc-field-group">
                             <label style="font-weight:700">Upload Proof of Payment (PDF only) <span style="color:red">*</span></label>
                             <input type="file" id="msc-pop-file" accept="application/pdf" style="width:100%;padding:10px;background:#fff;border:1px solid #ccc;border-radius:4px;">
-                            <p class="description" style="font-size:0.85em;margin-top:4px;">Please upload your EFT confirmation PDF to complete your registration.</p>
+                            <p class="description" style="font-size:0.85em;margin-top:4px;">Please upload your EFT confirmation PDF to complete your entry.</p>
                         </div>
                     </div>
 
@@ -545,7 +560,7 @@ class MSC_Shortcodes {
 
                     <div style="margin-top:20px;display:flex;gap:12px">
                         <button id="msc-step2-back" class="msc-btn msc-btn-outline">← Back</button>
-                        <button id="msc-submit-reg" class="msc-btn" disabled>Submit Registration</button>
+                        <button id="msc-submit-reg" class="msc-btn" disabled>Submit Entry</button>
                     </div>
                 </div>
             </div>

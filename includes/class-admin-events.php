@@ -22,7 +22,7 @@ class MSC_Admin_Events {
         );
         // Rename the auto-generated first submenu from "Motorsport Club" to "Dashboard"
         add_submenu_page( 'motorsport-club', 'Dashboard', 'Dashboard', 'manage_options', 'motorsport-club' );
-        add_submenu_page( 'motorsport-club', 'Registrations', 'Registrations', 'manage_options', 'msc-registrations', array( __CLASS__, 'registrations_page' ) );
+        add_submenu_page( 'motorsport-club', 'Entries', 'Entries', 'manage_options', 'msc-registrations', array( __CLASS__, 'registrations_page' ) );
         add_submenu_page( 'motorsport-club', 'Participants', 'Participants', 'msc_view_participants', 'msc-participants', array( 'MSC_Admin_Participants', 'page' ) );
         add_submenu_page( 'motorsport-club', 'Vehicle Classes', 'Vehicle Classes', 'manage_options', 'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle' );
         add_submenu_page( 'motorsport-club', 'Pricing', 'Pricing', 'manage_options', 'msc-pricing', array( 'MSC_Pricing', 'admin_page' ) );
@@ -94,7 +94,7 @@ class MSC_Admin_Events {
         $cards = array(
             array('label'=>'Upcoming Events',   'value'=>$total_events,   'color'=>'#2271b1'),
                        array('label'=>'Vehicles in Garage','value'=>$total_vehicles, 'color'=>'#00a32a'),
-                       array('label'=>'Total Registrations','value'=>$total_regs,    'color'=>'#8c00d4'),
+                       array('label'=>'Total Entries','value'=>$total_regs,    'color'=>'#8c00d4'),
                        array('label'=>'Pending Approval',  'value'=>$pending_regs,   'color'=>'#d63638'),
         );
         foreach ( $cards as $c ) : ?>
@@ -106,7 +106,7 @@ class MSC_Admin_Events {
             </div>
             <p style="margin-top:30px">
             <a class="button button-primary" href="<?php echo esc_url( admin_url('post-new.php?post_type=msc_event') ); ?>">+ Add New Event</a>
-            <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=msc-registrations') ); ?>" style="margin-left:8px">View All Registrations</a>
+            <a class="button" href="<?php echo esc_url( admin_url('admin.php?page=msc-registrations') ); ?>" style="margin-left:8px">View All Entries</a>
             </p>
             </div>
             <?php
@@ -254,7 +254,7 @@ class MSC_Admin_Events {
 
         $fields = array('msc_event_date','msc_event_end_date','msc_event_location','msc_entry_fee','msc_capacity','msc_reg_open','msc_reg_close','msc_approval');
         foreach ( $fields as $f ) {
-            if ( isset($_POST[$f]) ) update_post_meta( $post_id, '_' . $f, sanitize_text_field($_POST[$f]) );
+            if ( isset($_POST[$f]) ) update_post_meta( $post_id, '_' . $f, sanitize_text_field( wp_unslash( $_POST[$f] ) ) );
         }
         if ( isset($_POST['msc_indemnity_text']) ) {
             update_post_meta( $post_id, '_msc_indemnity_text', sanitize_textarea_field(wp_unslash($_POST['msc_indemnity_text'])) );
@@ -288,7 +288,7 @@ class MSC_Admin_Events {
             if ( $k === 'title' ) {
                 $new['event_date'] = 'Date';
                 $new['event_loc']  = 'Location';
-                $new['event_regs'] = 'Registrations';
+                $new['event_regs'] = 'Entries';
                 $new['entry_fee']  = 'Starting From';
                 $new['approval']   = 'Approval';
             }
@@ -329,6 +329,30 @@ class MSC_Admin_Events {
         global $wpdb;
         $table = $wpdb->prefix . 'msc_registrations';
 
+        // ── Handle bulk status update ──────────────────────────────────
+        if (
+            isset( $_POST['msc_bulk_update_status'] ) &&
+            isset( $_POST['_wpnonce_bulk'] ) &&
+            wp_verify_nonce( $_POST['_wpnonce_bulk'], 'msc_bulk_reg_action' )
+        ) {
+            $valid_bulk  = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
+            $bulk_status = sanitize_key( $_POST['bulk_status'] ?? '' );
+            $bulk_ids    = isset( $_POST['bulk_ids'] ) && is_array( $_POST['bulk_ids'] )
+                ? array_filter( array_map( 'intval', $_POST['bulk_ids'] ) )
+                : array();
+            if ( in_array( $bulk_status, $valid_bulk, true ) && ! empty( $bulk_ids ) ) {
+                $updated = 0;
+                foreach ( $bulk_ids as $rid ) {
+                    $wpdb->update( $table, array( 'status' => $bulk_status ), array( 'id' => $rid ), array( '%s' ), array( '%d' ) );
+                    if ( $bulk_status === 'confirmed' )  MSC_Emails::send_confirmation( $rid );
+                    if ( $bulk_status === 'rejected' )   MSC_Emails::send_rejection( $rid );
+                    if ( $bulk_status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $rid );
+                    $updated++;
+                }
+                echo '<div class="updated notice is-dismissible"><p>' . $updated . ' ' . ( $updated === 1 ? 'entry' : 'entries' ) . ' set to ' . esc_html( $bulk_status ) . '.</p></div>';
+            }
+        }
+
         // ── Handle delete ──────────────────────────────────────────────
         if (
             isset( $_POST['msc_delete_reg'] ) &&
@@ -350,8 +374,10 @@ class MSC_Admin_Events {
             $status   = sanitize_key( $_POST['new_status'] );
             $fee_paid = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
             $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ), array( '%s', '%d' ), array( '%d' ) );
-            if ( $status === 'confirmed' ) MSC_Emails::send_confirmation( $reg_id );
-            echo '<div class="updated notice is-dismissible"><p>Registration updated.</p></div>';
+            if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+            if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id );
+            if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
+            echo '<div class="updated notice is-dismissible"><p>Entry updated.</p></div>';
         }
 
         // ── Filters ────────────────────────────────────────────────────
@@ -372,21 +398,35 @@ class MSC_Admin_Events {
             $values[]     = $status_filter;
         }
         $where_sql = implode( ' AND ', $conditions );
+
+        $per_page     = 50;
+        $current_page = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
+        $offset       = ( $current_page - 1 ) * $per_page;
+
+        $count_sql = "SELECT COUNT(*) FROM $table r
+        LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
+        LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
+        LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
+        WHERE $where_sql";
+        $total_items = $values
+            ? (int) $wpdb->get_var( $wpdb->prepare( $count_sql, ...$values ) )
+            : (int) $wpdb->get_var( $count_sql );
+        $total_pages = max( 1, (int) ceil( $total_items / $per_page ) );
+
+        $paged_values = array_merge( $values, array( $per_page, $offset ) );
         $sql = "SELECT r.*, p.post_title as event_name, v.post_title as vehicle_name,
         u.display_name as user_name, u.user_email
         FROM $table r
         LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
         LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
         LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
-        WHERE $where_sql ORDER BY r.created_at DESC";
-        $regs = $values
-            ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) )
-            : $wpdb->get_results( $sql );
+        WHERE $where_sql ORDER BY r.created_at DESC LIMIT %d OFFSET %d";
+        $regs = $wpdb->get_results( $wpdb->prepare( $sql, ...$paged_values ) );
 
         $events = get_posts(array('post_type'=>'msc_event','numberposts'=>-1,'post_status'=>'publish'));
         ?>
         <div class="wrap">
-        <h1>Registrations</h1>
+        <h1>Entries</h1>
 
         <!-- Filters -->
         <form method="get" style="margin-bottom:16px">
@@ -405,11 +445,36 @@ class MSC_Admin_Events {
         </select>
         <button type="submit" class="button">Filter</button>
         </form>
+        <?php
+        $csv_args = array( 'page' => 'msc-registrations', 'msc_export_regs' => 1, 'msc_export_nonce' => wp_create_nonce('msc_export_regs') );
+        if ( $event_filter )  $csv_args['event_id'] = $event_filter;
+        if ( $status_filter ) $csv_args['status']   = $status_filter;
+        ?>
+        <a href="<?php echo esc_url( add_query_arg( $csv_args, admin_url('admin.php') ) ); ?>" class="button" style="margin-top:-4px">Export CSV</a>
+
+        <!-- Bulk controls — no wrapping form to avoid nesting with per-row forms -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+            <label><input type="checkbox" id="msc-admin-select-all"> Select All</label>
+            <select id="msc-bulk-status" style="height:30px">
+                <option value="">— Bulk Action —</option>
+                <?php foreach ( array('pending','confirmed','rejected','cancelled') as $s ) : ?>
+                <option value="<?php echo $s ?>"><?php echo ucfirst($s) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" id="msc-bulk-apply" class="button">Apply to Selected</button>
+        </div>
+        <!-- Hidden bulk form submitted programmatically by JS -->
+        <form method="post" id="msc-bulk-form" style="display:none">
+        <?php wp_nonce_field( 'msc_bulk_reg_action', '_wpnonce_bulk' ); ?>
+        <input type="hidden" name="msc_bulk_update_status" value="1">
+        <input type="hidden" name="bulk_status" id="msc-bulk-status-hidden">
+        </form>
 
         <!-- Table -->
         <table class="widefat striped">
         <thead>
         <tr>
+        <th style="width:28px"></th>
         <th>#</th>
         <th>Entrant</th>
         <th>Email</th>
@@ -435,6 +500,7 @@ class MSC_Admin_Events {
         $sb = $status_bg[$r->status]     ?? '#eee';
         ?>
         <tr>
+        <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
         <td><?php echo $count++ ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
@@ -461,9 +527,9 @@ class MSC_Admin_Events {
             if ( $r->pop_file_id ) {
                 $url = wp_get_attachment_url( $r->pop_file_id );
                 if ( $url ) {
-                    echo '<a href="' . esc_url($url) . '" target="_blank" title="View Proof of Payment" style="text-decoration:none">📄 View</a>';
+                    echo '<a href="' . esc_url($url) . '" target="_blank" class="button button-small">📄 View PoP</a>';
                 } else {
-                    echo '<span style="color:#27ae60" title="PoP was emailed and removed from server">✓ Emailed</span>';
+                    echo '<span style="color:#888;font-size:12px">File removed</span>';
                 }
             } else {
                 echo '<span style="color:#aaa">—</span>';
@@ -471,12 +537,12 @@ class MSC_Admin_Events {
         ?></td>
         <td><?php echo $r->fee_paid ? '<span style="color:green">✓ Paid</span>' : '<span style="color:#aaa">—</span>' ?></td>
         <td><?php
-        if ($r->indemnity_method === 'signed') echo '<span style="color:green" title="'.esc_attr($r->indemnity_date).'">✓ Signed</span>';
+        if ($r->indemnity_method === 'signed') echo '<a href="'.esc_url(add_query_arg('msc_indemnity_pdf',$r->id,home_url())).'" target="_blank" style="color:green;text-decoration:none" title="Signed '.esc_attr($r->indemnity_date).'">✓ View PDF</a>';
         elseif ($r->indemnity_method === 'bring') echo '<span style="color:#856404">📄 Will bring</span>';
         else echo '—';
         ?></td>
         <td>
-        <span style="background:<?php echo $sb ?>;color:<?php echo $sc ?>;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">
+        <span style="background:<?php echo esc_attr($sb) ?>;color:<?php echo esc_attr($sc) ?>;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">
         <?php echo esc_html(ucfirst($r->status)) ?>
         </span>
         </td>
@@ -510,7 +576,61 @@ class MSC_Admin_Events {
         <?php endforeach; endif; ?>
         </tbody>
         </table>
+
+        <?php if ( $total_pages > 1 ) :
+            $base_url = add_query_arg( array( 'page' => 'msc-registrations' ), admin_url( 'admin.php' ) );
+            if ( $event_filter )  $base_url = add_query_arg( 'event_id', $event_filter, $base_url );
+            if ( $status_filter ) $base_url = add_query_arg( 'status', $status_filter, $base_url );
+            echo '<div style="margin-top:12px">';
+            echo paginate_links( array(
+                'base'      => add_query_arg( 'paged', '%#%', $base_url ),
+                'format'    => '',
+                'current'   => $current_page,
+                'total'     => $total_pages,
+                'prev_text' => '&laquo;',
+                'next_text' => '&raquo;',
+            ) );
+            echo '</div>';
+        endif; ?>
+
         </div>
+        <script>
+        (function(){
+            var sa    = document.getElementById('msc-admin-select-all');
+            var apply = document.getElementById('msc-bulk-apply');
+            var form  = document.getElementById('msc-bulk-form');
+            var bstat = document.getElementById('msc-bulk-status');
+            var bsth  = document.getElementById('msc-bulk-status-hidden');
+
+            if (sa) {
+                sa.addEventListener('change', function(){
+                    document.querySelectorAll('.msc-admin-bulk-cb').forEach(function(cb){ cb.checked = sa.checked; });
+                });
+            }
+
+            if (apply && form && bstat && bsth) {
+                apply.addEventListener('click', function(){
+                    var status = bstat.value;
+                    if (!status) { alert('Please choose a bulk action.'); return; }
+                    var checked = document.querySelectorAll('.msc-admin-bulk-cb:checked');
+                    if (!checked.length) { alert('No registrations selected.'); return; }
+
+                    // Remove any previously injected id inputs
+                    form.querySelectorAll('input[name="bulk_ids[]"]').forEach(function(el){ el.remove(); });
+
+                    bsth.value = status;
+                    checked.forEach(function(cb){
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden';
+                        inp.name = 'bulk_ids[]';
+                        inp.value = cb.value;
+                        form.appendChild(inp);
+                    });
+                    form.submit();
+                });
+            }
+        })();
+        </script>
         <?php
     }
 

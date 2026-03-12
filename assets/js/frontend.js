@@ -788,6 +788,102 @@ jQuery(function ($) {
 
         // ─── Registrations & Profile ──────────────────────────────────
         bindAccount: function () {
+            // ── Entry edit ────────────────────────────────────────────
+            $(document).on('click', '.msc-edit-entry', function(e) {
+                e.preventDefault();
+                var btn   = $(this);
+                var regId = btn.data('id');
+                var card  = btn.closest('.msc-reg-card');
+
+                $('.msc-entry-edit-panel').remove();
+                btn.prop('disabled', true).text('Loading…');
+
+                $.post(mscData.ajaxUrl, {
+                    action: 'msc_get_entry_edit_data',
+                    nonce:  mscData.nonce,
+                    reg_id: regId
+                }, function(res) {
+                    btn.prop('disabled', false).text('Edit Entry');
+                    if (!res.success) {
+                        alert(res.data.message || 'Could not load entry data.');
+                        return;
+                    }
+                    renderEntryEditPanel(card, res.data);
+                });
+            });
+
+            $(document).on('click', '#msc-edit-cancel-btn', function() {
+                $('.msc-entry-edit-panel').remove();
+            });
+
+            $(document).on('click', '#msc-edit-save-btn', function() {
+                var panel       = $('.msc-entry-edit-panel');
+                var regId       = $(this).data('reg');
+                var pricing     = panel.data('pricing');
+                var baseFee     = parseFloat(panel.data('base_fee'));
+                var originalFee = parseFloat(panel.data('original_fee'));
+                var primaryId   = parseInt($('#msc-edit-primary-class').val()) || 0;
+
+                if (!primaryId) {
+                    $('#msc-edit-msg').text('Please select a primary class.').css('color','red').show();
+                    return;
+                }
+
+                var additionalIds = [];
+                $('.msc-edit-additional:checked:not(:disabled)').each(function() {
+                    additionalIds.push(parseInt($(this).val()));
+                });
+
+                var newFee = calcEntryFee(baseFee, pricing, primaryId, additionalIds);
+                var diff   = Math.round((newFee - originalFee) * 100) / 100;
+
+                if (diff < -0.005) {
+                    $('#msc-edit-msg').text('You cannot reduce your entry below the amount already paid.').css('color','red').show();
+                    return;
+                }
+                if (diff > 0.005 && !($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files.length)) {
+                    $('#msc-edit-msg').text('Please upload proof of payment for the additional R ' + diff.toFixed(2) + ' owed.').css('color','red').show();
+                    return;
+                }
+
+                var btn = $(this);
+                btn.prop('disabled', true).text('Saving…');
+                $('#msc-edit-msg').hide();
+
+                var fd = new FormData();
+                fd.append('action',           'msc_update_entry_classes');
+                fd.append('nonce',            mscData.nonce);
+                fd.append('reg_id',           regId);
+                fd.append('primary_class_id', primaryId);
+                for (var i = 0; i < additionalIds.length; i++) {
+                    fd.append('additional_class_ids[]', additionalIds[i]);
+                }
+                if ($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files[0]) {
+                    fd.append('pop_file', $('#msc-edit-pop-file')[0].files[0]);
+                }
+
+                $.ajax({
+                    url:         mscData.ajaxUrl,
+                    type:        'POST',
+                    data:        fd,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        if (res.success) {
+                            $('#msc-edit-msg').text(res.data.message).css('color','green').show();
+                            setTimeout(function() { location.reload(); }, 1200);
+                        } else {
+                            btn.prop('disabled', false).text('Save Changes');
+                            $('#msc-edit-msg').text(res.data.message || 'Error saving.').css('color','red').show();
+                        }
+                    },
+                    error: function() {
+                        btn.prop('disabled', false).text('Save Changes');
+                        $('#msc-edit-msg').text('Network error.').css('color','red').show();
+                    }
+                });
+            });
+
             $(document).on('click', '.msc-cancel-reg', function (e) {
                 e.preventDefault();
                 if (!confirm('Are you sure you want to cancel this registration?')) return;
@@ -927,6 +1023,166 @@ jQuery(function ($) {
             });
         }
     };
+
+    // ─── Entry edit helpers ───────────────────────────────────────────
+
+    function calcEntryFee(baseFee, pricing, primaryId, additionalIds) {
+        var total       = baseFee;
+        var primaryData = pricing[primaryId];
+        var globalOvr   = (primaryData && primaryData.override !== null && primaryData.override !== undefined)
+                          ? parseFloat(primaryData.override) : null;
+        if (primaryData) total += parseFloat(primaryData.primary_fee || 0);
+        for (var i = 0; i < additionalIds.length; i++) {
+            var cid = additionalIds[i];
+            var cd  = pricing[cid];
+            if (!cd) continue;
+            var af = 0;
+            if (cd.exempt == 1)           af = parseFloat(cd.additional_fee || 0);
+            else if (globalOvr !== null)   af = globalOvr;
+            else                           af = parseFloat(cd.additional_fee || 0);
+            total += af;
+        }
+        return Math.round(total * 100) / 100;
+    }
+
+    function updateEditFeeSummary() {
+        var panel = $('.msc-entry-edit-panel');
+        if (!panel.length) return;
+        var pricing     = panel.data('pricing');
+        var baseFee     = parseFloat(panel.data('base_fee'));
+        var originalFee = parseFloat(panel.data('original_fee'));
+
+        var primaryId = parseInt($('#msc-edit-primary-class').val()) || 0;
+        if (!primaryId) {
+            $('#msc-edit-fee-summary').html('<span style="color:#888">Select a primary class to see the fee.</span>');
+            $('#msc-edit-pop-wrap').hide();
+            $('#msc-edit-save-btn').prop('disabled', false);
+            return;
+        }
+
+        var additionalIds = [];
+        $('.msc-edit-additional:checked:not(:disabled)').each(function() {
+            additionalIds.push(parseInt($(this).val()));
+        });
+
+        var newFee = calcEntryFee(baseFee, pricing, primaryId, additionalIds);
+        var diff   = Math.round((newFee - originalFee) * 100) / 100;
+
+        var diffHtml = diff > 0.005
+            ? '<span style="color:#d63638;font-weight:600">+ R ' + diff.toFixed(2) + ' owed — upload proof of payment below</span>'
+            : '<span style="color:#27ae60;font-weight:600">No additional payment required</span>';
+
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<tr><td style="padding:4px 8px;color:#888">Previously paid</td><td style="padding:4px 8px;text-align:right">R ' + originalFee.toFixed(2) + '</td></tr>'
+            + '<tr><td style="padding:4px 8px;color:#888">New total</td><td style="padding:4px 8px;text-align:right">R ' + newFee.toFixed(2) + '</td></tr>'
+            + '<tr style="border-top:1px solid #eee"><td style="padding:6px 8px">Difference</td><td style="padding:6px 8px;text-align:right">' + diffHtml + '</td></tr>'
+            + '</table>';
+        $('#msc-edit-fee-summary').html(html);
+
+        if (diff > 0.005) {
+            $('#msc-edit-pop-wrap').show();
+        } else {
+            $('#msc-edit-pop-wrap').hide();
+            $('#msc-edit-pop-file').val('');
+        }
+
+        if (diff < -0.005) {
+            $('#msc-edit-msg').text('You cannot reduce your entry below the amount already paid.').css('color', '#d63638').show();
+            $('#msc-edit-save-btn').prop('disabled', true);
+        } else {
+            $('#msc-edit-msg').hide();
+            $('#msc-edit-save-btn').prop('disabled', false);
+        }
+    }
+
+    function renderEntryEditPanel(card, data) {
+        var reg         = data.reg;
+        var classes     = data.event_classes;
+        var pricing     = data.pricing;
+        var baseFee     = parseFloat(data.base_fee);
+        var originalFee = parseFloat(reg.entry_fee);
+
+        var currentPrimary    = 0;
+        var currentAdditional = [];
+        for (var i = 0; i < data.current_classes.length; i++) {
+            var cc = data.current_classes[i];
+            if (cc.is_primary) currentPrimary = cc.class_id;
+            else currentAdditional.push(cc.class_id);
+        }
+
+        var primaryOptions = '';
+        for (var i = 0; i < classes.length; i++) {
+            var cls = classes[i];
+            primaryOptions += '<option value="' + cls.id + '"' + (cls.id === currentPrimary ? ' selected' : '') + '>'
+                + $('<span>').text(cls.name).html() + '</option>';
+        }
+
+        var addCheckboxes = '';
+        for (var i = 0; i < classes.length; i++) {
+            var cls = classes[i];
+            var p   = pricing[cls.id];
+            if (p && p.primary_only == 1) continue;
+            var isCurrentPrimary = (cls.id === currentPrimary);
+            var chk = (currentAdditional.indexOf(cls.id) !== -1) ? ' checked' : '';
+            var dis = isCurrentPrimary ? ' disabled' : '';
+            addCheckboxes += '<label style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+                + '<input type="checkbox" class="msc-edit-additional" value="' + cls.id + '"' + chk + dis + '> '
+                + $('<span>').text(cls.name).html()
+                + '</label>';
+        }
+        if (!addCheckboxes) {
+            addCheckboxes = '<p style="color:#888;font-size:13px;margin:0">No additional classes available.</p>';
+        }
+
+        var panel = $('<div class="msc-entry-edit-panel" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:8px;padding:20px;margin-top:10px"></div>');
+        panel.html(
+            '<h4 style="margin:0 0 16px">Edit Entry: ' + $('<span>').text(reg.event_name).html() + '</h4>'
+            + '<div class="msc-form-grid" style="margin-bottom:16px">'
+            + '  <div class="msc-field">'
+            + '    <label style="font-weight:600">Primary Class</label>'
+            + '    <select id="msc-edit-primary-class" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;margin-top:4px">'
+            + primaryOptions
+            + '    </select>'
+            + '  </div>'
+            + '</div>'
+            + '<div class="msc-field" style="margin-bottom:16px">'
+            + '  <label style="font-weight:600">Additional Classes <span style="font-weight:normal;color:#888">(optional)</span></label>'
+            + '  <div id="msc-edit-additional-classes" style="margin-top:8px">' + addCheckboxes + '</div>'
+            + '</div>'
+            + '<div id="msc-edit-fee-summary" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px;margin-bottom:16px"></div>'
+            + '<div id="msc-edit-pop-wrap" style="display:none;margin-bottom:16px">'
+            + '  <label style="font-weight:600">Proof of Payment for amount owed <span style="color:#d63638">*</span></label>'
+            + '  <input type="file" id="msc-edit-pop-file" accept="application/pdf" style="display:block;margin-top:6px">'
+            + '  <p style="font-size:12px;color:#888;margin:4px 0 0">PDF only, max 5MB.</p>'
+            + '</div>'
+            + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+            + '  <button type="button" id="msc-edit-save-btn" class="msc-btn" data-reg="' + reg.id + '">Save Changes</button>'
+            + '  <button type="button" id="msc-edit-cancel-btn" class="msc-btn msc-btn-outline">Cancel</button>'
+            + '</div>'
+        );
+
+        panel.data('pricing',      pricing);
+        panel.data('base_fee',     baseFee);
+        panel.data('original_fee', originalFee);
+
+        card.after(panel);
+        updateEditFeeSummary();
+
+        // Disable the current primary class in additional list on primary dropdown change
+        panel.on('change', '#msc-edit-primary-class', function() {
+            var pv = parseInt($(this).val());
+            $('.msc-edit-additional').each(function() {
+                var isP = (parseInt($(this).val()) === pv);
+                if (isP) { $(this).prop('checked', false).prop('disabled', true); }
+                else     { $(this).prop('disabled', false); }
+            });
+            updateEditFeeSummary();
+        });
+        panel.on('change', '.msc-edit-additional', function() {
+            updateEditFeeSummary();
+        });
+    }
 
     // ─── Photo preview helper ─────────────────────────────────────────
     function setPhotoPreview(file) {

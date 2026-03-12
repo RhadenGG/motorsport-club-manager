@@ -1,13 +1,13 @@
 # Motorsport Club Manager
 
-A comprehensive WordPress plugin for managing motorsport events, vehicle garages, registrations with electronic signatures, race results, and PDF/email notifications.
+A comprehensive WordPress plugin for managing motorsport events, vehicle garages, event entries with electronic signatures, race results, and PDF/email notifications.
 
 ---
 
 ## 🚀 Key Features
 
 ### Event & Dynamic Pricing (v0.6.x)
-- **Base Admin Fee:** Optional fixed fee added to every registration.
+- **Base Admin Fee:** Optional fixed fee added to every entry.
 - **Dynamic "From" Pricing:** Automatically calculates the lowest entry fee (Base + cheapest Primary Class) for display.
 - **Pricing Sets:** Named fee schedules (e.g., "2026 Season") with:
   - **Primary Fee:** Cost when a class is the main entry.
@@ -19,17 +19,24 @@ A comprehensive WordPress plugin for managing motorsport events, vehicle garages
 
 ### Member Experience
 - **Frontend Garage:** Drag-and-drop vehicle management with photos.
-- **Smart Registration:** 
+- **Smart Entry Form:**
   - Real-time fee calculation and multi-class selection.
   - Electronic signatures (drawn or typed) via `signature_pad`.
   - Automatic minor detection with mandatory parent/guardian fields.
   - Pre-filled emergency contact and pit crew details from profile.
-- **Proof of Payment:** Required PDF upload for paid events; emailed to admins and deleted from server for security.
+- **Entry Editing:** Entrants can add or remove classes after submitting. Rules enforced: no downgrade below original paid amount; same total saves immediately; higher total prompts a top-up PoP upload for the delta. Per-class vehicle assignments are preserved on edit.
+- **Proof of Payment:** Required PDF upload for paid events; stored persistently and viewable by event staff in both wp-admin and the frontend dashboard.
+- **Document Access:** Signed indemnity PDFs and PoPs are accessible to entrants, event creators, and admins at any time via view buttons in admin and the staff dashboard.
 - **Custom Auth:** Styled login, registration (with email verification), and password-set pages. CAPTCHA/Turnstile compatible.
 
+### Event Cards & Dashboard UX (v0.7.0)
+- **Smart CTAs:** Event cards show "Enter Now" for unentered events and "View your entry" for already-entered users.
+- **Entered Class Display:** Entry cards in "My Entries" and the event page "already entered" notice both show the class names the entrant is entered in.
+- **Role Display:** The member profile card shows the user's actual WordPress role (subscriber → Guest, msc_event_creator → Event Creator, etc.).
+
 ### Management & Results
-- **Event Dashboard:** Unified staff interface for managing Events, Registrations, Results, and Participants.
-- **Race Results:** 
+- **Event Dashboard:** Unified staff interface for managing Events, Entries, Results, and Participants.
+- **Race Results:**
   - Class-specific results with podium displays (Top 3 finishers).
   - Manual driver entry for walk-ins.
   - Status tracking (Finished, DNF, DNS, DSQ) and lap time recording.
@@ -40,7 +47,7 @@ A comprehensive WordPress plugin for managing motorsport events, vehicle garages
 
 ## 🛠 Technical Stack
 - **Core:** PHP / WordPress Plugin API (No external PHP dependencies).
-- **Storage:** Custom tables for Registrations, Results, and Pricing Sets.
+- **Storage:** Custom tables for Entries, Results, and Pricing Sets.
 - **Frontend:** jQuery + Vanilla CSS (prefixed `msc-`).
 - **Security:** Nonce verification, strict ownership checks, server-side validation, and administrator-only `wp-admin` access.
 
@@ -74,7 +81,7 @@ A comprehensive WordPress plugin for managing motorsport events, vehicle garages
 |---|---|
 | `motorsport-club.php` | Entry point & constants |
 | `includes/class-pricing.php` | Dynamic fee logic & Pricing Sets |
-| `includes/class-registration.php`| AJAX flow & validation |
+| `includes/class-registration.php`| AJAX flow, validation & entry editing |
 | `includes/class-results.php` | Race standings & podiums |
 | `includes/class-admin-events.php`| Menu consolidation & Event UI |
 | `includes/class-indemnity.php` | PDF & Email logic |

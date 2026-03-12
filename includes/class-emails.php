@@ -96,14 +96,20 @@ class MSC_Emails {
         $event_name   = esc_html( $reg->event_name );
         $vehicle_name = esc_html( $reg->vehicle_name );
 
-        $class_name   = '—';
+        $class_name = '—';
         if ( ! empty( $reg->class_id ) ) {
             $term = get_term( $reg->class_id, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
                 $class_name = $term->name;
             }
         }
-        $class_name   = esc_html( $class_name );
+        if ( $class_name === '—' ) {
+            $names = MSC_Registration::get_class_names_for_registration( $reg_id );
+            if ( ! empty( $names ) ) {
+                $class_name = implode( ', ', $names );
+            }
+        }
+        $class_name = esc_html( $class_name );
 
         $site_name    = get_bloginfo( 'name' );
         $account_url  = esc_url( msc_get_account_url( 'registrations' ) );
@@ -115,7 +121,7 @@ class MSC_Emails {
 
         $body = "
         <p>Hi {$user_name},</p>
-        <p>Thank you for registering for <strong>{$event_name}</strong>.</p>
+        <p>Thank you for entering <strong>{$event_name}</strong>.</p>
         <table style='width:100%;border-collapse:collapse;margin:20px 0;background:#fdfdfd'>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Event</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$event_name}</td></tr>
             <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Date</td><td style='padding:10px;border:1px solid #f1f1f1'>{$date_str}</td></tr>
@@ -133,7 +139,7 @@ class MSC_Emails {
         // Participant confirmation only — no attachments.
         // Admin/creator notification with signed indemnity + PoP is handled by
         // MSC_Indemnity::email_signed_pdf() so they receive a single combined email.
-        self::send_mail( $reg->user_email, "Registration Received - {$reg->event_name}", self::wrap("Registration Received", $body), $headers );
+        self::send_mail( $reg->user_email, "Entry Received - {$reg->event_name}", self::wrap("Entry Received", $body), $headers );
     }
 
     public static function send_confirmation( $reg_id ) {
@@ -154,5 +160,45 @@ class MSC_Emails {
 
         $headers = self::get_headers();
         self::send_mail( $reg->user_email, "Entry Confirmed - {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
+    }
+
+    public static function send_rejection( $reg_id ) {
+        $reg = self::get_reg( $reg_id );
+        if ( ! $reg || ! $reg->user_email ) return;
+
+        $user_name   = esc_html( $reg->user_name );
+        $event_name  = esc_html( $reg->event_name );
+        $site_name   = get_bloginfo( 'name' );
+        $account_url = esc_url( msc_get_account_url( 'registrations' ) );
+
+        $body = "
+        <p>Hi {$user_name},</p>
+        <p>We regret to inform you that your entry for <strong>{$event_name}</strong> has been <strong style='color:#842029'>rejected</strong>.</p>
+        <p>If you believe this is an error or would like more information, please contact the event organiser.</p>
+        <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
+        <p>Regards,<br>" . esc_html( $site_name ) . "</p>";
+
+        $headers = self::get_headers();
+        self::send_mail( $reg->user_email, "Entry Not Accepted - {$reg->event_name}", self::wrap( 'Entry Not Accepted', $body ), $headers );
+    }
+
+    public static function send_cancellation_by_admin( $reg_id ) {
+        $reg = self::get_reg( $reg_id );
+        if ( ! $reg || ! $reg->user_email ) return;
+
+        $user_name   = esc_html( $reg->user_name );
+        $event_name  = esc_html( $reg->event_name );
+        $site_name   = get_bloginfo( 'name' );
+        $account_url = esc_url( msc_get_account_url( 'registrations' ) );
+
+        $body = "
+        <p>Hi {$user_name},</p>
+        <p>Your entry for <strong>{$event_name}</strong> has been <strong style='color:#41464b'>cancelled</strong> by the event organiser.</p>
+        <p>If you have any questions, please contact the organiser directly.</p>
+        <p style='text-align:center;margin:30px 0'><a href='{$account_url}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>View My Registrations</a></p>
+        <p>Regards,<br>" . esc_html( $site_name ) . "</p>";
+
+        $headers = self::get_headers();
+        self::send_mail( $reg->user_email, "Entry Cancelled - {$reg->event_name}", self::wrap( 'Entry Cancelled', $body ), $headers );
     }
 }
