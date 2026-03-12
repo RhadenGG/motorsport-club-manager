@@ -643,9 +643,13 @@ class MSC_Registration {
             $new_pop_file_id = $attachment_id;
         }
 
-        // Persist updated fee (and new PoP if supplied)
+        // Persist updated fee, PoP, and reset to pending if previously confirmed
         $update_data    = array( 'entry_fee' => $new_total );
         $update_formats = array( '%f' );
+        if ( $reg->status === 'confirmed' ) {
+            $update_data['status'] = 'pending';
+            $update_formats[]      = '%s';
+        }
         if ( $new_pop_file_id !== null ) {
             $update_data['pop_file_id'] = $new_pop_file_id;
             $update_formats[]           = '%d';
@@ -702,7 +706,10 @@ class MSC_Registration {
             );
         }
 
-        wp_send_json_success( array( 'message' => 'Your entry has been updated successfully.' ) );
+        $msg = ( $reg->status === 'confirmed' )
+            ? 'Your entry has been updated and resubmitted for approval.'
+            : 'Your entry has been updated successfully.';
+        wp_send_json_success( array( 'message' => $msg ) );
     }
 
     /** Check if user is already registered for event */
