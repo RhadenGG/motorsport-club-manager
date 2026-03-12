@@ -70,13 +70,30 @@ jQuery(function ($) {
                 msc.allVehicles.forEach(function(v) { availableVtypes[v.type] = true; });
 
                 var $sel = $('#msc-primary-class-select');
-                $sel.find('option:not(:first)').remove();
+                $sel.find('option:not(:first), optgroup').remove();
+
+                // Group compatible classes by vtype
+                var groups = {}, groupOrder = [];
                 classes.forEach(function(cls) {
-                    var compatible = !cls.vtype || availableVtypes[cls.vtype];
-                    if (compatible) {
-                        $sel.append($('<option>').val(cls.id).text(cls.name));
-                    }
+                    if (cls.vtype && !availableVtypes[cls.vtype]) return;
+                    var g = cls.vtype || '';
+                    if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+                    groups[g].push(cls);
                 });
+
+                if (groupOrder.length > 1) {
+                    groupOrder.forEach(function(g) {
+                        var $grp = $('<optgroup>').attr('label', g || 'Other');
+                        groups[g].forEach(function(cls) {
+                            $grp.append($('<option>').val(cls.id).text(cls.name));
+                        });
+                        $sel.append($grp);
+                    });
+                } else {
+                    (groups[groupOrder[0]] || []).forEach(function(cls) {
+                        $sel.append($('<option>').val(cls.id).text(cls.name));
+                    });
+                }
             };
 
             // Helper: get vehicles compatible with a given class vtype
@@ -155,13 +172,28 @@ jQuery(function ($) {
                 // Get selected class IDs (primary + existing additional rows)
                 var usedIds = msc.getSelectedClassIds();
 
+                // Group non-primary-only classes by vtype
+                var addGroups = {}, addGroupOrder = [];
                 classes.forEach(function(cls) {
-                    if (cls.primary_only) return; // Skip primary-only classes
-                    var isUsed = usedIds.indexOf(cls.id) !== -1;
-                    $classSel.append(
-                        $('<option>').val(cls.id).text(cls.name).prop('disabled', isUsed)
-                    );
+                    if (cls.primary_only) return;
+                    var g = cls.vtype || '';
+                    if (!addGroups[g]) { addGroups[g] = []; addGroupOrder.push(g); }
+                    addGroups[g].push(cls);
                 });
+
+                if (addGroupOrder.length > 1) {
+                    addGroupOrder.forEach(function(g) {
+                        var $grp = $('<optgroup>').attr('label', g || 'Other');
+                        addGroups[g].forEach(function(cls) {
+                            $grp.append($('<option>').val(cls.id).text(cls.name).prop('disabled', usedIds.indexOf(cls.id) !== -1));
+                        });
+                        $classSel.append($grp);
+                    });
+                } else {
+                    (addGroups[addGroupOrder[0]] || []).forEach(function(cls) {
+                        $classSel.append($('<option>').val(cls.id).text(cls.name).prop('disabled', usedIds.indexOf(cls.id) !== -1));
+                    });
+                }
 
                 var $vehicleSel = $('<select>').addClass('msc-add-vehicle-sel').css('flex', '1').attr('data-row', rowId);
                 $vehicleSel.append($('<option>').val('').text('— Select vehicle —'));
@@ -1134,26 +1166,42 @@ jQuery(function ($) {
             return html;
         }
 
-        // Primary class options
+        // Group classes by vtype for organised dropdowns
+        var editGroups = {}, editGroupOrder = [];
+        classes.forEach(function(cls) {
+            var g = cls.vtype || '';
+            if (!editGroups[g]) { editGroups[g] = []; editGroupOrder.push(g); }
+            editGroups[g].push(cls);
+        });
+
+        // Primary class options (grouped by vtype when multiple types present)
         var primaryOptions = '';
-        for (var i = 0; i < classes.length; i++) {
-            var cls = classes[i];
-            primaryOptions += '<option value="' + cls.id + '"' + (cls.id === currentPrimary ? ' selected' : '') + '>'
-                + $('<span>').text(cls.name).html() + '</option>';
+        if (editGroupOrder.length > 1) {
+            editGroupOrder.forEach(function(g) {
+                primaryOptions += '<optgroup label="' + $('<span>').text(g || 'Other').html() + '">';
+                editGroups[g].forEach(function(cls) {
+                    primaryOptions += '<option value="' + cls.id + '"' + (cls.id === currentPrimary ? ' selected' : '') + '>'
+                        + $('<span>').text(cls.name).html() + '</option>';
+                });
+                primaryOptions += '</optgroup>';
+            });
+        } else {
+            classes.forEach(function(cls) {
+                primaryOptions += '<option value="' + cls.id + '"' + (cls.id === currentPrimary ? ' selected' : '') + '>'
+                    + $('<span>').text(cls.name).html() + '</option>';
+            });
         }
 
-        // Additional classes — each with an inline vehicle select shown when checked
-        var addRows = '';
-        for (var i = 0; i < classes.length; i++) {
-            var cls = classes[i];
+        // Helper: build one checkbox row for an additional class
+        function buildAddRow(cls) {
             var p   = pricing[cls.id];
-            if (p && p.primary_only == 1) continue;
+            if (p && p.primary_only == 1) return '';
             var isCurrentPrimary = (cls.id === currentPrimary);
             var chk     = (currentAdditional.indexOf(cls.id) !== -1) ? ' checked' : '';
             var dis     = isCurrentPrimary ? ' disabled' : '';
             var selVeh  = currentVehicleMap[cls.id] || (vehicles.length ? vehicles[0].id : 0);
             var vehShow = (!isCurrentPrimary && currentAdditional.indexOf(cls.id) !== -1) ? '' : 'display:none;';
-            addRows += '<div class="msc-edit-add-row" data-class="' + cls.id + '" style="margin-bottom:8px">'
+            return '<div class="msc-edit-add-row" data-class="' + cls.id + '" style="margin-bottom:8px">'
                 + '  <label style="display:flex;gap:8px;align-items:center;cursor:pointer;margin:0">'
                 + '    <input type="checkbox" class="msc-edit-additional" value="' + cls.id + '"' + chk + dis + '>'
                 + '    <span>' + $('<span>').text(cls.name).html() + '</span>'
@@ -1167,6 +1215,21 @@ jQuery(function ($) {
                 + '    </div>'
                 + '  </div>'
                 + '</div>';
+        }
+
+        // Additional classes — grouped by vtype when multiple types present
+        var addRows = '';
+        if (editGroupOrder.length > 1) {
+            editGroupOrder.forEach(function(g) {
+                var groupRows = '';
+                editGroups[g].forEach(function(cls) { groupRows += buildAddRow(cls); });
+                if (groupRows) {
+                    addRows += '<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px">'
+                        + $('<span>').text(g || 'Other').html() + '</div>' + groupRows;
+                }
+            });
+        } else {
+            classes.forEach(function(cls) { addRows += buildAddRow(cls); });
         }
         if (!addRows) {
             addRows = '<p style="color:#888;font-size:13px;margin:0">No additional classes available.</p>';

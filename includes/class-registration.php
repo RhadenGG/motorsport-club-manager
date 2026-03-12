@@ -10,6 +10,66 @@ class MSC_Registration {
         add_action( 'wp_ajax_msc_cancel_registration',        array( __CLASS__, 'ajax_cancel' ) );
         add_action( 'wp_ajax_msc_get_entry_edit_data',        array( __CLASS__, 'ajax_get_entry_edit_data' ) );
         add_action( 'wp_ajax_msc_update_entry_classes',       array( __CLASS__, 'ajax_update_entry_classes' ) );
+        add_action( 'template_redirect',                      array( __CLASS__, 'maybe_serve_pop_file' ) );
+    }
+
+    /** Redirect media uploads to the protected msc-pop subdirectory */
+    public static function pop_upload_dir( $dir ) {
+        return array_merge( $dir, array(
+            'path'   => $dir['basedir'] . '/msc-pop',
+            'url'    => $dir['baseurl'] . '/msc-pop',
+            'subdir' => '/msc-pop',
+        ) );
+    }
+
+    /** Serve a PoP file with access control via ?msc_pop_file={reg_id} */
+    public static function maybe_serve_pop_file() {
+        if ( ! isset( $_GET['msc_pop_file'] ) ) return;
+
+        $reg_id = absint( $_GET['msc_pop_file'] );
+        if ( ! $reg_id ) wp_die( 'Invalid entry ID.' );
+
+        if ( ! is_user_logged_in() ) {
+            auth_redirect();
+            exit;
+        }
+
+        global $wpdb;
+        $reg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT r.pop_file_id, r.user_id, p.post_author as event_author
+             FROM {$wpdb->prefix}msc_registrations r
+             LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
+             WHERE r.id = %d",
+            $reg_id
+        ) );
+
+        if ( ! $reg || ! $reg->pop_file_id ) wp_die( 'File not found.' );
+
+        $current_user_id = get_current_user_id();
+        $is_owner     = ( (int) $reg->user_id === $current_user_id );
+        $is_admin     = current_user_can( 'manage_options' );
+        $is_organizer = current_user_can( 'msc_view_participants' );
+
+        if ( ! $is_owner && ! $is_admin && ! $is_organizer ) {
+            wp_die( 'You do not have permission to view this file.' );
+        }
+
+        $file_path = get_attached_file( (int) $reg->pop_file_id );
+        if ( ! $file_path || ! file_exists( $file_path ) ) {
+            wp_die( 'File not found on server.' );
+        }
+
+        $mime         = wp_check_filetype( $file_path );
+        $content_type = $mime['type'] ?: 'application/octet-stream';
+
+        if ( ob_get_length() ) ob_end_clean();
+        header( 'Content-Type: ' . $content_type );
+        header( 'Content-Disposition: inline; filename="' . basename( $file_path ) . '"' );
+        header( 'Cache-Control: private, no-cache, no-store, must-revalidate' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+        readfile( $file_path );
+        exit;
     }
 
     /**
@@ -265,7 +325,9 @@ class MSC_Registration {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
+            add_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
             $attachment_id = media_handle_upload( 'pop_file', 0 );
+            remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
             if ( is_wp_error( $attachment_id ) ) {
                 wp_send_json_error( array( 'message' => 'Failed to upload Proof of Payment: ' . $attachment_id->get_error_message() ) );
             }
@@ -459,7 +521,11 @@ class MSC_Registration {
         foreach ( $allowed_ids as $cid ) {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
-                $event_classes[] = array( 'id' => $cid, 'name' => $term->name );
+                $event_classes[] = array(
+                    'id'    => $cid,
+                    'name'  => $term->name,
+                    'vtype' => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
+                );
             }
         }
 
@@ -568,7 +634,9 @@ class MSC_Registration {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
+            add_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
             $attachment_id = media_handle_upload( 'pop_file', 0 );
+            remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
             if ( is_wp_error( $attachment_id ) ) {
                 wp_send_json_error( array( 'message' => 'Failed to upload proof of payment: ' . $attachment_id->get_error_message() ) );
             }

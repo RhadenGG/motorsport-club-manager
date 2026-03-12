@@ -525,12 +525,8 @@ class MSC_Admin_Events {
         <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
         <td><?php
             if ( $r->pop_file_id ) {
-                $url = wp_get_attachment_url( $r->pop_file_id );
-                if ( $url ) {
-                    echo '<a href="' . esc_url($url) . '" target="_blank" class="button button-small">📄 View PoP</a>';
-                } else {
-                    echo '<span style="color:#888;font-size:12px">File removed</span>';
-                }
+                $url = add_query_arg( 'msc_pop_file', $r->id, home_url() );
+                echo '<a href="' . esc_url($url) . '" target="_blank" class="button button-small">📄 View PoP</a>';
             } else {
                 echo '<span style="color:#aaa">—</span>';
             }

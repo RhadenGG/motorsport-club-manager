@@ -109,7 +109,7 @@ class MSC_Frontend_Dashboard {
             <?php
             $tabs = array(
                 'events'          => 'Events',
-                'registrations'   => 'Registrations',
+                'registrations'   => 'Entries',
                 'results'         => 'Results',
                 'participants'    => 'Participants',
                 'vehicle-classes' => 'Vehicle Classes',
@@ -836,11 +836,10 @@ class MSC_Frontend_Dashboard {
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View signed indemnity PDF">Indemnity</a>
                         <?php endif; ?>
                         <?php if ( ! empty( $r->pop_file_id ) ) :
-                            $pop_url = wp_get_attachment_url( (int) $r->pop_file_id );
-                            if ( $pop_url ) : ?>
+                            $pop_url = add_query_arg( 'msc_pop_file', $r->id, home_url() ); ?>
                         <a href="<?php echo esc_url( $pop_url ); ?>"
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View proof of payment">PoP</a>
-                        <?php endif; endif; ?>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">

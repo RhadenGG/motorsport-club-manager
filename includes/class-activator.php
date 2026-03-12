@@ -96,6 +96,9 @@ class MSC_Activator {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_pricing_set_classes ADD COLUMN is_primary_only tinyint(1) NOT NULL DEFAULT 0" );
         }
 
+        // Create protected upload directory for PoP files
+        self::setup_pop_directory();
+
         // Results table
         MSC_Results::create_table();
  
@@ -144,6 +147,19 @@ class MSC_Activator {
         if ( $admin ) {
             $admin->add_cap( 'msc_view_participants' );
         }
+    }
+
+    /** Create and protect the msc-pop uploads subdirectory */
+    private static function setup_pop_directory() {
+        $upload_dir = wp_upload_dir();
+        $pop_dir    = $upload_dir['basedir'] . '/msc-pop';
+
+        if ( ! file_exists( $pop_dir ) ) {
+            wp_mkdir_p( $pop_dir );
+        }
+
+        // Always (re)write .htaccess to ensure direct access is blocked on Apache
+        file_put_contents( $pop_dir . '/.htaccess', "deny from all\n" );
     }
 
     public static function deactivate() {
