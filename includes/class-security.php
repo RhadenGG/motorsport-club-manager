@@ -242,7 +242,7 @@ class MSC_Security {
         update_user_meta( $user->ID, 'msc_onboarding_prompted', 1 );
 
         // Only redirect if required profile fields are missing
-        $required = array( 'msc_birthday', 'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_gender' );
+        $required = array( 'msc_birthday', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_gender' );
         foreach ( $required as $key ) {
             if ( ! get_user_meta( $user->ID, $key, true ) ) {
                 return add_query_arg( 'msc_onboarding', '1', msc_get_account_url( 'profile' ) );
@@ -261,13 +261,6 @@ class MSC_Security {
                 <td>
                     <input type="date" name="msc_birthday" id="msc_birthday" value="<?php echo esc_attr( get_the_author_meta( 'msc_birthday', $user->ID ) ); ?>" class="regular-text" />
                     <p class="description">Required for age verification and indemnity forms.</p>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="msc_comp_number">Competition Number</label></th>
-                <td>
-                    <input type="text" name="msc_comp_number" id="msc_comp_number" value="<?php echo esc_attr( get_user_meta( $user->ID, 'msc_comp_number', true ) ); ?>" class="regular-text" />
-                    <p class="description">Motorcycle / Car competition number.</p>
                 </td>
             </tr>
             <tr>
@@ -316,7 +309,7 @@ class MSC_Security {
 
     public static function save_birthdate_field( $user_id ) {
         if ( ! current_user_can( 'edit_user', $user_id ) ) return false;
-        $text_fields = array( 'msc_birthday', 'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_pit_crew_1', 'msc_pit_crew_2' );
+        $text_fields = array( 'msc_birthday', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_pit_crew_1', 'msc_pit_crew_2' );
         foreach ( $text_fields as $key ) {
             if ( isset( $_POST[ $key ] ) ) {
                 update_user_meta( $user_id, $key, sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );

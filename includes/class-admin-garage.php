@@ -25,6 +25,7 @@ class MSC_Admin_Garage {
             'color'         => get_post_meta( $post->ID, '_msc_color', true ),
             'type'          => get_post_meta( $post->ID, '_msc_type', true ),
             'reg_number'    => get_post_meta( $post->ID, '_msc_reg_number', true ),
+            'comp_number'   => get_post_meta( $post->ID, '_msc_comp_number', true ),
             'notes'         => get_post_meta( $post->ID, '_msc_notes', true ),
         );
         $types = MSC_Taxonomies::get_vehicle_types();
@@ -55,8 +56,10 @@ class MSC_Admin_Garage {
                 <td><input type="text" name="msc_reg_number" value="<?php echo esc_attr($d['reg_number']); ?>" class="regular-text"></td>
             </tr>
             <tr>
+                <th><label>Competition Number</label></th>
+                <td><input type="text" name="msc_comp_number" value="<?php echo esc_attr($d['comp_number']); ?>" class="regular-text" placeholder="e.g. 42"></td>
                 <th><label>Engine Size</label></th>
-                <td colspan="3">
+                <td>
                     <input type="text" name="msc_engine_size" value="<?php echo esc_attr( get_post_meta( $post->ID, '_msc_engine_size', true ) ); ?>" class="regular-text" placeholder="e.g. 1600cc, 2.0L Turbo">
                     <p class="description">Displacement or engine specification — used to determine eligible classes at registration time.</p>
                 </td>
@@ -74,7 +77,7 @@ class MSC_Admin_Garage {
         if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;
         if ( ! current_user_can('edit_post',$post_id) ) return;
 
-        foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_reg_number') as $f ) {
+        foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_reg_number','msc_comp_number') as $f ) {
             if ( isset($_POST[$f]) ) update_post_meta($post_id,'_'.$f, sanitize_text_field(wp_unslash($_POST[$f])));
         }
         if ( isset($_POST['msc_notes']) ) {

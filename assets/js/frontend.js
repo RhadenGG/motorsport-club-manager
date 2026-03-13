@@ -10,12 +10,13 @@ jQuery(function ($) {
         parentSigPad:   null,
         sigType:        'draw',
         parentSigType:  'draw',
-        totalFee:       0,
-        allVehicles:    [],     // all eligible vehicles from server
-        primaryClassId: null,
-        primaryVehicleId: null,
-        additionalRows: [],     // array of {classId, vehicleId, rowId}
-        rowCounter:     0,
+        totalFee:            0,
+        allVehicles:         [],  // all eligible vehicles from server
+        primaryClassId:      null,
+        primaryVehicleId:    null,
+        additionalRows:      [],  // array of {classId, vehicleId, rowId}
+        rowCounter:          0,
+        vehicleCompNumbers:  {},  // vehicle_id => comp_number (stored or user-entered)
 
         init: function () {
             msc.eventId = $('#msc-reg-wrap').data('event');
@@ -125,6 +126,7 @@ jQuery(function ($) {
                 msc.primaryClassId = classId ? parseInt(classId) : null;
                 msc.primaryVehicleId = null;
                 $('#msc-primary-vehicle-select').val('');
+                $('#msc-primary-comp-wrap').hide();
                 if (!classId) {
                     $('#msc-primary-vehicle-wrap').hide();
                     $('#msc-additional-classes-wrap').hide();
@@ -143,10 +145,16 @@ jQuery(function ($) {
             $('#msc-primary-vehicle-select').on('change', function() {
                 var vid = $(this).val();
                 msc.primaryVehicleId = vid ? parseInt(vid) : null;
+                // Always show comp number field, pre-filled with stored value if any
                 if (msc.primaryVehicleId) {
+                    var veh = msc.allVehicles.find(function(v) { return v.id == msc.primaryVehicleId; });
+                    var stored = veh ? (veh.comp_number || '') : '';
+                    msc.vehicleCompNumbers[msc.primaryVehicleId] = stored;
+                    $('#msc-primary-comp-input').val(stored).attr('data-vehicle-id', msc.primaryVehicleId);
+                    $('#msc-primary-comp-wrap').show();
                     // Show additional classes wrap only if there are other classes that ARE NOT primary_only
-                    var canAddMore = classes.some(function(cls) { 
-                        return !cls.primary_only && cls.id != msc.primaryClassId; 
+                    var canAddMore = classes.some(function(cls) {
+                        return !cls.primary_only && cls.id != msc.primaryClassId;
                     });
                     if (canAddMore) {
                         $('#msc-additional-classes-wrap').show();
@@ -154,6 +162,7 @@ jQuery(function ($) {
                         $('#msc-additional-classes-wrap').hide();
                     }
                 } else {
+                    $('#msc-primary-comp-wrap').hide();
                     $('#msc-additional-classes-wrap').hide();
                 }
                 msc.updateFees();
@@ -231,6 +240,27 @@ jQuery(function ($) {
                 var vid   = $(this).val();
                 var row   = msc.additionalRows.find(function(r) { return r.rowId === rowId; });
                 if (row) row.vehicleId = vid ? parseInt(vid) : null;
+                // Always show comp number field for this row, pre-filled with stored value if any
+                var $row = $('#msc-add-row-' + rowId);
+                var $cn  = $row.find('.msc-add-comp-notice');
+                if (row && row.vehicleId) {
+                    var veh    = msc.allVehicles.find(function(v) { return v.id == row.vehicleId; });
+                    var stored = veh ? (veh.comp_number || '') : '';
+                    msc.vehicleCompNumbers[row.vehicleId] = stored;
+                    if (!$cn.length) {
+                        $cn = $('<div>').addClass('msc-add-comp-notice').css({marginTop:'6px', width:'100%'});
+                        var $lbl = $('<label>').css('font-weight','600').html('Competition Number <span class="msc-required">*</span>');
+                        var $inp = $('<input>').attr('type','text').attr('placeholder','e.g. 42')
+                            .addClass('msc-comp-input')
+                            .css({maxWidth:'200px', display:'block', marginTop:'4px'});
+                        $cn.append($lbl, $inp);
+                        $row.append($cn);
+                    }
+                    $cn.find('.msc-comp-input').attr('data-vehicle-id', row.vehicleId).val(stored);
+                    $cn.show();
+                } else {
+                    $cn.hide();
+                }
                 msc.updateFees();
                 msc.checkStep1();
             });
@@ -349,13 +379,14 @@ jQuery(function ($) {
                 msc.checkRegValidity();
             };
 
-            // Enable Next only when primary class + primary vehicle are selected
+            // Enable Next only when primary class + primary vehicle are selected, and all vehicles have comp numbers
             msc.checkStep1 = function() {
                 var ready = !!msc.primaryClassId && !!msc.primaryVehicleId;
-                // Also check all additional rows have both class and vehicle selected
+                if (ready && msc.primaryVehicleId && !msc.vehicleCompNumbers[msc.primaryVehicleId]) ready = false;
                 if (ready) {
                     msc.additionalRows.forEach(function(r) {
                         if (r.classId && !r.vehicleId) ready = false;
+                        if (r.vehicleId && !msc.vehicleCompNumbers[r.vehicleId]) ready = false;
                     });
                 }
                 $('#msc-step1-next').prop('disabled', !ready);
@@ -412,8 +443,16 @@ jQuery(function ($) {
                 $('#msc-reg-error').hide();
             });
 
+            // Comp number input handler — update store and re-check step 1
+            $(document).on('input', '.msc-comp-input', function() {
+                var vid = parseInt($(this).attr('data-vehicle-id'));
+                var val = $(this).val().trim();
+                if (vid) msc.vehicleCompNumbers[vid] = val;
+                msc.checkStep1();
+            });
+
             // Input listeners for validation
-            $(document).on('input change', '#msc-comp-number, #msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
+            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
                 msc.checkRegValidity();
             });
 
@@ -503,12 +542,16 @@ jQuery(function ($) {
                         fd.append('additional_vehicle_ids[]', r.vehicleId);
                     }
                 });
+                // Send any user-supplied comp numbers to be saved to the vehicle
+                Object.keys(msc.vehicleCompNumbers).forEach(function(vid) {
+                    var comp = msc.vehicleCompNumbers[vid];
+                    if (comp) fd.append('vehicle_comp_numbers[' + vid + ']', comp);
+                });
                 fd.append('indemnity_method', 'signed');
                 fd.append('indemnity_sig',    sig);
                 fd.append('parent_sig',       parentSig);
                 fd.append('is_minor',         isMinor ? 1 : 0);
                 fd.append('parent_name',      $('#msc-parent-name').val());
-                fd.append('comp_number',      $('#msc-comp-number').val());
                 fd.append('msa_licence',      $('#msc-msa-licence').val());
                 fd.append('emergency_name',   $('#msc-emergency-name').val());
                 fd.append('emergency_phone',  $('#msc-emergency-phone').val());
@@ -577,7 +620,6 @@ jQuery(function ($) {
             var isMinor = $('#msc-reg-wrap').data('minor') == 1;
 
             // Motorsport Details
-            if (!$('#msc-comp-number').val().trim()) isValid = false;
             if (!$('#msc-msa-licence').val().trim()) isValid = false;
 
             // Emergency Contacts
@@ -688,7 +730,8 @@ jQuery(function ($) {
                 fd.append('model',      $('#v_model').val());
                 fd.append('year',       $('#v_year').val());
                 fd.append('color',      $('#v_color').val());
-                fd.append('reg_number', $('#v_reg').val());
+                fd.append('reg_number',  $('#v_reg').val());
+                fd.append('comp_number', $('#v_comp_number').val());
                 fd.append('engine_size', $('#v_engine_size').val());
                 fd.append('notes',      $('#v_notes').val());
                 if (photoFile) fd.append('photo', photoFile, photoFile.name);
@@ -798,7 +841,8 @@ jQuery(function ($) {
                 fd.append('model',      $('.edit-v_model[data-id="' + id + '"]').val());
                 fd.append('year',       $('.edit-v_year[data-id="'  + id + '"]').val());
                 fd.append('color',      $('.edit-v_color[data-id="' + id + '"]').val());
-                fd.append('reg_number', $('.edit-v_reg[data-id="'   + id + '"]').val());
+                fd.append('reg_number',  $('.edit-v_reg[data-id="'          + id + '"]').val());
+                fd.append('comp_number', $('.edit-v_comp_number[data-id="' + id + '"]').val());
                 fd.append('engine_size', $('.edit-v_engine_size[data-id="' + id + '"]').val());
                 fd.append('notes',      $('.edit-v_notes[data-id="' + id + '"]').val());
                 if (editPhotoFiles[id]) fd.append('photo', editPhotoFiles[id], editPhotoFiles[id].name);
@@ -1029,7 +1073,6 @@ jQuery(function ($) {
                 fd.append('email',        $('#pe_email').val());
                 fd.append('msc_birthday', $('#pe_birthday').val());
                 fd.append('phone',        $('#pe_phone').val());
-                fd.append('msc_comp_number',        $('#pe_comp_number').val());
                 fd.append('msc_msa_licence',        $('#pe_msa_licence').val());
                 fd.append('msc_medical_aid',        $('#pe_medical_aid').val());
                 fd.append('msc_medical_aid_number', $('#pe_medical_aid_number').val());

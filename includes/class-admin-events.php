@@ -521,7 +521,10 @@ class MSC_Admin_Events {
         <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
         <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
-        <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_comp_number', true ) ?: '—' ) ?></td>
+        <td><?php
+            $comp_str = implode( ', ', array_filter( array_unique( array_column( $cv_pairs, 'comp_number' ) ) ) );
+            echo esc_html( $comp_str ?: '—' );
+        ?></td>
         <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>

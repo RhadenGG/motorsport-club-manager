@@ -147,12 +147,14 @@ class MSC_Indemnity {
         foreach ( $cv_pairs as $i => $pair ) {
             $label  = count( $cv_pairs ) > 1 ? 'Entry ' . ( $i + 1 ) : 'Entry';
             $vid    = $pair['vehicle_id'];
-            $make   = $vid ? get_post_meta( $vid, '_msc_make',       true ) : '';
-            $model  = $vid ? get_post_meta( $vid, '_msc_model',      true ) : '';
-            $year   = $vid ? get_post_meta( $vid, '_msc_year',       true ) : '';
-            $regn   = $vid ? get_post_meta( $vid, '_msc_reg_number', true ) : '';
+            $make   = $vid ? get_post_meta( $vid, '_msc_make',        true ) : '';
+            $model  = $vid ? get_post_meta( $vid, '_msc_model',       true ) : '';
+            $year   = $vid ? get_post_meta( $vid, '_msc_year',        true ) : '';
+            $regn   = $vid ? get_post_meta( $vid, '_msc_reg_number',  true ) : '';
+            $comp   = $pair['comp_number'];
             $v_desc = trim( "$year $make $model" ) ?: $pair['vehicle_name'];
             if ( $regn ) $v_desc .= ' (' . $regn . ')';
+            if ( $comp ) $v_desc .= ' — Comp #' . $comp;
             $rows[ $label ] = $pair['class_name'] . ' — ' . $v_desc;
         }
         if ( $sponsors ) {

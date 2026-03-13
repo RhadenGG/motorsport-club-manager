@@ -283,7 +283,6 @@ class MSC_Shortcodes {
 
         $required_fields = array(
             'msc_birthday'           => 'Date of Birth',
-            'msc_comp_number'        => 'Competition Number',
             'msc_msa_licence'        => 'MSA License Number',
             'msc_medical_aid'        => 'Medical Aid Provider',
             'msc_medical_aid_number' => 'Medical Aid Number',
@@ -384,6 +383,12 @@ class MSC_Shortcodes {
                                     <option value="">— Select a vehicle —</option>
                                 </select>
                             </div>
+                            <div id="msc-primary-comp-wrap" style="display:none;margin-top:10px">
+                                <div class="msc-field">
+                                    <label style="font-weight:600">Competition Number <span class="msc-required">*</span></label>
+                                    <input type="text" id="msc-primary-comp-input" class="msc-comp-input" data-vehicle-id="" placeholder="e.g. 42" style="max-width:200px">
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Additional classes (shown after primary class + vehicle are chosen) -->
@@ -429,15 +434,9 @@ class MSC_Shortcodes {
 
                     <div style="margin-bottom:20px;">
                         <p class="msc-reg-section-label">Motorsport Details</p>
-                        <div class="msc-reg-grid-2">
-                            <div class="msc-field">
-                                <label>Competition Number <span class="msc-required">*</span></label>
-                                <input type="text" id="msc-comp-number" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_comp_number', true)); ?>" placeholder="Motorcycle / Car competition number">
-                            </div>
-                            <div class="msc-field">
-                                <label>MSA Licence Number <span class="msc-required">*</span></label>
-                                <input type="text" id="msc-msa-licence" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_msa_licence', true)); ?>" placeholder="MSA Licence No.">
-                            </div>
+                        <div class="msc-field" style="max-width:320px">
+                            <label>MSA Licence Number <span class="msc-required">*</span></label>
+                            <input type="text" id="msc-msa-licence" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_msa_licence', true)); ?>" placeholder="MSA Licence No.">
                         </div>
                     </div>
 

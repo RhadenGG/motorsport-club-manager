@@ -156,6 +156,7 @@ class MSC_Registration {
                 'label'       => trim( "$year $make $model" ) . ( $reg ? " ($reg)" : '' ) . " — $type",
                 'type'        => $type,
                 'engine_size' => $engine_size,
+                'comp_number' => get_post_meta( $v->ID, '_msc_comp_number', true ) ?: '',
             );
         }
         wp_send_json_success( array(
@@ -217,7 +218,6 @@ class MSC_Registration {
         } else {
             $parent_sig = sanitize_text_field( wp_unslash( $parent_sig_raw ) );
         }
-        $comp_number = sanitize_text_field( wp_unslash( $_POST['comp_number'] ?? '' ) );
         $msa_licence = sanitize_text_field( wp_unslash( $_POST['msa_licence'] ?? '' ) );
         $em_name    = sanitize_text_field( $_POST['emergency_name']  ?? '' );
         $em_phone   = sanitize_text_field( $_POST['emergency_phone'] ?? '' );
@@ -227,13 +227,18 @@ class MSC_Registration {
         $sponsors   = substr( sanitize_text_field( wp_unslash( $_POST['sponsors'] ?? '' ) ), 0, 33 );
         $notes      = sanitize_textarea_field( $_POST['notes']       ?? '' );
 
+        // Submitted competition numbers keyed by vehicle_id (may include stored or user-corrected values)
+        $submitted_comp_numbers = array();
+        if ( isset( $_POST['vehicle_comp_numbers'] ) && is_array( $_POST['vehicle_comp_numbers'] ) ) {
+            foreach ( $_POST['vehicle_comp_numbers'] as $vid => $comp ) {
+                $submitted_comp_numbers[ absint( $vid ) ] = sanitize_text_field( wp_unslash( $comp ) );
+            }
+        }
+
         $user_obj = get_userdata( $user_id );
         $ind_full = $user_obj ? $user_obj->display_name : 'Unknown';
 
         // Validations
-        if ( ! $comp_number ) {
-            wp_send_json_error( array( 'message' => 'Please enter your Competition Number.' ) );
-        }
         if ( ! $msa_licence ) {
             wp_send_json_error( array( 'message' => 'Please enter your MSA Licence Number.' ) );
         }
@@ -297,6 +302,17 @@ class MSC_Registration {
             $av = get_post( $vid );
             if ( ! $av || (int) $av->post_author !== $user_id ) {
                 wp_send_json_error( array( 'message' => 'Invalid vehicle selection for additional class.' ) );
+            }
+        }
+
+        // Validate that every selected vehicle has a competition number (stored or submitted)
+        foreach ( array_unique( array_merge( array( $primary_vehicle_id ), $additional_vehicle_ids ) ) as $vid ) {
+            $stored = get_post_meta( $vid, '_msc_comp_number', true );
+            $posted = isset( $submitted_comp_numbers[ $vid ] ) ? $submitted_comp_numbers[ $vid ] : '';
+            if ( ! $stored && ! $posted ) {
+                $vpost = get_post( $vid );
+                $vname = $vpost ? $vpost->post_title : 'vehicle #' . $vid;
+                wp_send_json_error( array( 'message' => 'Please enter a Competition Number for "' . esc_html( $vname ) . '".' ) );
             }
         }
 
@@ -407,8 +423,17 @@ class MSC_Registration {
             );
         }
 
+        // Save any user-supplied comp numbers back to the vehicle post meta
+        foreach ( $submitted_comp_numbers as $vid => $comp ) {
+            if ( $vid && $comp ) {
+                $vpost = get_post( $vid );
+                if ( $vpost && (int) $vpost->post_author === $user_id ) {
+                    update_post_meta( $vid, '_msc_comp_number', $comp );
+                }
+            }
+        }
+
         // Save motorsport details, pit crew, sponsors, and emergency relationship to user profile
-        update_user_meta( $user_id, 'msc_comp_number', $comp_number );
         update_user_meta( $user_id, 'msc_msa_licence', $msa_licence );
         if ( isset( $_POST['pit_crew_1'] ) )    update_user_meta( $user_id, 'msc_pit_crew_1',    $pit_crew_1 );
         if ( isset( $_POST['pit_crew_2'] ) )    update_user_meta( $user_id, 'msc_pit_crew_2',    $pit_crew_2 );
@@ -476,11 +501,13 @@ class MSC_Registration {
         $pairs = array();
         foreach ( $rows as $row ) {
             $term = get_term( (int) $row->class_id, 'msc_vehicle_class' );
+            $vid  = (int) $row->vehicle_id;
             $pairs[] = array(
                 'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
-                'vehicle_id'   => (int) $row->vehicle_id,
+                'vehicle_id'   => $vid,
                 'vehicle_name' => $row->vehicle_name ?: '—',
                 'is_primary'   => (bool) $row->is_primary,
+                'comp_number'  => $vid ? get_post_meta( $vid, '_msc_comp_number', true ) : '',
             );
         }
 
@@ -495,11 +522,13 @@ class MSC_Registration {
             ) );
             if ( $reg ) {
                 $term = $reg->class_id ? get_term( (int) $reg->class_id, 'msc_vehicle_class' ) : null;
+                $vid  = (int) $reg->vehicle_id;
                 $pairs[] = array(
                     'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
-                    'vehicle_id'   => (int) $reg->vehicle_id,
+                    'vehicle_id'   => $vid,
                     'vehicle_name' => $reg->vehicle_name ?: '—',
                     'is_primary'   => true,
+                    'comp_number'  => $vid ? get_post_meta( $vid, '_msc_comp_number', true ) : '',
                 );
             }
         }

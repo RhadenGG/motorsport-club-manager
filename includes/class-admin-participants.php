@@ -59,7 +59,15 @@ class MSC_Admin_Participants {
             $phone        = $get('phone');
             $birthday     = $get('msc_birthday');
             $gender       = $get('msc_gender');
-            $comp_number  = $get('msc_comp_number');
+            $vehicle_comps = $wpdb->get_col( $wpdb->prepare(
+                "SELECT DISTINCT pm.meta_value FROM {$wpdb->postmeta} pm
+                 JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                 WHERE p.post_author = %d AND p.post_type = 'msc_vehicle'
+                   AND p.post_status = 'publish' AND pm.meta_key = '_msc_comp_number'
+                   AND pm.meta_value != ''",
+                $user->ID
+            ) );
+            $comp_number  = implode( ', ', $vehicle_comps );
             $msa_licence  = $get('msc_msa_licence');
             $medical_aid  = $get('msc_medical_aid');
             $medical_no   = $get('msc_medical_aid_number');
@@ -243,7 +251,15 @@ class MSC_Admin_Participants {
                 $phone      = $get('phone');
                 $birthday   = $get('msc_birthday');
                 $gender     = $get('msc_gender');
-                $comp       = $get('msc_comp_number');
+                $vc         = $wpdb->get_col( $wpdb->prepare(
+                    "SELECT DISTINCT pm.meta_value FROM {$wpdb->postmeta} pm
+                     JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                     WHERE p.post_author = %d AND p.post_type = 'msc_vehicle'
+                       AND p.post_status = 'publish' AND pm.meta_key = '_msc_comp_number'
+                       AND pm.meta_value != ''",
+                    $user->ID
+                ) );
+                $comp       = implode( ', ', $vc );
                 $msa        = $get('msc_msa_licence');
                 $med_aid    = $get('msc_medical_aid');
                 $med_no     = $get('msc_medical_aid_number');

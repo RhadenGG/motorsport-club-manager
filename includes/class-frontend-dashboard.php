@@ -820,7 +820,10 @@ class MSC_Frontend_Dashboard {
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
                     <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td><?php echo esc_html( $r->user_name ); ?></td>
-                    <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_comp_number', true ) ?: '—' ); ?></td>
+                    <td><?php
+                        $comp_str = implode( ', ', array_filter( array_unique( array_column( $cv_pairs, 'comp_number' ) ) ) );
+                        echo esc_html( $comp_str ?: '—' );
+                    ?></td>
                     <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
                     <td><?php echo esc_html( $vehicle_str ); ?></td>
@@ -2104,7 +2107,7 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Comp #', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
 
         $i = 1;
         foreach ( $regs as $r ) {
@@ -2113,10 +2116,12 @@ class MSC_Frontend_Dashboard {
             $class_str   = implode( '; ', array_map( function( $p ) {
                 return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
             }, $cv_pairs ) ) ?: '—';
+            $comp_str    = implode( '; ', array_filter( array_unique( array_column( $cv_pairs, 'comp_number' ) ) ) ) ?: '—';
             fputcsv( $out, array(
                 $i++,
                 $r->user_name,
                 $r->user_email,
+                $comp_str,
                 $r->event_name,
                 $vehicle_str,
                 $class_str,

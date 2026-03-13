@@ -210,6 +210,10 @@ class MSC_Account {
                             <label for="v_reg">Reg / Race Number</label>
                             <input type="text" id="v_reg" placeholder="e.g. CA 123-456 or #42">
                         </div>
+                        <div class="msc-field">
+                            <label for="v_comp_number">Competition Number</label>
+                            <input type="text" id="v_comp_number" placeholder="e.g. 42">
+                        </div>
                         <div class="msc-field msc-field-full">
                             <label for="v_notes">Notes / Modifications</label>
                             <textarea id="v_notes" rows="2" placeholder="Any modifications, special notes…"></textarea>
@@ -233,13 +237,14 @@ class MSC_Account {
                 <?php else : ?>
                 <div class="msc-garage-grid">
                     <?php foreach ( $vehicles as $v ) :
-                        $make  = get_post_meta( $v->ID, '_msc_make',       true );
-                        $model = get_post_meta( $v->ID, '_msc_model',      true );
-                        $year  = get_post_meta( $v->ID, '_msc_year',       true );
-                        $type  = get_post_meta( $v->ID, '_msc_type',       true );
-                        $color = get_post_meta( $v->ID, '_msc_color',      true );
-                        $reg   = get_post_meta( $v->ID, '_msc_reg_number', true );
-                        $notes = get_post_meta( $v->ID, '_msc_notes',      true );
+                        $make        = get_post_meta( $v->ID, '_msc_make',        true );
+                        $model       = get_post_meta( $v->ID, '_msc_model',       true );
+                        $year        = get_post_meta( $v->ID, '_msc_year',        true );
+                        $type        = get_post_meta( $v->ID, '_msc_type',        true );
+                        $color       = get_post_meta( $v->ID, '_msc_color',       true );
+                        $reg         = get_post_meta( $v->ID, '_msc_reg_number',  true );
+                        $comp_number = get_post_meta( $v->ID, '_msc_comp_number', true );
+                        $notes       = get_post_meta( $v->ID, '_msc_notes',       true );
                         $engine_size = get_post_meta( $v->ID, '_msc_engine_size', true );
                         $thumb_id  = get_post_thumbnail_id( $v->ID );
                         $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
@@ -262,9 +267,10 @@ class MSC_Account {
                             <?php $spec = trim( "$year $make $model" ); ?>
                             <?php if ( $spec ) : ?><p class="msc-garage-card-spec"><?php echo esc_html( $spec ); ?></p><?php endif; ?>
                             <div class="msc-garage-card-pills">
-                                <?php if ( $type  ) : ?><span class="msc-pill">🚦 <?php echo esc_html( $type ); ?></span><?php endif; ?>
-                                <?php if ( $color ) : ?><span class="msc-pill">🎨 <?php echo esc_html( $color ); ?></span><?php endif; ?>
-                                <?php if ( $reg   ) : ?><span class="msc-pill">🔖 <?php echo esc_html( $reg ); ?></span><?php endif; ?>
+                                <?php if ( $type        ) : ?><span class="msc-pill">🚦 <?php echo esc_html( $type ); ?></span><?php endif; ?>
+                                <?php if ( $color       ) : ?><span class="msc-pill">🎨 <?php echo esc_html( $color ); ?></span><?php endif; ?>
+                                <?php if ( $reg         ) : ?><span class="msc-pill">🔖 <?php echo esc_html( $reg ); ?></span><?php endif; ?>
+                                <?php if ( $comp_number ) : ?><span class="msc-pill"># <?php echo esc_html( $comp_number ); ?></span><?php endif; ?>
                             </div>
                             <?php if ( $notes ) : ?>
                             <p class="msc-garage-card-notes"><?php echo esc_html( $notes ); ?></p>
@@ -341,6 +347,10 @@ class MSC_Account {
                                 <div class="msc-field">
                                     <label>Reg / Race Number</label>
                                     <input type="text" class="edit-v_reg" data-id="<?php echo $v->ID; ?>" value="<?php echo esc_attr( $reg ); ?>">
+                                </div>
+                                <div class="msc-field">
+                                    <label>Competition Number</label>
+                                    <input type="text" class="edit-v_comp_number" data-id="<?php echo $v->ID; ?>" value="<?php echo esc_attr( $comp_number ); ?>" placeholder="e.g. 42">
                                 </div>
                                 <div class="msc-field msc-field-full">
                                     <label>Notes / Modifications</label>
@@ -468,10 +478,6 @@ class MSC_Account {
 
                     <div class="msc-form-section-title" style="margin-top:20px">Motorsport Details</div>
                     <div class="msc-form-grid">
-                        <div class="msc-field">
-                            <label>Competition Number <span class="msc-required">*</span></label>
-                            <input type="text" id="pe_comp_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_comp_number', true)); ?>" placeholder="Motorcycle / Car competition number">
-                        </div>
                         <div class="msc-field">
                             <label>MSA License Number <span class="msc-required">*</span></label>
                             <input type="text" id="pe_msa_licence" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_msa_licence', true)); ?>" placeholder="MSA Licence No.">
@@ -609,7 +615,7 @@ class MSC_Account {
         // Meta fields
         $meta_fields = array(
             'phone', 'msc_birthday',
-            'msc_comp_number', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
+            'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
             'msc_pit_crew_1', 'msc_pit_crew_2',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
@@ -698,7 +704,7 @@ class MSC_Account {
         if ( is_wp_error( $post_id ) ) wp_send_json_error( array( 'message' => $post_id->get_error_message() ) );
         if ( ! $post_id ) wp_send_json_error( array( 'message' => 'Could not create vehicle record.' ) );
 
-        foreach ( array( 'type', 'make', 'model', 'year', 'color', 'reg_number' ) as $f ) {
+        foreach ( array( 'type', 'make', 'model', 'year', 'color', 'reg_number', 'comp_number' ) as $f ) {
             if ( isset( $_POST[ $f ] ) ) {
                 update_post_meta( $post_id, '_msc_' . $f, sanitize_text_field( $_POST[ $f ] ) );
             }
@@ -751,7 +757,7 @@ class MSC_Account {
 
         wp_update_post( array( 'ID' => $post_id, 'post_title' => $title ) );
 
-        foreach ( array( 'type', 'make', 'model', 'year', 'color', 'reg_number' ) as $f ) {
+        foreach ( array( 'type', 'make', 'model', 'year', 'color', 'reg_number', 'comp_number' ) as $f ) {
             if ( isset( $_POST[ $f ] ) ) {
                 update_post_meta( $post_id, '_msc_' . $f, sanitize_text_field( $_POST[ $f ] ) );
             }
