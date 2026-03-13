@@ -509,8 +509,13 @@ class MSC_Admin_Events {
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
-        $sc = $status_colors[$r->status] ?? '#333';
-        $sb = $status_bg[$r->status]     ?? '#eee';
+        $sc       = $status_colors[$r->status] ?? '#333';
+        $sb       = $status_bg[$r->status]     ?? '#eee';
+        $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
+        $vehicle_str = implode( ', ', array_unique( array_column( $cv_pairs, 'vehicle_name' ) ) ) ?: '—';
+        $class_str   = implode( ', ', array_map( function( $p ) {
+            return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
+        }, $cv_pairs ) ) ?: '—';
         ?>
         <tr>
         <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
@@ -520,23 +525,8 @@ class MSC_Admin_Events {
         <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
-        <td><?php echo esc_html($r->vehicle_name) ?></td>
-        <td><?php
-            $rc_rows = $wpdb->get_col( $wpdb->prepare(
-                "SELECT class_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
-                $r->id
-            ) );
-            if ( ! empty( $rc_rows ) ) {
-                $names = array();
-                foreach ( $rc_rows as $cid ) {
-                    $t = get_term( $cid, 'msc_vehicle_class' );
-                    if ( $t && ! is_wp_error( $t ) ) $names[] = $t->name;
-                }
-                echo esc_html( implode( ', ', $names ) );
-            } else {
-                echo '<span style="color:#aaa">—</span>';
-            }
-        ?></td>
+        <td><?php echo esc_html( $vehicle_str ) ?></td>
+        <td><?php echo esc_html( $class_str ) ?></td>
         <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
         <td><?php
             if ( $r->pop_file_id ) {

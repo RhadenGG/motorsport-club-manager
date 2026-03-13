@@ -808,17 +808,13 @@ class MSC_Frontend_Dashboard {
                 </tr></thead>
                 <tbody>
                 <?php foreach ( $regs as $r ) :
-                    $sc = $status_colors[ $r->status ] ?? '#333';
-                    $sb = $status_bg[ $r->status ]     ?? '#eee';
-                    $class_name = '—';
-                    if ( ! empty( $r->class_id ) ) {
-                        $term = get_term( (int) $r->class_id, 'msc_vehicle_class' );
-                        if ( $term && ! is_wp_error($term) ) $class_name = $term->name;
-                    }
-                    if ( $class_name === '—' ) {
-                        $fallback_names = MSC_Registration::get_class_names_for_registration( $r->id );
-                        if ( ! empty( $fallback_names ) ) $class_name = implode( ', ', $fallback_names );
-                    }
+                    $sc       = $status_colors[ $r->status ] ?? '#333';
+                    $sb       = $status_bg[ $r->status ]     ?? '#eee';
+                    $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
+                    $vehicle_str = implode( ', ', array_unique( array_column( $cv_pairs, 'vehicle_name' ) ) ) ?: '—';
+                    $class_str   = implode( ', ', array_map( function( $p ) {
+                        return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
+                    }, $cv_pairs ) ) ?: '—';
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
@@ -827,8 +823,8 @@ class MSC_Frontend_Dashboard {
                     <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_comp_number', true ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
-                    <td><?php echo esc_html( $r->vehicle_name ?: '—' ); ?></td>
-                    <td><?php echo esc_html( $class_name ); ?></td>
+                    <td><?php echo esc_html( $vehicle_str ); ?></td>
+                    <td><?php echo esc_html( $class_str ); ?></td>
                     <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
                     <td style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
                     <td>
@@ -2112,22 +2108,18 @@ class MSC_Frontend_Dashboard {
 
         $i = 1;
         foreach ( $regs as $r ) {
-            $class_name = '—';
-            if ( ! empty( $r->class_id ) ) {
-                $term = get_term( (int) $r->class_id, 'msc_vehicle_class' );
-                if ( $term && ! is_wp_error( $term ) ) $class_name = $term->name;
-            }
-            if ( $class_name === '—' ) {
-                $names = MSC_Registration::get_class_names_for_registration( $r->id );
-                if ( ! empty( $names ) ) $class_name = implode( ', ', $names );
-            }
+            $cv_pairs    = MSC_Registration::get_class_vehicle_pairs( $r->id );
+            $vehicle_str = implode( '; ', array_unique( array_column( $cv_pairs, 'vehicle_name' ) ) ) ?: '—';
+            $class_str   = implode( '; ', array_map( function( $p ) {
+                return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
+            }, $cv_pairs ) ) ?: '—';
             fputcsv( $out, array(
                 $i++,
                 $r->user_name,
                 $r->user_email,
                 $r->event_name,
-                $r->vehicle_name ?: '—',
-                $class_name,
+                $vehicle_str,
+                $class_str,
                 $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
                 $r->fee_paid ? 'Yes' : 'No',
                 trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',

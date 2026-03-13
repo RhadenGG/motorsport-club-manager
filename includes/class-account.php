@@ -383,8 +383,8 @@ class MSC_Account {
                             'rejected'  => array( 'label' => 'Rejected',  'cls' => 'status-rejected' ),
                             'cancelled' => array( 'label' => 'Cancelled', 'cls' => 'status-cancelled' ),
                         );
-                        $s           = isset( $sm[ $r->status ] ) ? $sm[ $r->status ] : array( 'label' => ucfirst( $r->status ), 'cls' => '' );
-                        $class_names = MSC_Registration::get_class_names_for_registration( $r->id );
+                        $s       = isset( $sm[ $r->status ] ) ? $sm[ $r->status ] : array( 'label' => ucfirst( $r->status ), 'cls' => '' );
+                        $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
                     ?>
                     <div class="msc-reg-card">
                         <div class="msc-reg-card-icon">🏁</div>
@@ -399,11 +399,10 @@ class MSC_Account {
                                 </div>
                             </div>
                             <div class="msc-reg-meta">
-                                <span>🚗 <?php echo esc_html( $r->vehicle_name ); ?></span>
+                                <?php foreach ( $cv_pairs as $pair ) : ?>
+                                <span>🚗 <?php echo esc_html( $pair['class_name'] . ': ' . $pair['vehicle_name'] ); ?></span>
+                                <?php endforeach; ?>
                                 <span>💰 <?php echo $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free'; ?></span>
-                                <?php if ( ! empty( $class_names ) ) : ?>
-                                <span>🏷️ <?php echo esc_html( implode( ', ', $class_names ) ); ?></span>
-                                <?php endif; ?>
                                 <span><?php echo $r->indemnity_method === 'signed' ? '✅ Indemnity signed' : '📄 Bring on day'; ?></span>
                             </div>
                         </div>

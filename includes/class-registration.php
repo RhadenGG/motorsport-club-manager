@@ -463,6 +463,50 @@ class MSC_Registration {
         ) );
     }
 
+    /** Return class+vehicle pairs for a registration: [['class_name', 'vehicle_name', 'is_primary'], ...] ordered primary first */
+    public static function get_class_vehicle_pairs( $reg_id ) {
+        global $wpdb;
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT rc.class_id, rc.vehicle_id, rc.is_primary, v.post_title AS vehicle_name
+             FROM {$wpdb->prefix}msc_registration_classes rc
+             LEFT JOIN {$wpdb->posts} v ON v.ID = rc.vehicle_id
+             WHERE rc.registration_id = %d ORDER BY rc.is_primary DESC",
+            $reg_id
+        ) );
+        $pairs = array();
+        foreach ( $rows as $row ) {
+            $term = get_term( (int) $row->class_id, 'msc_vehicle_class' );
+            $pairs[] = array(
+                'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
+                'vehicle_id'   => (int) $row->vehicle_id,
+                'vehicle_name' => $row->vehicle_name ?: '—',
+                'is_primary'   => (bool) $row->is_primary,
+            );
+        }
+
+        // Fallback for legacy registrations that predate the junction table
+        if ( empty( $pairs ) ) {
+            $reg = $wpdb->get_row( $wpdb->prepare(
+                "SELECT r.class_id, r.vehicle_id, v.post_title AS vehicle_name
+                 FROM {$wpdb->prefix}msc_registrations r
+                 LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
+                 WHERE r.id = %d",
+                $reg_id
+            ) );
+            if ( $reg ) {
+                $term = $reg->class_id ? get_term( (int) $reg->class_id, 'msc_vehicle_class' ) : null;
+                $pairs[] = array(
+                    'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
+                    'vehicle_id'   => (int) $reg->vehicle_id,
+                    'vehicle_name' => $reg->vehicle_name ?: '—',
+                    'is_primary'   => true,
+                );
+            }
+        }
+
+        return $pairs;
+    }
+
     /** Return class names entered for a given registration */
     public static function get_class_names_for_registration( $reg_id ) {
         global $wpdb;

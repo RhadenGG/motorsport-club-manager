@@ -129,23 +129,11 @@ class MSC_Indemnity {
         // Put core info into tighter tables
         self::section_header( $pdf, $lm, $rw, 'EVENT & PARTICIPANT SUMMARY' );
         
-        $make  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_make',       true ) : '';
-        $model = $vehicle ? get_post_meta( $vehicle->ID, '_msc_model',      true ) : '';
-        $year  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_year',       true ) : '';
-        $regn  = $vehicle ? get_post_meta( $vehicle->ID, '_msc_reg_number', true ) : '';
-
-        // Use the class stored at registration time if available
-        if ( ! empty( $reg->class_id ) ) {
-            $term  = get_term( $reg->class_id, 'msc_vehicle_class' );
-            $class = ( $term && ! is_wp_error( $term ) ) ? $term->name : '—';
-        } else {
-            $names = MSC_Registration::get_class_names_for_registration( $reg->id );
-            $class = ! empty( $names ) ? implode( ', ', $names ) : '—';
-        }
-
         $entry_number_display = ! empty( $reg->entry_number ) ? '#' . (int) $reg->entry_number : 'Pending';
-
         $sponsors = get_user_meta( $reg->user_id, 'msc_sponsors', true );
+
+        // Build class+vehicle pairs from junction table
+        $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $reg->id );
 
         $rows = array(
             'Entry Number' => $entry_number_display,
@@ -155,10 +143,18 @@ class MSC_Indemnity {
             'Email'        => $user->user_email,
             'Emergency'    => $reg->emergency_name . ' (' . $reg->emergency_phone . ')',
             'Guardian'     => $reg->is_minor ? $reg->parent_name : 'N/A (Adult)',
-            'Vehicle'      => trim( "$year $make $model" ) ?: ( $vehicle ? $vehicle->post_title : '—' ),
-            'Reg / Number' => $regn ?: '—',
-            'Class'        => $class,
         );
+        foreach ( $cv_pairs as $i => $pair ) {
+            $label  = count( $cv_pairs ) > 1 ? 'Entry ' . ( $i + 1 ) : 'Entry';
+            $vid    = $pair['vehicle_id'];
+            $make   = $vid ? get_post_meta( $vid, '_msc_make',       true ) : '';
+            $model  = $vid ? get_post_meta( $vid, '_msc_model',      true ) : '';
+            $year   = $vid ? get_post_meta( $vid, '_msc_year',       true ) : '';
+            $regn   = $vid ? get_post_meta( $vid, '_msc_reg_number', true ) : '';
+            $v_desc = trim( "$year $make $model" ) ?: $pair['vehicle_name'];
+            if ( $regn ) $v_desc .= ' (' . $regn . ')';
+            $rows[ $label ] = $pair['class_name'] . ' — ' . $v_desc;
+        }
         if ( $sponsors ) {
             $rows['Sponsors'] = $sponsors;
         }
