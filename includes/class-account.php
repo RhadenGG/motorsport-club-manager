@@ -493,6 +493,10 @@ class MSC_Account {
                             <label>Pit Crew Name #2</label>
                             <input type="text" id="pe_pit_crew_2" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
                         </div>
+                        <div class="msc-field">
+                            <label>Sponsor(s) <span style="color:#999;font-size:12px;">(optional, max 33 characters)</span></label>
+                            <input type="text" id="pe_sponsors" maxlength="33" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_sponsors', true)); ?>" placeholder="e.g. Castrol, Bridgestone">
+                        </div>
                     </div>
 
                     <div class="msc-form-section-title" style="margin-top:20px">Address</div>
@@ -615,6 +619,9 @@ class MSC_Account {
             if ( isset($_POST[$key]) ) {
                 update_user_meta( $user_id, $key, sanitize_text_field($_POST[$key]) );
             }
+        }
+        if ( isset( $_POST['msc_sponsors'] ) ) {
+            update_user_meta( $user_id, 'msc_sponsors', substr( sanitize_text_field( wp_unslash( $_POST['msc_sponsors'] ) ), 0, 33 ) );
         }
         if ( isset($_POST['msc_gender']) && in_array( $_POST['msc_gender'], array( 'male', 'female', '' ), true ) ) {
             update_user_meta( $user_id, 'msc_gender', $_POST['msc_gender'] );

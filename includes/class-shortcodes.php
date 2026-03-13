@@ -459,6 +459,14 @@ class MSC_Shortcodes {
                         </div>
                     </div>
 
+                    <div style="margin-bottom:20px;">
+                        <p class="msc-reg-section-label">Sponsors</p>
+                        <div class="msc-field">
+                            <label>Sponsor(s) <span style="color:#999;font-size:12px;">(optional, max 33 characters)</span></label>
+                            <input type="text" id="msc-sponsors" maxlength="33" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_sponsors', true)); ?>" placeholder="e.g. Castrol, Bridgestone">
+                        </div>
+                    </div>
+
                     <?php if ($is_minor) : ?>
                     <div style="margin-bottom:20px;">
                         <div class="msc-field-group">

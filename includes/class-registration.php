@@ -222,6 +222,7 @@ class MSC_Registration {
         $em_rel     = sanitize_text_field( $_POST['emergency_rel']   ?? '' );
         $pit_crew_1 = sanitize_text_field( $_POST['pit_crew_1']      ?? '' );
         $pit_crew_2 = sanitize_text_field( $_POST['pit_crew_2']      ?? '' );
+        $sponsors   = substr( sanitize_text_field( wp_unslash( $_POST['sponsors'] ?? '' ) ), 0, 33 );
         $notes      = sanitize_textarea_field( $_POST['notes']       ?? '' );
 
         $user_obj = get_userdata( $user_id );
@@ -398,9 +399,10 @@ class MSC_Registration {
             );
         }
 
-        // Save pit crew and emergency relationship to user profile
+        // Save pit crew, sponsors, and emergency relationship to user profile
         if ( isset( $_POST['pit_crew_1'] ) )    update_user_meta( $user_id, 'msc_pit_crew_1',    $pit_crew_1 );
         if ( isset( $_POST['pit_crew_2'] ) )    update_user_meta( $user_id, 'msc_pit_crew_2',    $pit_crew_2 );
+        if ( isset( $_POST['sponsors'] ) )      update_user_meta( $user_id, 'msc_sponsors',      $sponsors );
         if ( isset( $_POST['emergency_rel'] ) ) update_user_meta( $user_id, 'msc_emergency_rel', $em_rel );
 
         MSC_Emails::send_registration_received( $reg_id );

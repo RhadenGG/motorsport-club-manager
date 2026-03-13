@@ -145,6 +145,8 @@ class MSC_Indemnity {
 
         $entry_number_display = ! empty( $reg->entry_number ) ? '#' . (int) $reg->entry_number : 'Pending';
 
+        $sponsors = get_user_meta( $reg->user_id, 'msc_sponsors', true );
+
         $rows = array(
             'Entry Number' => $entry_number_display,
             'Event Date'   => $event_date ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $event_date ) ) : '—',
@@ -157,6 +159,9 @@ class MSC_Indemnity {
             'Reg / Number' => $regn ?: '—',
             'Class'        => $class,
         );
+        if ( $sponsors ) {
+            $rows['Sponsors'] = $sponsors;
+        }
         self::table_rows( $pdf, $lm, $rw, $rows );
         $pdf->set_y( $pdf->get_y() + 10 );
 

@@ -513,6 +513,7 @@ jQuery(function ($) {
                 fd.append('emergency_rel',    $('#msc-emergency-rel').val());
                 fd.append('pit_crew_1',       $('#msc-pit-crew-1').val());
                 fd.append('pit_crew_2',       $('#msc-pit-crew-2').val());
+                fd.append('sponsors',         $('#msc-sponsors').val().substring(0, 33));
                 fd.append('notes',            $('#msc-notes').val());
                 if (popFile) fd.append('pop_file', popFile);
 
@@ -1036,6 +1037,7 @@ jQuery(function ($) {
                 fd.append('msc_emergency_rel',   $('#pe_emergency_rel').val());
                 fd.append('msc_pit_crew_1', $('#pe_pit_crew_1').val());
                 fd.append('msc_pit_crew_2', $('#pe_pit_crew_2').val());
+                fd.append('msc_sponsors',   $('#pe_sponsors').val().substring(0, 33));
                 
                 if ($('#pe_password').val()) {
                     fd.append('password',  $('#pe_password').val());
