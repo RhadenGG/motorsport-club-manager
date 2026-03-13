@@ -151,9 +151,19 @@ class MSC_Emails {
         $site_name  = get_bloginfo( 'name' );
         $pdf_link   = esc_url( add_query_arg( 'msc_indemnity_pdf', $reg_id, home_url() ) );
 
+        $entry_num_block = '';
+        if ( ! empty( $reg->entry_number ) ) {
+            $entry_num_block = "<div style='background:#d1e7dd;border-left:4px solid #27ae60;padding:14px 20px;margin:20px 0;border-radius:0 6px 6px 0'>"
+                . "<span style='display:block;font-size:12px;color:#0a3622;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px'>Your Entry Number</span>"
+                . "<span style='font-size:28px;font-weight:700;color:#0a3622'>#" . (int) $reg->entry_number . "</span>"
+                . "<span style='display:block;font-size:12px;color:#0a3622;margin-top:4px'>Please quote this number on the day.</span>"
+                . "</div>";
+        }
+
         $body = "
         <p>Hi {$user_name},</p>
-        <p>Great news - your entry for <strong>{$event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
+        <p>Great news — your entry for <strong>{$event_name}</strong> has been <strong style='color:#27ae60'>confirmed</strong>! 🎉</p>
+        {$entry_num_block}
         " . ($reg->indemnity_method==='bring' ? "<p><strong>Note:</strong> You selected to bring a physical indemnity form. Please ensure it is printed and signed before arrival.</p><p style='text-align:center;margin:25px 0'><a href='{$pdf_link}' style='background:#2d3436;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold'>Download Indemnity Form</a></p>" : "<p><a href='{$pdf_link}' style='color:#2d3436;font-weight:bold;text-decoration:underline'>Download your signed indemnity form (PDF)</a></p>") . "
         <p>We look forward to seeing you at the event!</p>
         <p>Best regards,<br>" . esc_html($site_name) . "</p>";

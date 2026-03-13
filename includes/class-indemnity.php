@@ -143,7 +143,10 @@ class MSC_Indemnity {
             $class = ! empty( $names ) ? implode( ', ', $names ) : '—';
         }
 
+        $entry_number_display = ! empty( $reg->entry_number ) ? '#' . (int) $reg->entry_number : 'Pending';
+
         $rows = array(
+            'Entry Number' => $entry_number_display,
             'Event Date'   => $event_date ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $event_date ) ) : '—',
             'Location'     => $location ?: '—',
             'Participant'  => $reg->indemnity_full_name ?: $user->display_name,

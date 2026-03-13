@@ -391,7 +391,12 @@ class MSC_Account {
                         <div class="msc-reg-card-body">
                             <div class="msc-reg-card-top">
                                 <h4><a href="<?php echo esc_url( get_permalink( $r->event_id ) ); ?>"><?php echo esc_html( $r->event_name ); ?></a></h4>
-                                <span class="msc-status-badge <?php echo $s['cls']; ?>"><?php echo $s['label']; ?></span>
+                                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                    <?php if ( ! empty( $r->entry_number ) ) : ?>
+                                    <span style="font-size:13px;font-weight:700;color:#0a3622;background:#d1e7dd;padding:2px 10px;border-radius:12px">#<?php echo (int) $r->entry_number; ?></span>
+                                    <?php endif; ?>
+                                    <span class="msc-status-badge <?php echo $s['cls']; ?>"><?php echo $s['label']; ?></span>
+                                </div>
                             </div>
                             <div class="msc-reg-meta">
                                 <span>🚗 <?php echo esc_html( $r->vehicle_name ); ?></span>

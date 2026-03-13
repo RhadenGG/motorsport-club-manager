@@ -404,6 +404,7 @@ class MSC_Registration {
         if ( isset( $_POST['emergency_rel'] ) ) update_user_meta( $user_id, 'msc_emergency_rel', $em_rel );
 
         MSC_Emails::send_registration_received( $reg_id );
+        if ( $status === 'confirmed' ) self::assign_entry_number( $reg_id );
         if ( $status === 'confirmed' ) MSC_Emails::send_confirmation( $reg_id );
 
         if ( $ind_method === 'signed' ) {
@@ -710,6 +711,46 @@ class MSC_Registration {
             ? 'Your entry has been updated and resubmitted for approval.'
             : 'Your entry has been updated successfully.';
         wp_send_json_success( array( 'message' => $msg ) );
+    }
+
+    /**
+     * Assign the next sequential entry number for this registration's event.
+     * Only assigns if the entry doesn't already have a number.
+     * Called when an entry is confirmed.
+     */
+    public static function assign_entry_number( $reg_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'msc_registrations';
+
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT event_id, entry_number FROM $table WHERE id = %d",
+            $reg_id
+        ) );
+
+        if ( ! $row || $row->entry_number !== null ) return;
+
+        // Use a transaction with FOR UPDATE to lock all rows for this event while
+        // computing MAX, preventing two concurrent confirms from reading the same
+        // max and writing duplicate numbers. The UNIQUE index on (event_id, entry_number)
+        // in the DB schema provides a hard enforcement layer on top of this.
+        $wpdb->query( 'START TRANSACTION' );
+
+        $next = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COALESCE(MAX(entry_number), 0) + 1 FROM $table WHERE event_id = %d FOR UPDATE",
+            (int) $row->event_id
+        ) );
+
+        // Only write if the number is still unassigned (guard against race on re-entry)
+        $wpdb->query( $wpdb->prepare(
+            "UPDATE $table SET entry_number = %d WHERE id = %d AND entry_number IS NULL",
+            $next, $reg_id
+        ) );
+
+        if ( $wpdb->last_error ) {
+            $wpdb->query( 'ROLLBACK' );
+        } else {
+            $wpdb->query( 'COMMIT' );
+        }
     }
 
     /** Check if user is already registered for event */

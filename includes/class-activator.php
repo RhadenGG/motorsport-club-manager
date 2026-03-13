@@ -51,6 +51,18 @@ class MSC_Activator {
         ) $charset;";
         $wpdb->query( $sql2 );
 
+        // Migrate msc_registrations: add entry_number if missing
+        $reg_cols = array_column( $wpdb->get_results( "DESCRIBE {$wpdb->prefix}msc_registrations" ), 'Field' );
+        if ( ! in_array( 'entry_number', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN entry_number int(10) unsigned DEFAULT NULL" );
+        }
+
+        // Ensure unique index on (event_id, entry_number) to enforce no duplicates at DB level
+        $idx = $wpdb->get_results( "SHOW INDEX FROM {$wpdb->prefix}msc_registrations WHERE Key_name = 'unique_event_entry_number'" );
+        if ( empty( $idx ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD UNIQUE INDEX unique_event_entry_number (event_id, entry_number)" );
+        }
+
         // Migrate msc_registration_classes: add vehicle_id and is_primary if missing
         $cols = array_column( $wpdb->get_results( "DESCRIBE {$wpdb->prefix}msc_registration_classes" ), 'Field' );
         if ( ! in_array( 'vehicle_id', $cols, true ) ) {

@@ -726,7 +726,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
-                       r.pop_file_id, r.indemnity_method,
+                       r.pop_file_id, r.indemnity_method, r.entry_number,
                        p.post_title AS event_name, v.post_title AS vehicle_name, u.display_name AS user_name
                 FROM $table r
                 LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
@@ -793,6 +793,7 @@ class MSC_Frontend_Dashboard {
             <table class="msc-dash-table">
                 <thead><tr>
                     <th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th>
+                    <th style="white-space:nowrap">Entry #</th>
                     <th>Entrant</th>
                     <th>Event</th>
                     <th>Vehicle</th>
@@ -819,6 +820,7 @@ class MSC_Frontend_Dashboard {
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
+                    <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td><?php echo esc_html( $r->user_name ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
                     <td><?php echo esc_html( $r->vehicle_name ?: '—' ); ?></td>
@@ -1675,6 +1677,7 @@ class MSC_Frontend_Dashboard {
 
         $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
 
+        if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
         if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
         if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
         if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
@@ -1714,6 +1717,7 @@ class MSC_Frontend_Dashboard {
                 array( '%s' ),
                 array( '%d' )
             );
+            if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
             if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
             if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );

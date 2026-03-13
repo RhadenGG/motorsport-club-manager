@@ -345,6 +345,7 @@ class MSC_Admin_Events {
                 $updated = 0;
                 foreach ( $bulk_ids as $rid ) {
                     $wpdb->update( $table, array( 'status' => $bulk_status ), array( 'id' => $rid ), array( '%s' ), array( '%d' ) );
+                    if ( $bulk_status === 'confirmed' )  MSC_Registration::assign_entry_number( $rid );
                     if ( $bulk_status === 'confirmed' )  MSC_Emails::send_confirmation( $rid );
                     if ( $bulk_status === 'rejected' )   MSC_Emails::send_rejection( $rid, $bulk_rejection_reason );
                     if ( $bulk_status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $rid );
@@ -376,6 +377,7 @@ class MSC_Admin_Events {
             $fee_paid         = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
             $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
             $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ), array( '%s', '%d' ), array( '%d' ) );
+            if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
             if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
             if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
@@ -484,7 +486,7 @@ class MSC_Admin_Events {
         <thead>
         <tr>
         <th style="width:28px"></th>
-        <th>#</th>
+        <th style="white-space:nowrap">Entry #</th>
         <th>Entrant</th>
         <th>Email</th>
         <th>Event</th>
@@ -501,8 +503,8 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="12">No registrations found.</td></tr>
-        <?php else : $count = 1; foreach($regs as $r) :
+        <tr><td colspan="14">No registrations found.</td></tr>
+        <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
         $sc = $status_colors[$r->status] ?? '#333';
@@ -510,7 +512,7 @@ class MSC_Admin_Events {
         ?>
         <tr>
         <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
-        <td><?php echo $count++ ?></td>
+        <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
