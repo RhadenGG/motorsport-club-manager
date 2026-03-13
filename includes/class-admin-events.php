@@ -488,6 +488,7 @@ class MSC_Admin_Events {
         <th style="width:28px"></th>
         <th style="white-space:nowrap">Entry #</th>
         <th>Entrant</th>
+        <th>Sponsors</th>
         <th>Email</th>
         <th>Event</th>
         <th>Vehicle</th>
@@ -503,7 +504,7 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="14">No registrations found.</td></tr>
+        <tr><td colspan="15">No registrations found.</td></tr>
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
@@ -514,6 +515,7 @@ class MSC_Admin_Events {
         <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
         <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
         <td><?php echo esc_html($r->user_name) ?></td>
+        <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
         <td><?php echo esc_html($r->user_email) ?></td>
         <td><?php echo esc_html($r->event_name) ?></td>
         <td><?php echo esc_html($r->vehicle_name) ?></td>

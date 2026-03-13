@@ -725,7 +725,7 @@ class MSC_Frontend_Dashboard {
         if ( $status_filter ) { $conditions[] = 'r.status = %s'; $values[] = $status_filter; }
 
         $where = implode( ' AND ', $conditions );
-        $sql = "SELECT r.id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
+        $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
                        r.pop_file_id, r.indemnity_method, r.entry_number,
                        p.post_title AS event_name, v.post_title AS vehicle_name, u.display_name AS user_name
                 FROM $table r
@@ -795,6 +795,7 @@ class MSC_Frontend_Dashboard {
                     <th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th>
                     <th style="white-space:nowrap">Entry #</th>
                     <th>Entrant</th>
+                    <th>Sponsors</th>
                     <th>Event</th>
                     <th>Vehicle</th>
                     <th>Class</th>
@@ -822,6 +823,7 @@ class MSC_Frontend_Dashboard {
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
                     <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td><?php echo esc_html( $r->user_name ); ?></td>
+                    <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
                     <td><?php echo esc_html( $r->vehicle_name ?: '—' ); ?></td>
                     <td><?php echo esc_html( $class_name ); ?></td>
