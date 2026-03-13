@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.7.2 | **License:** GPLv2 or later
+**Current version:** 0.7.5 | **License:** GPLv2 or later
 
 ---
 
@@ -37,8 +37,10 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Each class (primary and additional) has its own independent vehicle selector, pre-populated from the member's garage.
 - Electronic indemnity signing — drawn signature via `signature_pad` or typed name.
 - Automatic minor detection: if the member's date of birth indicates they are under 18, mandatory parent/guardian name and signature fields appear.
-- Emergency contact and pit crew fields pre-filled from the member's saved profile; any changes made during entry are saved back to the profile.
+- Emergency contact, pit crew, and sponsor fields pre-filled from the member's saved profile; any changes made during entry are saved back to the profile.
+- **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
 - **Proof of Payment (PoP):** PDF, PNG, or JPG upload (up to 5 MB) required when the entry fee is greater than zero. Banking details configured in Settings are shown alongside the upload field.
+- Upon confirmation, each entry is assigned a **sequential entry number** scoped to the event, displayed on the indemnity PDF and the member's entries history.
 
 ### Entry Editing
 - Members can add or remove classes on a pending or confirmed entry from their **My Account** dashboard.
@@ -58,7 +60,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - **My Account** (`[msc_my_account]`) — member dashboard with:
   - **Garage:** add, edit, and delete vehicles with make, model, year, registration number, class, and photo.
   - **My Entries:** history of all entries with status badges, entered class names, and view links for indemnity PDFs and PoPs.
-  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (competition number, MSA licence, medical aid), emergency contact, and pit crew names.
+  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (competition number, MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
   - **Profile photo:** upload, preview, and remove a custom photo.
 - Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, Administrator → Admin).
 
