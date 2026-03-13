@@ -217,6 +217,8 @@ class MSC_Registration {
         } else {
             $parent_sig = sanitize_text_field( wp_unslash( $parent_sig_raw ) );
         }
+        $comp_number = sanitize_text_field( wp_unslash( $_POST['comp_number'] ?? '' ) );
+        $msa_licence = sanitize_text_field( wp_unslash( $_POST['msa_licence'] ?? '' ) );
         $em_name    = sanitize_text_field( $_POST['emergency_name']  ?? '' );
         $em_phone   = sanitize_text_field( $_POST['emergency_phone'] ?? '' );
         $em_rel     = sanitize_text_field( $_POST['emergency_rel']   ?? '' );
@@ -229,6 +231,12 @@ class MSC_Registration {
         $ind_full = $user_obj ? $user_obj->display_name : 'Unknown';
 
         // Validations
+        if ( ! $comp_number ) {
+            wp_send_json_error( array( 'message' => 'Please enter your Competition Number.' ) );
+        }
+        if ( ! $msa_licence ) {
+            wp_send_json_error( array( 'message' => 'Please enter your MSA Licence Number.' ) );
+        }
         if ( ! $event_id || ! $em_name || ! $em_phone ) {
             wp_send_json_error( array( 'message' => 'Please complete all required emergency contact fields.' ) );
         }
@@ -399,7 +407,9 @@ class MSC_Registration {
             );
         }
 
-        // Save pit crew, sponsors, and emergency relationship to user profile
+        // Save motorsport details, pit crew, sponsors, and emergency relationship to user profile
+        update_user_meta( $user_id, 'msc_comp_number', $comp_number );
+        update_user_meta( $user_id, 'msc_msa_licence', $msa_licence );
         if ( isset( $_POST['pit_crew_1'] ) )    update_user_meta( $user_id, 'msc_pit_crew_1',    $pit_crew_1 );
         if ( isset( $_POST['pit_crew_2'] ) )    update_user_meta( $user_id, 'msc_pit_crew_2',    $pit_crew_2 );
         if ( isset( $_POST['sponsors'] ) )      update_user_meta( $user_id, 'msc_sponsors',      $sponsors );

@@ -413,7 +413,7 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
+            $(document).on('input change', '#msc-comp-number, #msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
                 msc.checkRegValidity();
             });
 
@@ -508,6 +508,8 @@ jQuery(function ($) {
                 fd.append('parent_sig',       parentSig);
                 fd.append('is_minor',         isMinor ? 1 : 0);
                 fd.append('parent_name',      $('#msc-parent-name').val());
+                fd.append('comp_number',      $('#msc-comp-number').val());
+                fd.append('msa_licence',      $('#msc-msa-licence').val());
                 fd.append('emergency_name',   $('#msc-emergency-name').val());
                 fd.append('emergency_phone',  $('#msc-emergency-phone').val());
                 fd.append('emergency_rel',    $('#msc-emergency-rel').val());
@@ -573,6 +575,10 @@ jQuery(function ($) {
         checkRegValidity: function() {
             var isValid = true;
             var isMinor = $('#msc-reg-wrap').data('minor') == 1;
+
+            // Motorsport Details
+            if (!$('#msc-comp-number').val().trim()) isValid = false;
+            if (!$('#msc-msa-licence').val().trim()) isValid = false;
 
             // Emergency Contacts
             if (!$('#msc-emergency-name').val().trim()) isValid = false;

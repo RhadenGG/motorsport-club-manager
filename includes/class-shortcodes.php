@@ -428,6 +428,20 @@ class MSC_Shortcodes {
                     </div>
 
                     <div style="margin-bottom:20px;">
+                        <p class="msc-reg-section-label">Motorsport Details</p>
+                        <div class="msc-reg-grid-2">
+                            <div class="msc-field">
+                                <label>Competition Number <span class="msc-required">*</span></label>
+                                <input type="text" id="msc-comp-number" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_comp_number', true)); ?>" placeholder="Motorcycle / Car competition number">
+                            </div>
+                            <div class="msc-field">
+                                <label>MSA Licence Number <span class="msc-required">*</span></label>
+                                <input type="text" id="msc-msa-licence" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_msa_licence', true)); ?>" placeholder="MSA Licence No.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
                         <p class="msc-reg-section-label">Emergency Contact Information</p>
                         <div class="msc-reg-grid-3">
                             <div class="msc-field">
