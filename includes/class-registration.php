@@ -147,13 +147,12 @@ class MSC_Registration {
             $model       = get_post_meta( $v->ID, '_msc_model',       true );
             $year        = get_post_meta( $v->ID, '_msc_year',        true );
             $type        = get_post_meta( $v->ID, '_msc_type',        true );
-            $reg         = get_post_meta( $v->ID, '_msc_reg_number',  true );
             $engine_size = get_post_meta( $v->ID, '_msc_engine_size', true );
 
             $out[] = array(
                 'id'          => $v->ID,
                 'title'       => $v->post_title,
-                'label'       => trim( "$year $make $model" ) . ( $reg ? " ($reg)" : '' ) . " — $type",
+                'label'       => trim( "$year $make $model" ) . " — $type",
                 'type'        => $type,
                 'engine_size' => $engine_size,
                 'comp_number' => get_post_meta( $v->ID, '_msc_comp_number', true ) ?: '',
@@ -592,10 +591,9 @@ class MSC_Registration {
             $make   = get_post_meta( $v->ID, '_msc_make',       true );
             $model  = get_post_meta( $v->ID, '_msc_model',      true );
             $year   = get_post_meta( $v->ID, '_msc_year',       true );
-            $reg_no = get_post_meta( $v->ID, '_msc_reg_number', true );
             $user_vehicles[] = array(
                 'id'    => $v->ID,
-                'label' => trim( "$year $make $model" ) . ( $reg_no ? " ($reg_no)" : '' ),
+                'label' => trim( "$year $make $model" ),
             );
         }
 

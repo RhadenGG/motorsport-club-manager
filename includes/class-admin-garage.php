@@ -24,7 +24,6 @@ class MSC_Admin_Garage {
             'year'          => get_post_meta( $post->ID, '_msc_year', true ),
             'color'         => get_post_meta( $post->ID, '_msc_color', true ),
             'type'          => get_post_meta( $post->ID, '_msc_type', true ),
-            'reg_number'    => get_post_meta( $post->ID, '_msc_reg_number', true ),
             'comp_number'   => get_post_meta( $post->ID, '_msc_comp_number', true ),
             'notes'         => get_post_meta( $post->ID, '_msc_notes', true ),
         );
@@ -52,8 +51,6 @@ class MSC_Admin_Garage {
             <tr>
                 <th><label>Colour</label></th>
                 <td><input type="text" name="msc_color" value="<?php echo esc_attr($d['color']); ?>" class="regular-text"></td>
-                <th><label>Registration / Race Number</label></th>
-                <td><input type="text" name="msc_reg_number" value="<?php echo esc_attr($d['reg_number']); ?>" class="regular-text"></td>
             </tr>
             <tr>
                 <th><label>Competition Number</label></th>
@@ -77,7 +74,7 @@ class MSC_Admin_Garage {
         if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;
         if ( ! current_user_can('edit_post',$post_id) ) return;
 
-        foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_reg_number','msc_comp_number') as $f ) {
+        foreach( array('msc_make','msc_model','msc_year','msc_color','msc_type','msc_comp_number') as $f ) {
             if ( isset($_POST[$f]) ) update_post_meta($post_id,'_'.$f, sanitize_text_field(wp_unslash($_POST[$f])));
         }
         if ( isset($_POST['msc_notes']) ) {

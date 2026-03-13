@@ -248,11 +248,10 @@ jQuery(function ($) {
                     var stored = veh ? (veh.comp_number || '') : '';
                     msc.vehicleCompNumbers[row.vehicleId] = stored;
                     if (!$cn.length) {
-                        $cn = $('<div>').addClass('msc-add-comp-notice').css({marginTop:'6px', width:'100%'});
+                        $cn = $('<div>').addClass('msc-add-comp-notice msc-field').css({marginTop:'10px', width:'100%'});
                         var $lbl = $('<label>').css('font-weight','600').html('Competition Number <span class="msc-required">*</span>');
                         var $inp = $('<input>').attr('type','text').attr('placeholder','e.g. 42')
-                            .addClass('msc-comp-input')
-                            .css({maxWidth:'200px', display:'block', marginTop:'4px'});
+                            .addClass('msc-comp-input');
                         $cn.append($lbl, $inp);
                         $row.append($cn);
                     }
@@ -730,7 +729,6 @@ jQuery(function ($) {
                 fd.append('model',      $('#v_model').val());
                 fd.append('year',       $('#v_year').val());
                 fd.append('color',      $('#v_color').val());
-                fd.append('reg_number',  $('#v_reg').val());
                 fd.append('comp_number', $('#v_comp_number').val());
                 fd.append('engine_size', $('#v_engine_size').val());
                 fd.append('notes',      $('#v_notes').val());
@@ -841,7 +839,6 @@ jQuery(function ($) {
                 fd.append('model',      $('.edit-v_model[data-id="' + id + '"]').val());
                 fd.append('year',       $('.edit-v_year[data-id="'  + id + '"]').val());
                 fd.append('color',      $('.edit-v_color[data-id="' + id + '"]').val());
-                fd.append('reg_number',  $('.edit-v_reg[data-id="'          + id + '"]').val());
                 fd.append('comp_number', $('.edit-v_comp_number[data-id="' + id + '"]').val());
                 fd.append('engine_size', $('.edit-v_engine_size[data-id="' + id + '"]').val());
                 fd.append('notes',      $('.edit-v_notes[data-id="' + id + '"]').val());

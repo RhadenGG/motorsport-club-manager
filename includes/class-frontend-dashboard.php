@@ -795,11 +795,9 @@ class MSC_Frontend_Dashboard {
                     <th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th>
                     <th style="white-space:nowrap">Entry #</th>
                     <th>Entrant</th>
-                    <th>Comp #</th>
                     <th>Sponsors</th>
                     <th>Event</th>
-                    <th>Vehicle</th>
-                    <th>Class</th>
+                    <th>Entries</th>
                     <th>Fee</th>
                     <th>Date</th>
                     <th>Status</th>
@@ -811,23 +809,21 @@ class MSC_Frontend_Dashboard {
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
                     $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    $vehicle_str = implode( ', ', array_unique( array_column( $cv_pairs, 'vehicle_name' ) ) ) ?: '—';
-                    $class_str   = implode( ', ', array_map( function( $p ) {
-                        return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
-                    }, $cv_pairs ) ) ?: '—';
+                    $entries_lines = array();
+                    foreach ( $cv_pairs as $p ) {
+                        $line = esc_html( $p['class_name'] ) . ' &mdash; ' . esc_html( $p['vehicle_name'] );
+                        if ( $p['comp_number'] ) $line .= ' <span style="opacity:.7;font-weight:600">#' . esc_html( $p['comp_number'] ) . '</span>';
+                        $entries_lines[] = $line;
+                    }
+                    $entries_html = $entries_lines ? implode( '<br>', $entries_lines ) : '—';
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
                     <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td><?php echo esc_html( $r->user_name ); ?></td>
-                    <td><?php
-                        $comp_str = implode( ', ', array_filter( array_unique( array_column( $cv_pairs, 'comp_number' ) ) ) );
-                        echo esc_html( $comp_str ?: '—' );
-                    ?></td>
                     <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( $r->event_name ); ?></td>
-                    <td><?php echo esc_html( $vehicle_str ); ?></td>
-                    <td><?php echo esc_html( $class_str ); ?></td>
+                    <td style="line-height:1.6"><?php echo $entries_html; ?></td>
                     <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
                     <td style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
                     <td>
