@@ -144,14 +144,17 @@ class MSC_Activator {
         if ( ! get_role( 'msc_event_creator' ) ) {
             add_role( 'msc_event_creator', 'Event Creator', array(
                 'read'                  => true,
+                'upload_files'          => true,
                 'edit_posts'            => true,
                 'publish_posts'         => true,
                 'edit_others_posts'     => true,
                 'msc_view_participants' => true,
             ) );
         } else {
-            // Ensure existing role has the capability
-            get_role( 'msc_event_creator' )->add_cap( 'msc_view_participants' );
+            // Ensure existing role has all required capabilities
+            $role = get_role( 'msc_event_creator' );
+            $role->add_cap( 'upload_files' );
+            $role->add_cap( 'msc_view_participants' );
         }
 
         // Ensure administrators have the capability
