@@ -25,6 +25,7 @@ class MSC_Frontend_Dashboard {
         // AJAX: Registrations
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
         add_action( 'wp_ajax_msc_fe_bulk_reg_status',   array( __CLASS__, 'ajax_bulk_reg_status' ) );
+        add_action( 'wp_ajax_msc_fe_toggle_paid',        array( __CLASS__, 'ajax_toggle_paid' ) );
 
         // AJAX: Results
         add_action( 'wp_ajax_msc_fe_save_results',      array( __CLASS__, 'ajax_save_results' ) );
@@ -853,6 +854,15 @@ class MSC_Frontend_Dashboard {
                         </select>
                         <button type="button" class="msc-btn msc-btn-sm msc-reg-status-save" data-id="<?php echo $r->id; ?>">Save</button>
                         <?php endif; ?>
+                        <?php if ( $r->entry_fee > 0 ) : ?>
+                        <button type="button"
+                            class="msc-btn msc-btn-sm msc-toggle-paid <?php echo $r->fee_paid ? 'msc-btn-paid' : 'msc-btn-outline'; ?>"
+                            data-id="<?php echo $r->id; ?>"
+                            data-paid="<?php echo $r->fee_paid ? '1' : '0'; ?>"
+                            title="<?php echo $r->fee_paid ? 'Mark as unpaid' : 'Mark as paid'; ?>">
+                            <?php echo $r->fee_paid ? '✓ Paid' : 'Mark Paid'; ?>
+                        </button>
+                        <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -931,6 +941,33 @@ class MSC_Frontend_Dashboard {
                 } else {
                     doSave('');
                 }
+            });
+
+            // Toggle paid
+            $(document).on('click', '.msc-toggle-paid', function(){
+                var btn    = $(this);
+                var reg_id = btn.data('id');
+                var paid   = btn.data('paid') === 1 || btn.data('paid') === '1';
+                btn.prop('disabled', true).text('…');
+                $.post(ajaxUrl, {
+                    action: 'msc_fe_toggle_paid',
+                    nonce:  nonce,
+                    reg_id: reg_id,
+                    paid:   paid ? 0 : 1,
+                }, function(res){
+                    btn.prop('disabled', false);
+                    if (res.success) {
+                        var nowPaid = res.data.fee_paid;
+                        btn.data('paid', nowPaid ? '1' : '0')
+                           .attr('title', nowPaid ? 'Mark as unpaid' : 'Mark as paid')
+                           .text(nowPaid ? '✓ Paid' : 'Mark Paid')
+                           .toggleClass('msc-btn-paid', !!nowPaid)
+                           .toggleClass('msc-btn-outline', !nowPaid);
+                    } else {
+                        btn.text(paid ? '✓ Paid' : 'Mark Paid');
+                        $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
+                    }
+                });
             });
 
             // Bulk: track selection and show/hide the bulk bar
@@ -1689,6 +1726,37 @@ class MSC_Frontend_Dashboard {
         if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
 
         wp_send_json_success( array( 'message' => 'Registration updated.' ) );
+    }
+
+    // ─── AJAX: Toggle Fee Paid ────────────────────────────────────────────────
+
+    public static function ajax_toggle_paid() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        global $wpdb;
+        $reg_id   = absint( $_POST['reg_id'] ?? 0 );
+        $fee_paid = (int) ( $_POST['paid'] ?? 0 ) ? 1 : 0;
+
+        if ( ! $reg_id ) wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+
+        $event_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT event_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        if ( ! $event_id || ! self::can_manage_event( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify this registration.' ) );
+        }
+
+        $wpdb->update(
+            $wpdb->prefix . 'msc_registrations',
+            array( 'fee_paid' => $fee_paid ),
+            array( 'id'       => $reg_id ),
+            array( '%d' ),
+            array( '%d' )
+        );
+
+        wp_send_json_success( array( 'fee_paid' => $fee_paid ) );
     }
 
     // ─── AJAX: Bulk Update Registration Status ────────────────────────────────

@@ -100,6 +100,8 @@
 .msc-btn-outline { background: transparent; color: var(--msc-primary) !important; }
 .msc-btn-outline:hover { background: var(--msc-primary); color: #fff !important; }
 .msc-btn-disabled { background: #ccc; border-color: #ccc; pointer-events: none; }
+.msc-btn-paid { background: #1a7f4b; border-color: #1a7f4b; color: #fff !important; }
+.msc-btn-paid:hover { background: #155f38; border-color: #155f38; }
 .msc-btn-sm { padding: 6px 12px; font-size: 12px; }
 button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
 .msc-btn-danger { background: #c0392b; border-color: #c0392b; }
