@@ -797,7 +797,9 @@ class MSC_Frontend_Dashboard {
                     <th>Entrant</th>
                     <th>Sponsors</th>
                     <th>Event</th>
-                    <th>Entries</th>
+                    <th>Class</th>
+                    <th>Vehicle</th>
+                    <th style="white-space:nowrap">Race #</th>
                     <th>Fee</th>
                     <th>Date</th>
                     <th>Status</th>
@@ -809,38 +811,27 @@ class MSC_Frontend_Dashboard {
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
                     $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    if ( $cv_pairs ) {
-                        $entries_html  = '<table style="border:none;border-collapse:collapse">';
-                        $entries_html .= '<thead><tr>';
-                        $entries_html .= '<th style="padding:0 16px 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Class / Vehicle</th>';
-                        $entries_html .= '<th style="padding:0 0 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Race #</th>';
-                        $entries_html .= '</tr></thead><tbody>';
-                        foreach ( $cv_pairs as $p ) {
-                            $entries_html .= '<tr>';
-                            $entries_html .= '<td style="padding:2px 16px 2px 0;white-space:nowrap">' . esc_html( $p['class_name'] ) . ' &mdash; ' . esc_html( $p['vehicle_name'] ) . '</td>';
-                            $entries_html .= '<td style="padding:2px 0;white-space:nowrap;font-weight:600">' . ( $p['comp_number'] ? esc_html( $p['comp_number'] ) : '<span style="color:#ccc">—</span>' ) . '</td>';
-                            $entries_html .= '</tr>';
-                        }
-                        $entries_html .= '</tbody></table>';
-                    } else {
-                        $entries_html = '—';
-                    }
+                    $rs       = max( 1, count( $cv_pairs ) );
+                    $first    = $cv_pairs ? $cv_pairs[0] : null;
+                    $extra    = array_slice( $cv_pairs, 1 );
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
-                    <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
-                    <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
-                    <td><?php echo esc_html( $r->user_name ); ?></td>
-                    <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
-                    <td><?php echo esc_html( $r->event_name ); ?></td>
-                    <td style="line-height:1.6"><?php echo $entries_html; ?></td>
-                    <td><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
-                    <td style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
-                    <td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->user_name ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->event_name ); ?></td>
+                    <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
+                    <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
+                    <td style="white-space:nowrap;font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
                         <span class="msc-status-badge" style="background:<?php echo esc_attr($sb);?>;color:<?php echo esc_attr($sc);?>">
                             <?php echo esc_html( ucfirst($r->status) ); ?>
                         </span>
                     </td>
-                    <td style="white-space:nowrap">
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap">
                         <?php if ( $r->indemnity_method === 'signed' ) : ?>
                         <a href="<?php echo esc_url( add_query_arg('msc_indemnity_pdf', $r->id, home_url()) ); ?>"
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View signed indemnity PDF">Indemnity</a>
@@ -851,7 +842,7 @@ class MSC_Frontend_Dashboard {
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View proof of payment">PoP</a>
                         <?php endif; ?>
                     </td>
-                    <td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                         <?php if ( in_array($r->status, array('pending','confirmed'), true) ) : ?>
                         <select class="msc-reg-status-select" data-id="<?php echo $r->id; ?>"
@@ -865,6 +856,13 @@ class MSC_Frontend_Dashboard {
                         </div>
                     </td>
                 </tr>
+                <?php foreach ( $extra as $ep ) : ?>
+                <tr class="msc-entry-subrow">
+                    <td style="white-space:nowrap"><?php echo esc_html( $ep['class_name'] ); ?></td>
+                    <td style="white-space:nowrap"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
+                    <td style="white-space:nowrap;font-weight:600"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                </tr>
+                <?php endforeach; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
@@ -2112,30 +2110,38 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Race #', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
 
         $i = 1;
         foreach ( $regs as $r ) {
-            $cv_pairs    = MSC_Registration::get_class_vehicle_pairs( $r->id );
-            $vehicle_str = implode( '; ', array_unique( array_column( $cv_pairs, 'vehicle_name' ) ) ) ?: '—';
-            $class_str   = implode( '; ', array_map( function( $p ) {
-                return $p['class_name'] . ' (' . $p['vehicle_name'] . ')';
-            }, $cv_pairs ) ) ?: '—';
-            $comp_str    = implode( '; ', array_filter( array_unique( array_column( $cv_pairs, 'comp_number' ) ) ) ) ?: '—';
-            fputcsv( $out, array(
-                $i++,
-                $r->user_name,
-                $r->user_email,
-                $comp_str,
-                $r->event_name,
-                $vehicle_str,
-                $class_str,
-                $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
-                $r->fee_paid ? 'Yes' : 'No',
-                trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
-                ucfirst( $r->status ),
-                date( 'd M Y', strtotime( $r->created_at ) ),
-            ) );
+            $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
+            if ( $cv_pairs ) {
+                foreach ( $cv_pairs as $idx => $p ) {
+                    fputcsv( $out, array(
+                        $idx === 0 ? $i : '',
+                        $idx === 0 ? $r->user_name : '',
+                        $idx === 0 ? $r->user_email : '',
+                        $idx === 0 ? $r->event_name : '',
+                        $p['class_name'],
+                        $p['vehicle_name'],
+                        $p['comp_number'] ?: '—',
+                        $idx === 0 ? ( $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free' ) : '',
+                        $idx === 0 ? ( $r->fee_paid ? 'Yes' : 'No' ) : '',
+                        $idx === 0 ? ( trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—' ) : '',
+                        $idx === 0 ? ucfirst( $r->status ) : '',
+                        $idx === 0 ? date( 'd M Y', strtotime( $r->created_at ) ) : '',
+                    ) );
+                }
+            } else {
+                fputcsv( $out, array( $i, $r->user_name, $r->user_email, $r->event_name, '—', '—', '—',
+                    $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
+                    $r->fee_paid ? 'Yes' : 'No',
+                    trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
+                    ucfirst( $r->status ),
+                    date( 'd M Y', strtotime( $r->created_at ) ),
+                ) );
+            }
+            $i++;
         }
         fclose( $out );
         exit;

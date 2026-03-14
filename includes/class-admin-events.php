@@ -491,7 +491,9 @@ class MSC_Admin_Events {
         <th>Sponsors</th>
         <th>Email</th>
         <th>Event</th>
-        <th>Entries</th>
+        <th>Class</th>
+        <th>Vehicle</th>
+        <th style="white-space:nowrap">Race #</th>
         <th>Entry Fee</th>
         <th>PoP</th>
         <th>Paid</th>
@@ -503,40 +505,29 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="14">No registrations found.</td></tr>
+        <tr><td colspan="16">No registrations found.</td></tr>
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
         $sc       = $status_colors[$r->status] ?? '#333';
         $sb       = $status_bg[$r->status]     ?? '#eee';
         $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-        if ( $cv_pairs ) {
-            $entries_html  = '<table style="border:none;border-collapse:collapse">';
-            $entries_html .= '<thead><tr>';
-            $entries_html .= '<th style="padding:0 16px 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Class / Vehicle</th>';
-            $entries_html .= '<th style="padding:0 0 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Race #</th>';
-            $entries_html .= '</tr></thead><tbody>';
-            foreach ( $cv_pairs as $p ) {
-                $entries_html .= '<tr>';
-                $entries_html .= '<td style="padding:2px 16px 2px 0;white-space:nowrap">' . esc_html( $p['class_name'] ) . ' &mdash; ' . esc_html( $p['vehicle_name'] ) . '</td>';
-                $entries_html .= '<td style="padding:2px 0;white-space:nowrap;font-weight:600">' . ( $p['comp_number'] ? esc_html( $p['comp_number'] ) : '<span style="color:#ccc">—</span>' ) . '</td>';
-                $entries_html .= '</tr>';
-            }
-            $entries_html .= '</tbody></table>';
-        } else {
-            $entries_html = '—';
-        }
+        $rs       = max( 1, count( $cv_pairs ) );
+        $first    = $cv_pairs ? $cv_pairs[0] : null;
+        $extra    = array_slice( $cv_pairs, 1 );
         ?>
         <tr>
-        <td><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
-        <td style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
-        <td><?php echo esc_html($r->user_name) ?></td>
-        <td><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
-        <td><?php echo esc_html($r->user_email) ?></td>
-        <td><?php echo esc_html($r->event_name) ?></td>
-        <td style="line-height:1.6"><?php echo $entries_html; ?></td>
-        <td><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
-        <td><?php
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_name) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_email) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->event_name) ?></td>
+        <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
+        <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
+        <td style="white-space:nowrap;font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php
             if ( $r->pop_file_id ) {
                 $url = add_query_arg( 'msc_pop_file', $r->id, home_url() );
                 echo '<a href="' . esc_url($url) . '" target="_blank" class="button button-small">📄 View PoP</a>';
@@ -544,19 +535,19 @@ class MSC_Admin_Events {
                 echo '<span style="color:#aaa">—</span>';
             }
         ?></td>
-        <td><?php echo $r->fee_paid ? '<span style="color:green">✓ Paid</span>' : '<span style="color:#aaa">—</span>' ?></td>
-        <td><?php
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->fee_paid ? '<span style="color:green">✓ Paid</span>' : '<span style="color:#aaa">—</span>' ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php
         if ($r->indemnity_method === 'signed') echo '<a href="'.esc_url(add_query_arg('msc_indemnity_pdf',$r->id,home_url())).'" target="_blank" style="color:green;text-decoration:none" title="Signed '.esc_attr($r->indemnity_date).'">✓ View PDF</a>';
         elseif ($r->indemnity_method === 'bring') echo '<span style="color:#856404">📄 Will bring</span>';
         else echo '—';
         ?></td>
-        <td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
         <span style="background:<?php echo esc_attr($sb) ?>;color:<?php echo esc_attr($sc) ?>;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">
         <?php echo esc_html(ucfirst($r->status)) ?>
         </span>
         </td>
-        <td><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
-        <td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
         <form method="post" style="flex-wrap:wrap;gap:4px;" class="msc-admin-row-form"
         onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
         <?php wp_nonce_field('msc_reg_action') ?>
@@ -587,6 +578,13 @@ class MSC_Admin_Events {
         </form>
         </td>
         </tr>
+        <?php foreach ( $extra as $ep ) : ?>
+        <tr>
+        <td style="white-space:nowrap;padding-top:2px"><?php echo esc_html( $ep['class_name'] ); ?></td>
+        <td style="white-space:nowrap;padding-top:2px"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
+        <td style="white-space:nowrap;font-weight:600;padding-top:2px"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+        </tr>
+        <?php endforeach; ?>
         <?php endforeach; endif; ?>
         </tbody>
         </table>
