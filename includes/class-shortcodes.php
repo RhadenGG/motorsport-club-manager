@@ -385,7 +385,7 @@ class MSC_Shortcodes {
                             </div>
                             <div id="msc-primary-comp-wrap" style="display:none;margin-top:10px">
                                 <div class="msc-field">
-                                    <label style="font-weight:600">Competition Number <span class="msc-required">*</span></label>
+                                    <label style="font-weight:600">Race Number <span class="msc-required">*</span></label>
                                     <input type="text" id="msc-primary-comp-input" class="msc-comp-input" data-vehicle-id="" placeholder="e.g. 42" style="max-width:200px">
                                 </div>
                             </div>

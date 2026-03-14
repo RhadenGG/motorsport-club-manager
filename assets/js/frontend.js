@@ -249,7 +249,7 @@ jQuery(function ($) {
                     msc.vehicleCompNumbers[row.vehicleId] = stored;
                     if (!$cn.length) {
                         $cn = $('<div>').addClass('msc-add-comp-notice msc-field').css({marginTop:'10px', width:'100%'});
-                        var $lbl = $('<label>').css('font-weight','600').html('Competition Number <span class="msc-required">*</span>');
+                        var $lbl = $('<label>').css('font-weight','600').html('Race Number <span class="msc-required">*</span>');
                         var $inp = $('<input>').attr('type','text').attr('placeholder','e.g. 42')
                             .addClass('msc-comp-input');
                         $cn.append($lbl, $inp);

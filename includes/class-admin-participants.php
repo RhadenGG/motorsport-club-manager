@@ -44,7 +44,7 @@ class MSC_Admin_Participants {
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
-            <th>Competition #</th>
+            <th>Race #</th>
             <th>Registrations</th>
         </tr>
         </thead>
@@ -128,7 +128,7 @@ class MSC_Admin_Participants {
                 <!-- Motorsport Details -->
                 <div>
                     <p style="font-weight:700;margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#23282d;border-bottom:2px solid #00a32a;padding-bottom:5px">Motorsport Details</p>
-                    <?php self::detail_row( 'Competition #',  $comp_number ?: '—' ); ?>
+                    <?php self::detail_row( 'Race #',  $comp_number ?: '—' ); ?>
                     <?php self::detail_row( 'MSA Licence',    $msa_licence ?: '—' ); ?>
                     <?php self::detail_row( 'Medical Aid',    $medical_aid ?: '—' ); ?>
                     <?php self::detail_row( 'Medical Aid #',  $medical_no ?: '—' ); ?>
@@ -290,7 +290,7 @@ class MSC_Admin_Participants {
                     </div>
                     <div style="display:flex;gap:24px;flex-shrink:0;font-size:13px;color:#555">
                         <span><?php echo esc_html( $phone ?: '—' ); ?></span>
-                        <span><?php echo $comp ? '<strong>Comp #</strong> ' . esc_html($comp) : '<span style="color:#ccc">No comp #</span>'; ?></span>
+                        <span><?php echo $comp ? '<strong>Race #</strong> ' . esc_html($comp) : '<span style="color:#ccc">No race #</span>'; ?></span>
                         <span style="white-space:nowrap">
                             <?php if ( $reg_count ) : ?>
                                 <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">
@@ -316,7 +316,7 @@ class MSC_Admin_Participants {
 
                         <div>
                             <p class="msc-p-section-title" style="border-bottom-color:#00a32a">Motorsport Details</p>
-                            <?php self::fe_row('Competition #', $comp ?: '—'); ?>
+                            <?php self::fe_row('Race #', $comp ?: '—'); ?>
                             <?php self::fe_row('MSA Licence',   $msa ?: '—'); ?>
                             <?php self::fe_row('Medical Aid',   $med_aid ?: '—'); ?>
                             <?php self::fe_row('Medical Aid #', $med_no ?: '—'); ?>

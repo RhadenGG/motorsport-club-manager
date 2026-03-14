@@ -53,7 +53,7 @@ class MSC_Admin_Garage {
                 <td><input type="text" name="msc_color" value="<?php echo esc_attr($d['color']); ?>" class="regular-text"></td>
             </tr>
             <tr>
-                <th><label>Competition Number</label></th>
+                <th><label>Race Number</label></th>
                 <td><input type="text" name="msc_comp_number" value="<?php echo esc_attr($d['comp_number']); ?>" class="regular-text" placeholder="e.g. 42"></td>
                 <th><label>Engine Size</label></th>
                 <td>

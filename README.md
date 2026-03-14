@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.7.5 | **License:** GPLv2 or later
+**Current version:** 0.7.8 | **License:** GPLv2 or later
 
 ---
 
@@ -58,9 +58,9 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 
 ### Member Account & Profile
 - **My Account** (`[msc_my_account]`) — member dashboard with:
-  - **Garage:** add, edit, and delete vehicles with make, model, year, registration number, class, and photo.
+  - **Garage:** add, edit, and delete vehicles with make, model, year, race number, class, and photo.
   - **My Entries:** history of all entries with status badges, entered class names, and view links for indemnity PDFs and PoPs.
-  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (competition number, MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
+  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
   - **Profile photo:** upload, preview, and remove a custom photo.
 - Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, Administrator → Admin).
 
@@ -73,7 +73,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Staff Dashboard
 - Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators and the `msc_event_creator` role.
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event and/or status; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export of the filtered entry list.
+- **Entries tab:** filter by event and/or status; each entry shows all class/vehicle pairs with their Race # in a dedicated column; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export of the filtered entry list.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members who have ever entered an event, with expandable rows showing personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
@@ -191,7 +191,7 @@ Migrations run automatically on every WordPress `init` when the stored `msc_db_v
 ### Key Conventions
 - All hooks, options, meta keys, and nonces use the `msc_` prefix.
 - All CSS classes use the `msc-` prefix.
-- Vehicle meta keys: `_msc_make`, `_msc_model`, `_msc_year`, `_msc_type`, `_msc_reg_number`.
+- Vehicle meta keys: `_msc_make`, `_msc_model`, `_msc_year`, `_msc_type`, `_msc_comp_number` (Race Number).
 - Event meta keys: `_msc_event_date`, `_msc_event_end_date`, `_msc_event_location`, `_msc_entry_fee`, `_msc_capacity`, `_msc_event_status` (`closed` locks entries).
 - AJAX nonce: `msc_nonce`.
 

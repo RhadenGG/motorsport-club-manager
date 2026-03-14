@@ -809,13 +809,22 @@ class MSC_Frontend_Dashboard {
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
                     $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    $entries_lines = array();
-                    foreach ( $cv_pairs as $p ) {
-                        $line = esc_html( $p['class_name'] ) . ' &mdash; ' . esc_html( $p['vehicle_name'] );
-                        if ( $p['comp_number'] ) $line .= ' <span style="opacity:.7;font-weight:600">#' . esc_html( $p['comp_number'] ) . '</span>';
-                        $entries_lines[] = $line;
+                    if ( $cv_pairs ) {
+                        $entries_html  = '<table style="border:none;border-collapse:collapse">';
+                        $entries_html .= '<thead><tr>';
+                        $entries_html .= '<th style="padding:0 16px 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Class / Vehicle</th>';
+                        $entries_html .= '<th style="padding:0 0 4px 0;font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap">Race #</th>';
+                        $entries_html .= '</tr></thead><tbody>';
+                        foreach ( $cv_pairs as $p ) {
+                            $entries_html .= '<tr>';
+                            $entries_html .= '<td style="padding:2px 16px 2px 0;white-space:nowrap">' . esc_html( $p['class_name'] ) . ' &mdash; ' . esc_html( $p['vehicle_name'] ) . '</td>';
+                            $entries_html .= '<td style="padding:2px 0;white-space:nowrap;font-weight:600">' . ( $p['comp_number'] ? esc_html( $p['comp_number'] ) : '<span style="color:#ccc">—</span>' ) . '</td>';
+                            $entries_html .= '</tr>';
+                        }
+                        $entries_html .= '</tbody></table>';
+                    } else {
+                        $entries_html = '—';
                     }
-                    $entries_html = $entries_lines ? implode( '<br>', $entries_lines ) : '—';
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <td><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
@@ -2103,7 +2112,7 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Comp #', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Race #', 'Event', 'Vehicle', 'Class', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
 
         $i = 1;
         foreach ( $regs as $r ) {

@@ -311,7 +311,7 @@ class MSC_Registration {
             if ( ! $stored && ! $posted ) {
                 $vpost = get_post( $vid );
                 $vname = $vpost ? $vpost->post_title : 'vehicle #' . $vid;
-                wp_send_json_error( array( 'message' => 'Please enter a Competition Number for "' . esc_html( $vname ) . '".' ) );
+                wp_send_json_error( array( 'message' => 'Please enter a Race Number for "' . esc_html( $vname ) . '".' ) );
             }
         }
 

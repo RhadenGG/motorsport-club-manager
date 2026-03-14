@@ -152,7 +152,7 @@ class MSC_Indemnity {
             $year   = $vid ? get_post_meta( $vid, '_msc_year',        true ) : '';
             $comp   = $pair['comp_number'];
             $v_desc = trim( "$year $make $model" ) ?: $pair['vehicle_name'];
-            if ( $comp ) $v_desc .= ' — Comp #' . $comp;
+            if ( $comp ) $v_desc .= ' — Race #' . $comp;
             $rows[ $label ] = $pair['class_name'] . ' — ' . $v_desc;
         }
         if ( $sponsors ) {

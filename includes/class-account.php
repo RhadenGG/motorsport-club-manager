@@ -125,7 +125,7 @@ class MSC_Account {
                             <span class="msc-onboarding-num">1</span>
                             <div>
                                 <strong>Complete your profile</strong>
-                                <p>Add your date of birth, competition number, MSA licence, medical aid details and gender.</p>
+                                <p>Add your date of birth, MSA licence, medical aid details and gender.</p>
                                 <a href="<?php echo esc_url( msc_get_account_url( 'profile' ) ); ?>" class="msc-btn msc-btn-sm">Go to My Profile →</a>
                             </div>
                         </div>
@@ -207,7 +207,7 @@ class MSC_Account {
                             <input type="text" id="v_color" placeholder="Red">
                         </div>
                         <div class="msc-field">
-                            <label for="v_comp_number">Competition Number</label>
+                            <label for="v_comp_number">Race Number</label>
                             <input type="text" id="v_comp_number" placeholder="e.g. 42">
                         </div>
                         <div class="msc-field msc-field-full">
@@ -339,7 +339,7 @@ class MSC_Account {
                                     <input type="text" class="edit-v_color" data-id="<?php echo $v->ID; ?>" value="<?php echo esc_attr( $color ); ?>" placeholder="Red">
                                 </div>
                                 <div class="msc-field">
-                                    <label>Competition Number</label>
+                                    <label>Race Number</label>
                                     <input type="text" class="edit-v_comp_number" data-id="<?php echo $v->ID; ?>" value="<?php echo esc_attr( $comp_number ); ?>" placeholder="e.g. 42">
                                 </div>
                                 <div class="msc-field msc-field-full">
