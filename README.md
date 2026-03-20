@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.7.8 | **License:** GPLv2 or later
+**Current version:** 0.7.9 | **License:** GPLv2 or later
 
 ---
 
@@ -17,9 +17,14 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Event cards show **"Enter Now"** for unentered visitors and **"View your entry"** for already-entered members.
 
 ### Vehicle Classes & Types
-- Fully dynamic vehicle class taxonomy (`msc_vehicle_class`) — create, rename, and delete classes from the admin UI under **Motorsport Club → Vehicle Classes**.
+- Fully dynamic vehicle class taxonomy (`msc_vehicle_class`) — create, rename, and delete classes from the admin UI under **Motorsport Club → Vehicle Classes** or the **Vehicle Classes tab** of the staff dashboard.
 - Each class carries a **Vehicle Type** meta value (Car or Motorcycle), used to filter compatible classes and vehicles per member.
 - Classes are grouped by vehicle type in all entry form dropdowns.
+- **Per-class entry conditions** — optional declarations attached to a class (managed in wp-admin or the staff dashboard Vehicle Classes tab):
+  - **Confirm** — a single checkbox the entrant must tick (e.g., "I accept the supplementary regulations for this class").
+  - **Select One** — a radio group; the entrant must choose exactly one option (e.g., tyre specification).
+  - **Select Many** — a checkbox group; the entrant must choose at least one option.
+- Conditions appear in Step 1 of the entry form as soon as a class is selected, gate the "Next" button until answered, appear in the signed indemnity PDF, the staff entries view, and the entrant's My Entries history.
 
 ### Pricing
 - **Base fee:** optional fixed amount added to every entry.
@@ -160,7 +165,7 @@ The custom `msc_view_participants` capability gates participant data and indemni
 | Table | Purpose |
 |---|---|
 | `{prefix}msc_registrations` | Entry records — status, fee, indemnity data, PoP attachment ID |
-| `{prefix}msc_registration_classes` | Per-entry class rows with fee, vehicle, and primary flag |
+| `{prefix}msc_registration_classes` | Per-entry class rows with fee, vehicle, primary flag, and conditions answers (JSON) |
 | `{prefix}msc_event_results` | Race results per entry (position, lap time, status) |
 | `{prefix}msc_pricing_sets` | Named pricing schedules |
 | `{prefix}msc_pricing_set_classes` | Per-class fee config within a pricing set |
