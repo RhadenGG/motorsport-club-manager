@@ -432,6 +432,9 @@ class MSC_Shortcodes {
                             </table>
                         </div>
 
+                        <!-- Per-class conditions — rendered live as classes are selected -->
+                        <div id="msc-class-declarations-wrap"></div>
+
                         <?php endif; ?>
                     </div>
 
@@ -542,8 +545,6 @@ class MSC_Shortcodes {
                             <p class="description" style="font-size:0.85em;margin-top:4px;">PDF, PNG or JPG, max 5MB. (e.g. EFT confirmation or payment screenshot)</p>
                         </div>
                     </div>
-
-                    <div id="msc-class-declarations-wrap"></div>
 
                     <?php
                     $custom_decs = get_option('msc_custom_declarations', '');

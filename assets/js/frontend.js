@@ -131,6 +131,7 @@ jQuery(function ($) {
                     $('#msc-primary-vehicle-wrap').hide();
                     $('#msc-additional-classes-wrap').hide();
                     msc.updateFees();
+                    msc.renderClassConditions();
                     msc.checkStep1();
                     return;
                 }
@@ -138,6 +139,7 @@ jQuery(function ($) {
                 populateVehicleSelect($('#msc-primary-vehicle-select'), classId, null);
                 $('#msc-primary-vehicle-wrap').show();
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
 
@@ -166,6 +168,7 @@ jQuery(function ($) {
                     $('#msc-additional-classes-wrap').hide();
                 }
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
 
@@ -224,13 +227,14 @@ jQuery(function ($) {
                 var row = msc.additionalRows.find(function(r) { return r.rowId === rowId; });
                 if (row) { row.classId = classId ? parseInt(classId) : null; row.vehicleId = null; }
 
-                if (!classId) { $vehicleSel.hide().val(''); msc.updateFees(); msc.checkStep1(); return; }
+                if (!classId) { $vehicleSel.hide().val(''); msc.updateFees(); msc.renderClassConditions(); msc.checkStep1(); return; }
                 populateVehicleSelect($vehicleSel, classId, null);
                 $vehicleSel.show();
 
                 // Disable the selected class in all OTHER additional rows' dropdowns
                 msc.refreshAdditionalClassOptions();
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
 
@@ -261,6 +265,7 @@ jQuery(function ($) {
                     $cn.hide();
                 }
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
 
@@ -271,6 +276,7 @@ jQuery(function ($) {
                 msc.additionalRows = msc.additionalRows.filter(function(r) { return r.rowId !== rowId; });
                 msc.refreshAdditionalClassOptions();
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
             // Also handle via delegated click with msc-btn-danger class on remove buttons
@@ -280,6 +286,7 @@ jQuery(function ($) {
                 msc.additionalRows = msc.additionalRows.filter(function(r) { return r.rowId !== rowId; });
                 msc.refreshAdditionalClassOptions();
                 msc.updateFees();
+                msc.renderClassConditions();
                 msc.checkStep1();
             });
 
@@ -379,6 +386,52 @@ jQuery(function ($) {
             };
 
             // Enable Next only when primary class + primary vehicle are selected, and all vehicles have comp numbers
+            // Render per-class condition groups into Step 1 whenever selection changes
+            msc.renderClassConditions = function() {
+                var $condWrap = $('#msc-class-declarations-wrap').empty();
+                if (!msc.primaryClassId) return;
+
+                var selectedIds = [msc.primaryClassId].concat(
+                    msc.additionalRows.filter(function(r){ return r.classId && r.vehicleId; }).map(function(r){ return r.classId; })
+                );
+                selectedIds.forEach(function(classId) {
+                    var cls = classes.find(function(c){ return c.id == classId; });
+                    if (!cls || !cls.conditions || !cls.conditions.length) return;
+                    var $section = $('<div>').addClass('msc-class-cond-section');
+                    $section.append($('<p>').addClass('msc-class-cond-section-title').text(cls.name + ' — Required Declarations'));
+                    cls.conditions.forEach(function(cond, idx) {
+                        var $group = $('<div>').addClass('msc-cond-group').attr({'data-class-id': classId, 'data-idx': idx, 'data-type': cond.type});
+                        if (cond.type === 'confirm') {
+                            var cbId = 'msc-cdecl-' + classId + '-' + idx;
+                            var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                            $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+']',value:'1'}).addClass('msc-class-declaration'));
+                            $lbl.append($('<span>').text(cond.label));
+                            $group.append($lbl);
+                        } else if (cond.type === 'select_one') {
+                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                            (cond.options || []).forEach(function(opt, oi) {
+                                var rbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
+                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', rbId);
+                                $lbl.append($('<input>').attr({type:'radio',id:rbId,name:'msc_cdecl['+classId+']['+idx+']',value:opt}).addClass('msc-class-declaration'));
+                                $lbl.append($('<span>').text(opt));
+                                $group.append($lbl);
+                            });
+                        } else if (cond.type === 'select_many') {
+                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                            (cond.options || []).forEach(function(opt, oi) {
+                                var cbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
+                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                                $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+'][]',value:opt}).addClass('msc-class-declaration'));
+                                $lbl.append($('<span>').text(opt));
+                                $group.append($lbl);
+                            });
+                        }
+                        $section.append($group);
+                    });
+                    $condWrap.append($section);
+                });
+            };
+
             msc.checkStep1 = function() {
                 var ready = !!msc.primaryClassId && !!msc.primaryVehicleId;
                 if (ready && msc.primaryVehicleId && !msc.vehicleCompNumbers[msc.primaryVehicleId]) ready = false;
@@ -386,6 +439,18 @@ jQuery(function ($) {
                     msc.additionalRows.forEach(function(r) {
                         if (r.classId && !r.vehicleId) ready = false;
                         if (r.vehicleId && !msc.vehicleCompNumbers[r.vehicleId]) ready = false;
+                    });
+                }
+                // All class conditions must be answered before Next is enabled
+                if (ready) {
+                    $('.msc-cond-group').each(function() {
+                        var type    = $(this).data('type');
+                        var $inputs = $(this).find('.msc-class-declaration');
+                        if (type === 'confirm') {
+                            if (!$inputs.is(':checked')) ready = false;
+                        } else if (type === 'select_one' || type === 'select_many') {
+                            if (!$inputs.filter(':checked').length) ready = false;
+                        }
                     });
                 }
                 $('#msc-step1-next').prop('disabled', !ready);
@@ -431,49 +496,6 @@ jQuery(function ($) {
 
                 $('#msc-summary').empty().append($table);
 
-                // Inject per-class conditions into Step 2
-                var $condWrap = $('#msc-class-declarations-wrap').empty();
-                var selectedIds = [msc.primaryClassId].concat(
-                    msc.additionalRows.filter(function(r){ return r.classId && r.vehicleId; }).map(function(r){ return r.classId; })
-                );
-                selectedIds.forEach(function(classId) {
-                    var cls = classes.find(function(c){ return c.id == classId; });
-                    if (!cls || !cls.conditions || !cls.conditions.length) return;
-                    var $section = $('<div>').addClass('msc-class-cond-section');
-                    $section.append($('<p>').addClass('msc-class-cond-section-title').text(cls.name + ' — Required Declarations'));
-                    cls.conditions.forEach(function(cond, idx) {
-                        var $group = $('<div>').addClass('msc-cond-group').attr({'data-class-id': classId, 'data-idx': idx, 'data-type': cond.type});
-                        if (cond.type === 'confirm') {
-                            // For confirm, the label IS the statement — show checkbox + text only, no heading.
-                            var cbId = 'msc-cdecl-' + classId + '-' + idx;
-                            var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
-                            $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+']',value:'1'}).addClass('msc-class-declaration'));
-                            $lbl.append($('<span>').text(cond.label));
-                            $group.append($lbl);
-                        } else if (cond.type === 'select_one') {
-                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
-                            (cond.options || []).forEach(function(opt, oi) {
-                                var rbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
-                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', rbId);
-                                $lbl.append($('<input>').attr({type:'radio',id:rbId,name:'msc_cdecl['+classId+']['+idx+']',value:opt}).addClass('msc-class-declaration'));
-                                $lbl.append($('<span>').text(opt));
-                                $group.append($lbl);
-                            });
-                        } else if (cond.type === 'select_many') {
-                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
-                            (cond.options || []).forEach(function(opt, oi) {
-                                var cbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
-                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
-                                $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+'][]',value:opt}).addClass('msc-class-declaration'));
-                                $lbl.append($('<span>').text(opt));
-                                $group.append($lbl);
-                            });
-                        }
-                        $section.append($group);
-                    });
-                    $condWrap.append($section);
-                });
-
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
                 msc.checkRegValidity();
@@ -495,8 +517,13 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration, .msc-class-declaration', function() {
+            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
                 msc.checkRegValidity();
+            });
+
+            // Condition inputs are in Step 1 — re-check Step 1 validity on change
+            $(document).on('change', '.msc-class-declaration', function() {
+                msc.checkStep1();
             });
 
             $('input[name="msc_sig_type"]').on('change', function () {
@@ -710,19 +737,6 @@ jQuery(function ($) {
             if (msc.totalFee > 0) {
                 if (!$('#msc-pop-file')[0] || !$('#msc-pop-file')[0].files[0]) isValid = false;
             }
-
-            // Per-class conditions
-            $('.msc-cond-group').each(function() {
-                var type = $(this).data('type');
-                var $inputs = $(this).find('.msc-class-declaration');
-                if (type === 'confirm') {
-                    if (!$inputs.is(':checked')) isValid = false;
-                } else if (type === 'select_one') {
-                    if (!$inputs.filter(':checked').length) isValid = false;
-                } else if (type === 'select_many') {
-                    if (!$inputs.filter(':checked').length) isValid = false;
-                }
-            });
 
             // Custom Declarations (Mandatory Checkboxes)
             $('.msc-custom-declaration').each(function() {
