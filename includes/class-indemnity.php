@@ -161,6 +161,30 @@ class MSC_Indemnity {
         self::table_rows( $pdf, $lm, $rw, $rows );
         $pdf->set_y( $pdf->get_y() + 10 );
 
+        // ── Section: Class Conditions ─────────────────────────────────
+        $conditions_display = MSC_Registration::get_conditions_for_display( $reg->id );
+        if ( ! empty( $conditions_display ) ) {
+            self::section_header( $pdf, $lm, $rw, 'CLASS CONDITIONS & DECLARATIONS' );
+            foreach ( $conditions_display as $class_data ) {
+                // Class name sub-header
+                $pdf->set_text_color( 45, 52, 54 );
+                $pdf->set_font_size( 9 );
+                $y = $pdf->get_y();
+                $pdf->set_fill_color( 220, 230, 245 );
+                $pdf->rect( $lm + 8, $y, $rw - 16, 14, 'F' );
+                $pdf->text_at( $lm + 14, $y + 10, $class_data['class_name'] );
+                $pdf->set_y( $y + 18 );
+
+                $cond_rows = array();
+                foreach ( $class_data['conditions'] as $cond ) {
+                    $cond_rows[ $cond['label'] ] = MSC_Registration::format_condition_answer( $cond );
+                }
+                self::table_rows( $pdf, $lm + 8, $rw - 8, $cond_rows );
+                $pdf->set_y( $pdf->get_y() + 4 );
+            }
+            $pdf->set_y( $pdf->get_y() + 6 );
+        }
+
         // ── Section: Indemnity Text ───────────────────────────────────
         self::section_header( $pdf, $lm, $rw, 'INDEMNITY DECLARATION' );
 
@@ -251,6 +275,9 @@ class MSC_Indemnity {
                     $clean_line = wp_strip_all_tags( $line );
                     $acknowledgement .= " and " . $clean_line;
                 }
+            }
+            if ( ! empty( $conditions_display ) ) {
+                $acknowledgement .= " and has completed all class-specific condition declarations as recorded above";
             }
             $acknowledgement .= ".";
 

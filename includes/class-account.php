@@ -405,6 +405,23 @@ class MSC_Account {
                                 <span>💰 <?php echo $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free'; ?></span>
                                 <span><?php echo $r->indemnity_method === 'signed' ? '✅ Indemnity signed' : '📄 Bring on day'; ?></span>
                             </div>
+                            <?php $acct_conditions = MSC_Registration::get_conditions_for_display( $r->id );
+                            if ( ! empty( $acct_conditions ) ) : ?>
+                            <div class="msc-reg-conditions">
+                                <p class="msc-reg-conditions-title">Class Conditions</p>
+                                <?php foreach ( $acct_conditions as $class_data ) : ?>
+                                <div class="msc-reg-conditions-class">
+                                    <strong class="msc-reg-conditions-class-name"><?php echo esc_html( $class_data['class_name'] ); ?></strong>
+                                    <?php foreach ( $class_data['conditions'] as $cond ) : ?>
+                                    <div class="msc-reg-conditions-item">
+                                        <?php echo esc_html( $cond['label'] ); ?>:
+                                        <strong><?php echo esc_html( MSC_Registration::format_condition_answer( $cond ) ); ?></strong>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <div class="msc-reg-card-actions">
                             <a href="<?php echo esc_url( add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ) ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>

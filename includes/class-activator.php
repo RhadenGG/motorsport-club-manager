@@ -63,13 +63,22 @@ class MSC_Activator {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD UNIQUE INDEX unique_event_entry_number (event_id, entry_number)" );
         }
 
-        // Migrate msc_registration_classes: add vehicle_id and is_primary if missing
+        // Migrate msc_registration_classes: add columns when missing.
+        // NOTE: This activate() method is called both on plugin activation AND on every
+        // WordPress 'init' hook (priority 20, via msc_run_migration()) whenever MSC_VERSION
+        // differs from the stored msc_db_version option.  All registration AJAX requests go
+        // through wp-admin/admin-ajax.php, so is_admin() is true and msc_run_migration() runs
+        // before any AJAX action is dispatched — guaranteeing these columns exist before any
+        // INSERT that references them.
         $cols = array_column( $wpdb->get_results( "DESCRIBE {$wpdb->prefix}msc_registration_classes" ), 'Field' );
         if ( ! in_array( 'vehicle_id', $cols, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registration_classes ADD COLUMN vehicle_id bigint(20) unsigned NULL" );
         }
         if ( ! in_array( 'is_primary', $cols, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registration_classes ADD COLUMN is_primary tinyint(1) NOT NULL DEFAULT 0" );
+        }
+        if ( ! in_array( 'conditions_data', $cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registration_classes ADD COLUMN conditions_data longtext DEFAULT NULL" );
         }
 
         // Pricing sets table

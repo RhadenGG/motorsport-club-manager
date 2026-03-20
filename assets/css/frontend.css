@@ -614,7 +614,7 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-regs-list { display: flex; flex-direction: column; gap: 12px; }
 .msc-reg-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 16px;
     background: #fff;
     border: 1px solid var(--msc-border);
@@ -1187,3 +1187,119 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
     .msc-auth-card { border-radius: 10px; }
     .msc-auth-row { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
+
+/* ── Class Conditions & Declarations ────────────────────────────────────────── */
+
+/* Global indemnity declaration box (yellow) */
+.msc-declaration-section {
+    margin: 10px 0;
+    padding: 12px;
+    background: #fffbf0;
+    border: 1px solid #ffeeba;
+    border-radius: var(--msc-radius);
+}
+.msc-declaration-section label {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    font-weight: 600;
+    line-height: 1.4;
+    gap: 10px;
+}
+.msc-declaration-section input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+    accent-color: var(--msc-primary);
+}
+
+/* Per-class condition section (blue, inside registration form) */
+.msc-class-cond-section {
+    margin: 10px 0;
+    padding: 14px 16px;
+    background: #f0f8ff;
+    border: 1px solid #b3d4f0;
+    border-radius: var(--msc-radius);
+}
+.msc-class-cond-section-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--msc-dark);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #b3d4f0;
+}
+.msc-cond-group { margin-bottom: 12px; }
+.msc-cond-group:last-child { margin-bottom: 0; }
+.msc-cond-group-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--msc-dark);
+    margin: 0 0 6px;
+}
+.msc-cond-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+.msc-cond-label input[type="checkbox"],
+.msc-cond-label input[type="radio"] {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--msc-primary);
+    margin: 0;
+}
+
+/* Account card: conditions block */
+.msc-reg-conditions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--msc-border);
+    font-size: 13px;
+}
+.msc-reg-conditions-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #888;
+    margin: 0 0 6px;
+}
+.msc-reg-conditions-class { margin-bottom: 8px; }
+.msc-reg-conditions-class:last-child { margin-bottom: 0; }
+.msc-reg-conditions-class-name {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--msc-dark);
+    margin-bottom: 3px;
+}
+.msc-reg-conditions-item { margin-left: 8px; color: #444; margin-bottom: 2px; }
+
+/* Dashboard table: expanded conditions detail row */
+.msc-conditions-detail-row > td {
+    background: #f0f8ff !important;
+    border-top: 1px dashed #b3d4f0 !important;
+    padding: 12px 16px !important;
+}
+.msc-cond-detail-title {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #2271b1;
+}
+.msc-cond-detail-class { margin-bottom: 10px; }
+.msc-cond-detail-class:last-child { margin-bottom: 0; }
+.msc-cond-detail-class-name { font-size: 12px; font-weight: 600; color: var(--msc-dark); }
+.msc-cond-detail-table { margin-top: 4px; font-size: 12px; border-collapse: collapse; }
+.msc-cond-detail-table td { padding: 2px 0; }
+.msc-cond-detail-table td:first-child { padding-right: 16px; color: #555; white-space: nowrap; }
+.msc-cond-detail-table td:last-child { font-weight: 500; }

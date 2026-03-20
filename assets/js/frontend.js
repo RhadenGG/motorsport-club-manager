@@ -430,6 +430,50 @@ jQuery(function ($) {
                 ));
 
                 $('#msc-summary').empty().append($table);
+
+                // Inject per-class conditions into Step 2
+                var $condWrap = $('#msc-class-declarations-wrap').empty();
+                var selectedIds = [msc.primaryClassId].concat(
+                    msc.additionalRows.filter(function(r){ return r.classId && r.vehicleId; }).map(function(r){ return r.classId; })
+                );
+                selectedIds.forEach(function(classId) {
+                    var cls = classes.find(function(c){ return c.id == classId; });
+                    if (!cls || !cls.conditions || !cls.conditions.length) return;
+                    var $section = $('<div>').addClass('msc-class-cond-section');
+                    $section.append($('<p>').addClass('msc-class-cond-section-title').text(cls.name + ' — Required Declarations'));
+                    cls.conditions.forEach(function(cond, idx) {
+                        var $group = $('<div>').addClass('msc-cond-group').attr({'data-class-id': classId, 'data-idx': idx, 'data-type': cond.type});
+                        if (cond.type === 'confirm') {
+                            // For confirm, the label IS the statement — show checkbox + text only, no heading.
+                            var cbId = 'msc-cdecl-' + classId + '-' + idx;
+                            var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                            $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+']',value:'1'}).addClass('msc-class-declaration'));
+                            $lbl.append($('<span>').text(cond.label));
+                            $group.append($lbl);
+                        } else if (cond.type === 'select_one') {
+                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                            (cond.options || []).forEach(function(opt, oi) {
+                                var rbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
+                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', rbId);
+                                $lbl.append($('<input>').attr({type:'radio',id:rbId,name:'msc_cdecl['+classId+']['+idx+']',value:opt}).addClass('msc-class-declaration'));
+                                $lbl.append($('<span>').text(opt));
+                                $group.append($lbl);
+                            });
+                        } else if (cond.type === 'select_many') {
+                            $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                            (cond.options || []).forEach(function(opt, oi) {
+                                var cbId = 'msc-cdecl-' + classId + '-' + idx + '-' + oi;
+                                var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                                $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+'][]',value:opt}).addClass('msc-class-declaration'));
+                                $lbl.append($('<span>').text(opt));
+                                $group.append($lbl);
+                            });
+                        }
+                        $section.append($group);
+                    });
+                    $condWrap.append($section);
+                });
+
                 $('#msc-step-1').hide();
                 $('#msc-step-2').show();
                 msc.checkRegValidity();
@@ -451,7 +495,7 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
+            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration, .msc-class-declaration', function() {
                 msc.checkRegValidity();
             });
 
@@ -561,6 +605,24 @@ jQuery(function ($) {
                 fd.append('notes',            $('#msc-notes').val());
                 if (popFile) fd.append('pop_file', popFile);
 
+                // Append per-class condition answers
+                $('.msc-cond-group').each(function() {
+                    var classId = $(this).data('class-id');
+                    var idx     = $(this).data('idx');
+                    var type    = $(this).data('type');
+                    var $inputs = $(this).find('.msc-class-declaration');
+                    if (type === 'confirm') {
+                        if ($inputs.is(':checked')) fd.append('msc_cdecl[' + classId + '][' + idx + ']', '1');
+                    } else if (type === 'select_one') {
+                        var val = $inputs.filter(':checked').val();
+                        if (val !== undefined) fd.append('msc_cdecl[' + classId + '][' + idx + ']', val);
+                    } else if (type === 'select_many') {
+                        $inputs.filter(':checked').each(function() {
+                            fd.append('msc_cdecl[' + classId + '][' + idx + '][]', $(this).val());
+                        });
+                    }
+                });
+
                 $.ajax({
                     url:         mscData.ajaxUrl,
                     type:        'POST',
@@ -648,6 +710,19 @@ jQuery(function ($) {
             if (msc.totalFee > 0) {
                 if (!$('#msc-pop-file')[0] || !$('#msc-pop-file')[0].files[0]) isValid = false;
             }
+
+            // Per-class conditions
+            $('.msc-cond-group').each(function() {
+                var type = $(this).data('type');
+                var $inputs = $(this).find('.msc-class-declaration');
+                if (type === 'confirm') {
+                    if (!$inputs.is(':checked')) isValid = false;
+                } else if (type === 'select_one') {
+                    if (!$inputs.filter(':checked').length) isValid = false;
+                } else if (type === 'select_many') {
+                    if (!$inputs.filter(':checked').length) isValid = false;
+                }
+            });
 
             // Custom Declarations (Mandatory Checkboxes)
             $('.msc-custom-declaration').each(function() {

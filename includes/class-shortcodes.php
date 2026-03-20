@@ -257,6 +257,26 @@ class MSC_Shortcodes {
             $term = get_term( $cid, 'msc_vehicle_class' );
             if ( $term && ! is_wp_error( $term ) ) {
                 $fees = isset( $set_fees[ $cid ] ) ? $set_fees[ $cid ] : array( 'primary_fee' => 0.0, 'additional_fee' => 0.0, 'override' => null, 'exempt' => 0, 'primary_only' => 0 );
+                $cond_raw   = get_term_meta( $cid, 'msc_class_conditions', true );
+                $conditions = array();
+                if ( $cond_raw ) {
+                    $decoded = json_decode( $cond_raw, true );
+                    if ( is_array( $decoded ) ) {
+                        $valid_types = array( 'confirm', 'select_one', 'select_many' );
+                        foreach ( $decoded as $cond ) {
+                            if ( empty( $cond['label'] ) ) continue;
+                            $ctype = isset( $cond['type'] ) && in_array( $cond['type'], $valid_types, true ) ? $cond['type'] : 'confirm';
+                            $entry = array(
+                                'type'  => $ctype,
+                                'label' => sanitize_text_field( $cond['label'] ),
+                            );
+                            if ( in_array( $ctype, array( 'select_one', 'select_many' ), true ) && ! empty( $cond['options'] ) ) {
+                                $entry['options'] = array_values( array_filter( array_map( 'sanitize_text_field', (array) $cond['options'] ) ) );
+                            }
+                            $conditions[] = $entry;
+                        }
+                    }
+                }
                 $event_classes_for_form[] = array(
                     'id'             => $cid,
                     'name'           => $term->name,
@@ -266,6 +286,7 @@ class MSC_Shortcodes {
                     'override'       => isset($fees['override']) ? $fees['override'] : null,
                     'exempt'         => isset($fees['exempt']) ? (int) $fees['exempt'] : 0,
                     'primary_only'   => isset($fees['primary_only']) ? (int) $fees['primary_only'] : 0,
+                    'conditions'     => $conditions,
                 );
             }
         }
@@ -522,18 +543,20 @@ class MSC_Shortcodes {
                         </div>
                     </div>
 
-                    <?php 
+                    <div id="msc-class-declarations-wrap"></div>
+
+                    <?php
                     $custom_decs = get_option('msc_custom_declarations', '');
                     if ( $custom_decs ) :
                         $lines = array_filter( array_map( 'trim', explode( "\n", $custom_decs ) ) );
                         foreach ( $lines as $i => $line ) :
                     ?>
-                    <div class="msc-declaration-section" style="margin:10px 0; padding:12px; background:#fffbf0; border:1px solid #ffeeba; border-radius:4px;">
-                        <label style="display:flex; align-items:flex-start; cursor:pointer; font-weight:600; line-height:1.4;">
-                            <input type="checkbox" name="msc_custom_declaration" class="msc-custom-declaration" style="margin-top:4px; margin-right:10px;">
+                    <div class="msc-declaration-section">
+                        <label>
+                            <input type="checkbox" name="msc_custom_declaration" class="msc-custom-declaration">
                             <span>
                                 <?php echo wp_kses_post( $line ); ?>
-                                <span style="color:red">*</span>
+                                <span style="color:var(--msc-primary)">*</span>
                             </span>
                         </label>
                     </div>

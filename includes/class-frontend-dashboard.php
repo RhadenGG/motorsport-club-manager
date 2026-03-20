@@ -811,10 +811,11 @@ class MSC_Frontend_Dashboard {
                 <?php foreach ( $regs as $r ) :
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
-                    $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    $rs       = max( 1, count( $cv_pairs ) );
-                    $first    = $cv_pairs ? $cv_pairs[0] : null;
-                    $extra    = array_slice( $cv_pairs, 1 );
+                    $cv_pairs           = MSC_Registration::get_class_vehicle_pairs( $r->id );
+                    $rs                 = max( 1, count( $cv_pairs ) );
+                    $first              = $cv_pairs ? $cv_pairs[0] : null;
+                    $extra              = array_slice( $cv_pairs, 1 );
+                    $conditions_display = MSC_Registration::get_conditions_for_display( $r->id );
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
@@ -841,6 +842,10 @@ class MSC_Frontend_Dashboard {
                             $pop_url = add_query_arg( 'msc_pop_file', $r->id, home_url() ); ?>
                         <a href="<?php echo esc_url( $pop_url ); ?>"
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View proof of payment">PoP</a>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $conditions_display ) ) : ?>
+                        <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-conditions-toggle"
+                                data-id="<?php echo $r->id; ?>" title="View class conditions">Conditions ▾</button>
                         <?php endif; ?>
                     </td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
@@ -873,6 +878,26 @@ class MSC_Frontend_Dashboard {
                     <td style="white-space:nowrap;font-weight:600"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
                 </tr>
                 <?php endforeach; ?>
+                <?php if ( ! empty( $conditions_display ) ) : ?>
+                <tr class="msc-conditions-detail-row" id="msc-cond-row-<?php echo $r->id; ?>" style="display:none">
+                    <td colspan="13">
+                        <span class="msc-cond-detail-title">Class Conditions</span>
+                        <?php foreach ( $conditions_display as $class_data ) : ?>
+                        <div class="msc-cond-detail-class">
+                            <span class="msc-cond-detail-class-name"><?php echo esc_html( $class_data['class_name'] ); ?></span>
+                            <table class="msc-cond-detail-table">
+                            <?php foreach ( $class_data['conditions'] as $cond ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $cond['label'] ); ?></td>
+                                <td><?php echo esc_html( MSC_Registration::format_condition_answer( $cond ) ); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                            </table>
+                        </div>
+                        <?php endforeach; ?>
+                    </td>
+                </tr>
+                <?php endif; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
@@ -1025,6 +1050,15 @@ class MSC_Frontend_Dashboard {
                 } else {
                     doBulk('');
                 }
+            });
+
+            // Conditions detail row toggle
+            $(document).on('click', '.msc-conditions-toggle', function() {
+                var id = $(this).data('id');
+                var $row = $('#msc-cond-row-' + id);
+                var open = $row.is(':visible');
+                $row.toggle(!open);
+                $(this).text(open ? 'Conditions ▾' : 'Conditions ▴');
             });
         })(jQuery);
         </script>

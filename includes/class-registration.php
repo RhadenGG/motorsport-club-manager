@@ -291,6 +291,43 @@ class MSC_Registration {
             }
         }
 
+        // Validate class-specific conditions
+        $submitted_conditions = isset( $_POST['msc_cdecl'] ) && is_array( $_POST['msc_cdecl'] ) ? $_POST['msc_cdecl'] : array();
+        foreach ( $all_entered_class_ids as $cid ) {
+            $cond_raw = get_term_meta( $cid, 'msc_class_conditions', true );
+            if ( ! $cond_raw ) continue;
+            $conditions = json_decode( $cond_raw, true );
+            if ( ! is_array( $conditions ) ) continue;
+            $cterm = get_term( $cid, 'msc_vehicle_class' );
+            $cname = ( $cterm && ! is_wp_error( $cterm ) ) ? $cterm->name : 'Class #' . $cid;
+            foreach ( $conditions as $idx => $cond ) {
+                $ctype   = isset( $cond['type'] ) ? $cond['type'] : 'confirm';
+                $options = isset( $cond['options'] ) && is_array( $cond['options'] ) ? $cond['options'] : array();
+                $label   = isset( $cond['label'] ) ? $cond['label'] : '';
+                $sub     = isset( $submitted_conditions[ $cid ][ $idx ] ) ? $submitted_conditions[ $cid ][ $idx ] : null;
+                if ( $ctype === 'confirm' ) {
+                    if ( $sub !== '1' ) {
+                        wp_send_json_error( array( 'message' => 'Please confirm all requirements for class: ' . $cname ) );
+                    }
+                } elseif ( $ctype === 'select_one' ) {
+                    $val = $sub !== null ? sanitize_text_field( wp_unslash( (string) $sub ) ) : '';
+                    if ( ! in_array( $val, $options, true ) ) {
+                        wp_send_json_error( array( 'message' => 'Please make a selection for "' . esc_html( $label ) . '" in class: ' . $cname ) );
+                    }
+                } elseif ( $ctype === 'select_many' ) {
+                    if ( ! is_array( $sub ) ) {
+                        wp_send_json_error( array( 'message' => 'Please select at least one option for "' . esc_html( $label ) . '" in class: ' . $cname ) );
+                    }
+                    $checked = array_filter( (array) $sub, function( $v ) use ( $options ) {
+                        return in_array( sanitize_text_field( wp_unslash( $v ) ), $options, true );
+                    } );
+                    if ( empty( $checked ) ) {
+                        wp_send_json_error( array( 'message' => 'Please select at least one option for "' . esc_html( $label ) . '" in class: ' . $cname ) );
+                    }
+                }
+            }
+        }
+
         // Validate vehicle ownership — primary
         $primary_vehicle = get_post( $primary_vehicle_id );
         if ( ! $primary_vehicle || (int) $primary_vehicle->post_author !== $user_id ) {
@@ -394,6 +431,7 @@ class MSC_Registration {
         $reg_id = $wpdb->insert_id;
 
         // Insert primary class row
+        $primary_cond_data = self::build_conditions_data( $primary_class_id, $submitted_conditions );
         $wpdb->insert(
             "{$wpdb->prefix}msc_registration_classes",
             array(
@@ -402,13 +440,15 @@ class MSC_Registration {
                 'class_fee'       => $fee_per_class[ $primary_class_id ],
                 'vehicle_id'      => $primary_vehicle_id,
                 'is_primary'      => 1,
+                'conditions_data' => $primary_cond_data !== null ? wp_json_encode( $primary_cond_data ) : null,
             ),
-            array( '%d', '%d', '%f', '%d', '%d' )
+            array( '%d', '%d', '%f', '%d', '%d', '%s' )
         );
 
         // Insert additional class rows
         foreach ( $additional_class_ids as $i => $cid ) {
-            $vid = isset( $additional_vehicle_ids[ $i ] ) ? $additional_vehicle_ids[ $i ] : $primary_vehicle_id;
+            $vid       = isset( $additional_vehicle_ids[ $i ] ) ? $additional_vehicle_ids[ $i ] : $primary_vehicle_id;
+            $cond_data = self::build_conditions_data( $cid, $submitted_conditions );
             $wpdb->insert(
                 "{$wpdb->prefix}msc_registration_classes",
                 array(
@@ -417,8 +457,9 @@ class MSC_Registration {
                     'class_fee'       => $fee_per_class[ $cid ],
                     'vehicle_id'      => $vid,
                     'is_primary'      => 0,
+                    'conditions_data' => $cond_data !== null ? wp_json_encode( $cond_data ) : null,
                 ),
-                array( '%d', '%d', '%f', '%d', '%d' )
+                array( '%d', '%d', '%f', '%d', '%d', '%s' )
             );
         }
 
@@ -834,6 +875,105 @@ class MSC_Registration {
         } else {
             $wpdb->query( 'COMMIT' );
         }
+    }
+
+    /**
+     * Build a sanitised conditions_data array for storage from submitted POST data.
+     * Returns null when the class has no conditions defined.
+     */
+    private static function build_conditions_data( $class_id, $submitted_conditions ) {
+        $cond_raw = get_term_meta( $class_id, 'msc_class_conditions', true );
+        if ( ! $cond_raw ) return null;
+        $conditions = json_decode( $cond_raw, true );
+        if ( ! is_array( $conditions ) || empty( $conditions ) ) return null;
+
+        $data = array();
+        foreach ( $conditions as $idx => $cond ) {
+            $ctype   = isset( $cond['type'] ) ? $cond['type'] : 'confirm';
+            $options = isset( $cond['options'] ) && is_array( $cond['options'] ) ? $cond['options'] : array();
+            $raw     = isset( $submitted_conditions[ $class_id ][ $idx ] ) ? $submitted_conditions[ $class_id ][ $idx ] : null;
+
+            if ( $ctype === 'confirm' ) {
+                $data[ $idx ] = '1';
+            } elseif ( $ctype === 'select_one' ) {
+                $val = sanitize_text_field( wp_unslash( (string) $raw ) );
+                $data[ $idx ] = in_array( $val, $options, true ) ? $val : '';
+            } elseif ( $ctype === 'select_many' ) {
+                $checked = array();
+                foreach ( (array) $raw as $v ) {
+                    $sv = sanitize_text_field( wp_unslash( $v ) );
+                    if ( in_array( $sv, $options, true ) ) $checked[] = $sv;
+                }
+                $data[ $idx ] = $checked;
+            }
+        }
+        return $data ?: null;
+    }
+
+    /**
+     * Return structured conditions data for display (merges stored answers with term meta definitions).
+     * Returns [] when no conditions were recorded or the class has no definitions.
+     *
+     * @param int $reg_id
+     * @return array  [['class_id','class_name','conditions'=>[['label','type','options','answer'],...]],...]
+     */
+    public static function get_conditions_for_display( $reg_id ) {
+        global $wpdb;
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT class_id, conditions_data FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
+            $reg_id
+        ) );
+
+        $result = array();
+        foreach ( $rows as $row ) {
+            if ( ! $row->conditions_data ) continue;
+            $stored = json_decode( $row->conditions_data, true );
+            if ( ! is_array( $stored ) ) continue;
+
+            $cid      = (int) $row->class_id;
+            $cond_raw = get_term_meta( $cid, 'msc_class_conditions', true );
+            if ( ! $cond_raw ) continue;
+            $conditions = json_decode( $cond_raw, true );
+            if ( ! is_array( $conditions ) || empty( $conditions ) ) continue;
+
+            $term = get_term( $cid, 'msc_vehicle_class' );
+            if ( ! $term || is_wp_error( $term ) ) continue;
+
+            $class_conditions = array();
+            foreach ( $conditions as $idx => $cond ) {
+                if ( empty( $cond['label'] ) ) continue;
+                $class_conditions[] = array(
+                    'label'   => $cond['label'],
+                    'type'    => isset( $cond['type'] ) ? $cond['type'] : 'confirm',
+                    'options' => isset( $cond['options'] ) ? (array) $cond['options'] : array(),
+                    'answer'  => isset( $stored[ $idx ] ) ? $stored[ $idx ] : null,
+                );
+            }
+            if ( empty( $class_conditions ) ) continue;
+
+            $result[] = array(
+                'class_id'   => $cid,
+                'class_name' => $term->name,
+                'conditions' => $class_conditions,
+            );
+        }
+        return $result;
+    }
+
+    /**
+     * Format a single condition answer as a plain-text string suitable for display or PDF output.
+     */
+    public static function format_condition_answer( $cond ) {
+        $type   = $cond['type'];
+        $answer = $cond['answer'];
+        if ( $type === 'confirm' ) {
+            return '✓ Confirmed';
+        } elseif ( $type === 'select_one' ) {
+            return $answer ?: '—';
+        } elseif ( $type === 'select_many' ) {
+            return ( is_array( $answer ) && ! empty( $answer ) ) ? implode( ', ', $answer ) : '—';
+        }
+        return '—';
     }
 
     /** Check if user is already registered for event */
