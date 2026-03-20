@@ -175,12 +175,17 @@ class MSC_Indemnity {
                 $pdf->text_at( $lm + 14, $y + 10, $class_data['class_name'] );
                 $pdf->set_y( $y + 18 );
 
-                $cond_rows = array();
+                // Stacked layout: label on one line, answer below — handles long labels
                 foreach ( $class_data['conditions'] as $cond ) {
-                    $cond_rows[ $cond['label'] ] = MSC_Registration::format_condition_answer( $cond );
+                    $pdf->set_text_color( 100, 100, 100 );
+                    $pdf->set_font_size( 8, 12 );
+                    $pdf->write( $lm + 16, $cond['label'], $rw - 32, 8, 12 );
+                    $pdf->set_text_color( 45, 52, 54 );
+                    $pdf->write( $lm + 24, MSC_Registration::format_condition_answer( $cond ), $rw - 40, 8, 12 );
+                    $pdf->set_fill_color( 230, 230, 230 );
+                    $pdf->rect( $lm + 14, $pdf->get_y(), $rw - 24, 0.5, 'F' );
+                    $pdf->set_y( $pdf->get_y() + 5 );
                 }
-                self::table_rows( $pdf, $lm + 8, $rw - 8, $cond_rows );
-                $pdf->set_y( $pdf->get_y() + 4 );
             }
             $pdf->set_y( $pdf->get_y() + 6 );
         }
