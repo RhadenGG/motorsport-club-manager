@@ -643,15 +643,32 @@ class MSC_Registration {
         $allowed_ids = $allowed_ids ? array_map( 'intval', (array) $allowed_ids ) : array();
 
         $event_classes = array();
+        $valid_cond_types = array( 'confirm', 'select_one', 'select_many' );
         foreach ( $allowed_ids as $cid ) {
             $term = get_term( $cid, 'msc_vehicle_class' );
-            if ( $term && ! is_wp_error( $term ) ) {
-                $event_classes[] = array(
-                    'id'    => $cid,
-                    'name'  => $term->name,
-                    'vtype' => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
-                );
+            if ( ! $term || is_wp_error( $term ) ) continue;
+            $cond_raw   = get_term_meta( $cid, 'msc_class_conditions', true );
+            $conditions = array();
+            if ( $cond_raw ) {
+                $decoded = json_decode( $cond_raw, true );
+                if ( is_array( $decoded ) ) {
+                    foreach ( $decoded as $cond ) {
+                        if ( empty( $cond['label'] ) ) continue;
+                        $ctype = isset( $cond['type'] ) && in_array( $cond['type'], $valid_cond_types, true ) ? $cond['type'] : 'confirm';
+                        $entry = array( 'type' => $ctype, 'label' => sanitize_text_field( $cond['label'] ) );
+                        if ( in_array( $ctype, array( 'select_one', 'select_many' ), true ) && ! empty( $cond['options'] ) ) {
+                            $entry['options'] = array_values( array_filter( array_map( 'sanitize_text_field', (array) $cond['options'] ) ) );
+                        }
+                        $conditions[] = $entry;
+                    }
+                }
             }
+            $event_classes[] = array(
+                'id'         => $cid,
+                'name'       => $term->name,
+                'vtype'      => get_term_meta( $cid, 'msc_vehicle_type', true ) ?: '',
+                'conditions' => $conditions,
+            );
         }
 
         $pricing_set_id = (int) get_post_meta( $reg->event_id, '_msc_pricing_set_id', true );
@@ -787,17 +804,73 @@ class MSC_Registration {
             array( '%d' )
         );
 
-        // Snapshot existing vehicle-per-class before deleting, so unchanged classes keep their vehicle.
-        $existing_vehicles = array(); // class_id => vehicle_id
+        // Snapshot existing vehicle-per-class and conditions before deleting.
+        $existing_vehicles   = array(); // class_id => vehicle_id
+        $existing_conditions = array(); // class_id => conditions_data JSON
+        $existing_class_ids  = array(); // class_ids currently enrolled
         $existing_rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT class_id, vehicle_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
+            "SELECT class_id, vehicle_id, conditions_data FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
             $reg_id
         ) );
         foreach ( $existing_rows as $row ) {
-            $existing_vehicles[ (int) $row->class_id ] = (int) $row->vehicle_id;
+            $existing_vehicles[   (int) $row->class_id ] = (int) $row->vehicle_id;
+            $existing_conditions[ (int) $row->class_id ] = $row->conditions_data;
+            $existing_class_ids[] = (int) $row->class_id;
+        }
+
+        // Validate conditions for any newly-added classes that have conditions defined.
+        $msc_cdecl = isset( $_POST['msc_cdecl'] ) && is_array( $_POST['msc_cdecl'] ) ? $_POST['msc_cdecl'] : array();
+        $all_new_ids = array_merge( array( $primary_class_id ), $additional_ids );
+        foreach ( $all_new_ids as $cid ) {
+            if ( in_array( $cid, $existing_class_ids, true ) ) continue; // existing — skip
+            $cond_raw = get_term_meta( $cid, 'msc_class_conditions', true );
+            if ( ! $cond_raw ) continue; // no conditions defined
+            $cond_defs = json_decode( $cond_raw, true );
+            if ( empty( $cond_defs ) || ! is_array( $cond_defs ) ) continue;
+            $t          = get_term( $cid, 'msc_vehicle_class' );
+            $class_name = $t ? $t->name : (string) $cid;
+            $submitted  = isset( $msc_cdecl[ $cid ] ) && is_array( $msc_cdecl[ $cid ] ) ? $msc_cdecl[ $cid ] : array();
+            foreach ( $cond_defs as $idx => $cond ) {
+                $ctype   = isset( $cond['type'] ) ? $cond['type'] : 'confirm';
+                $options = isset( $cond['options'] ) && is_array( $cond['options'] ) ? $cond['options'] : array();
+                $raw     = isset( $submitted[ $idx ] ) ? $submitted[ $idx ] : null;
+                if ( $ctype === 'confirm' ) {
+                    if ( ! $raw ) {
+                        wp_send_json_error( array( 'message' => 'Please complete all required conditions for class "' . $class_name . '".' ) );
+                    }
+                } elseif ( $ctype === 'select_one' ) {
+                    $val = sanitize_text_field( wp_unslash( (string) $raw ) );
+                    if ( ! in_array( $val, $options, true ) ) {
+                        wp_send_json_error( array( 'message' => 'Please complete all required conditions for class "' . $class_name . '".' ) );
+                    }
+                } elseif ( $ctype === 'select_many' ) {
+                    $has_valid = false;
+                    foreach ( (array) $raw as $v ) {
+                        if ( in_array( sanitize_text_field( wp_unslash( $v ) ), $options, true ) ) {
+                            $has_valid = true;
+                            break;
+                        }
+                    }
+                    if ( ! $has_valid ) {
+                        wp_send_json_error( array( 'message' => 'Please complete all required conditions for class "' . $class_name . '".' ) );
+                    }
+                }
+            }
         }
 
         $primary_vehicle_id = (int) $reg->vehicle_id; // fallback for newly added classes
+
+        // Resolve conditions_data for a class: submitted answers override; existing data preserved for unchanged classes.
+        $resolve_conditions = function( $cid ) use ( $msc_cdecl, $existing_conditions, $existing_class_ids ) {
+            if ( ! empty( $msc_cdecl[ $cid ] ) ) {
+                $cd = MSC_Registration::build_conditions_data( $cid, $msc_cdecl );
+                return ! empty( $cd ) ? wp_json_encode( $cd ) : null;
+            }
+            if ( isset( $existing_conditions[ $cid ] ) ) {
+                return $existing_conditions[ $cid ];
+            }
+            return null;
+        };
 
         // Replace junction table rows
         $wpdb->delete( "{$wpdb->prefix}msc_registration_classes", array( 'registration_id' => $reg_id ), array( '%d' ) );
@@ -812,8 +885,9 @@ class MSC_Registration {
                                         ? $posted_vehicle_ids[ $primary_class_id ]
                                         : ( isset( $existing_vehicles[ $primary_class_id ] ) ? $existing_vehicles[ $primary_class_id ] : $primary_vehicle_id ),
                 'is_primary'      => 1,
+                'conditions_data' => $resolve_conditions( $primary_class_id ),
             ),
-            array( '%d', '%d', '%f', '%d', '%d' )
+            array( '%d', '%d', '%f', '%d', '%d', '%s' )
         );
         foreach ( $additional_ids as $cid ) {
             $wpdb->insert(
@@ -826,8 +900,9 @@ class MSC_Registration {
                                             ? $posted_vehicle_ids[ $cid ]
                                             : ( isset( $existing_vehicles[ $cid ] ) ? $existing_vehicles[ $cid ] : $primary_vehicle_id ),
                     'is_primary'      => 0,
+                    'conditions_data' => $resolve_conditions( $cid ),
                 ),
-                array( '%d', '%d', '%f', '%d', '%d' )
+                array( '%d', '%d', '%f', '%d', '%d', '%s' )
             );
         }
 
@@ -881,7 +956,7 @@ class MSC_Registration {
      * Build a sanitised conditions_data array for storage from submitted POST data.
      * Returns null when the class has no conditions defined.
      */
-    private static function build_conditions_data( $class_id, $submitted_conditions ) {
+    public static function build_conditions_data( $class_id, $submitted_conditions ) {
         $cond_raw = get_term_meta( $class_id, 'msc_class_conditions', true );
         if ( ! $cond_raw ) return null;
         $conditions = json_decode( $cond_raw, true );

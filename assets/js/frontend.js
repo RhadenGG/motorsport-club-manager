@@ -1015,6 +1015,22 @@ jQuery(function ($) {
                     return;
                 }
 
+                // Validate conditions for newly-added classes
+                var condsFilled = true;
+                $('#msc-edit-conditions-wrap .msc-edit-cond-group').each(function() {
+                    var type    = $(this).data('type');
+                    var $inputs = $(this).find('.msc-edit-class-decl');
+                    if (type === 'confirm') {
+                        if (!$inputs.is(':checked')) condsFilled = false;
+                    } else if (type === 'select_one' || type === 'select_many') {
+                        if (!$inputs.filter(':checked').length) condsFilled = false;
+                    }
+                });
+                if (!condsFilled) {
+                    $('#msc-edit-msg').text('Please complete all required class conditions.').css('color','red').show();
+                    return;
+                }
+
                 var btn = $(this);
                 btn.prop('disabled', true).text('Saving…');
                 $('#msc-edit-msg').hide();
@@ -1038,6 +1054,23 @@ jQuery(function ($) {
                 if ($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files[0]) {
                     fd.append('pop_file', $('#msc-edit-pop-file')[0].files[0]);
                 }
+                // Condition answers for newly-added classes
+                $('#msc-edit-conditions-wrap .msc-edit-cond-group').each(function() {
+                    var classId = $(this).data('class-id');
+                    var idx     = $(this).data('idx');
+                    var type    = $(this).data('type');
+                    var $inputs = $(this).find('.msc-edit-class-decl');
+                    if (type === 'confirm') {
+                        if ($inputs.is(':checked')) fd.append('msc_cdecl[' + classId + '][' + idx + ']', '1');
+                    } else if (type === 'select_one') {
+                        var val = $inputs.filter(':checked').val();
+                        if (val !== undefined) fd.append('msc_cdecl[' + classId + '][' + idx + ']', val);
+                    } else if (type === 'select_many') {
+                        $inputs.filter(':checked').each(function() {
+                            fd.append('msc_cdecl[' + classId + '][' + idx + '][]', $(this).val());
+                        });
+                    }
+                });
 
                 $.ajax({
                     url:         mscData.ajaxUrl,
@@ -1391,6 +1424,7 @@ jQuery(function ($) {
             + '  <label>Additional Classes <span style="font-weight:normal;color:#888">(optional)</span></label>'
             + '  <div id="msc-edit-additional-classes" style="margin-top:8px">' + addRows + '</div>'
             + '</div>'
+            + '<div id="msc-edit-conditions-wrap"></div>'
             + '<div id="msc-edit-fee-summary" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px;margin-bottom:16px"></div>'
             + '<div id="msc-edit-pop-wrap" style="display:none;margin-bottom:16px">'
             + '  <label style="font-weight:600">Proof of Payment for amount owed <span style="color:#d63638">*</span></label>'
@@ -1408,8 +1442,61 @@ jQuery(function ($) {
         panel.data('base_fee',     baseFee);
         panel.data('original_fee', originalFee);
 
+        var currentClassIds = [];
+        for (var ci = 0; ci < data.current_classes.length; ci++) {
+            currentClassIds.push(data.current_classes[ci].class_id);
+        }
+
+        // Render conditions only for classes NOT already enrolled (newly added classes)
+        function renderEditConditions() {
+            var $wrap = $('#msc-edit-conditions-wrap').empty();
+            var primaryId = parseInt($('#msc-edit-primary-class').val()) || 0;
+            var selectedIds = primaryId ? [primaryId] : [];
+            $('.msc-edit-additional:checked:not(:disabled)').each(function() {
+                selectedIds.push(parseInt($(this).val()));
+            });
+            selectedIds.forEach(function(classId) {
+                if (currentClassIds.indexOf(classId) !== -1) return; // already enrolled
+                var cls = classes.find(function(c) { return c.id == classId; });
+                if (!cls || !cls.conditions || !cls.conditions.length) return;
+                var $section = $('<div>').addClass('msc-class-cond-section');
+                $section.append($('<p>').addClass('msc-class-cond-section-title').text(cls.name + ' — Required Declarations'));
+                cls.conditions.forEach(function(cond, idx) {
+                    var $group = $('<div>').addClass('msc-edit-cond-group').attr({'data-class-id': classId, 'data-idx': idx, 'data-type': cond.type});
+                    if (cond.type === 'confirm') {
+                        var cbId = 'msc-ecdecl-' + classId + '-' + idx;
+                        var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                        $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+']',value:'1'}).addClass('msc-edit-class-decl'));
+                        $lbl.append($('<span>').text(cond.label));
+                        $group.append($lbl);
+                    } else if (cond.type === 'select_one') {
+                        $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                        (cond.options || []).forEach(function(opt, oi) {
+                            var rbId = 'msc-ecdecl-' + classId + '-' + idx + '-' + oi;
+                            var $lbl = $('<label>').addClass('msc-cond-label').attr('for', rbId);
+                            $lbl.append($('<input>').attr({type:'radio',id:rbId,name:'msc_cdecl['+classId+']['+idx+']',value:opt}).addClass('msc-edit-class-decl'));
+                            $lbl.append($('<span>').text(opt));
+                            $group.append($lbl);
+                        });
+                    } else if (cond.type === 'select_many') {
+                        $group.append($('<p>').addClass('msc-cond-group-label').text(cond.label));
+                        (cond.options || []).forEach(function(opt, oi) {
+                            var cbId = 'msc-ecdecl-' + classId + '-' + idx + '-' + oi;
+                            var $lbl = $('<label>').addClass('msc-cond-label').attr('for', cbId);
+                            $lbl.append($('<input>').attr({type:'checkbox',id:cbId,name:'msc_cdecl['+classId+']['+idx+'][]',value:opt}).addClass('msc-edit-class-decl'));
+                            $lbl.append($('<span>').text(opt));
+                            $group.append($lbl);
+                        });
+                    }
+                    $section.append($group);
+                });
+                $wrap.append($section);
+            });
+        }
+
         card.after(panel);
         updateEditFeeSummary();
+        renderEditConditions();
 
         // On primary class change: disable that class in additional list, hide its vehicle wrap
         panel.on('change', '#msc-edit-primary-class', function() {
@@ -1424,6 +1511,7 @@ jQuery(function ($) {
                 }
             });
             updateEditFeeSummary();
+            renderEditConditions();
         });
 
         // On additional checkbox change: show/hide per-class vehicle select
@@ -1432,6 +1520,7 @@ jQuery(function ($) {
             if ($(this).is(':checked')) wrap.show();
             else wrap.hide();
             updateEditFeeSummary();
+            renderEditConditions();
         });
     }
 
