@@ -18,9 +18,10 @@ class MSC_Frontend_Dashboard {
         add_action( 'wp_ajax_msc_fe_set_event_status',  array( __CLASS__, 'ajax_set_event_status' ) );
 
         // AJAX: Vehicle Classes
-        add_action( 'wp_ajax_msc_fe_add_class',    array( __CLASS__, 'ajax_add_class' ) );
-        add_action( 'wp_ajax_msc_fe_rename_class', array( __CLASS__, 'ajax_rename_class' ) );
-        add_action( 'wp_ajax_msc_fe_delete_class', array( __CLASS__, 'ajax_delete_class' ) );
+        add_action( 'wp_ajax_msc_fe_add_class',          array( __CLASS__, 'ajax_add_class' ) );
+        add_action( 'wp_ajax_msc_fe_rename_class',       array( __CLASS__, 'ajax_rename_class' ) );
+        add_action( 'wp_ajax_msc_fe_delete_class',       array( __CLASS__, 'ajax_delete_class' ) );
+        add_action( 'wp_ajax_msc_fe_save_class_conds',   array( __CLASS__, 'ajax_save_class_conditions' ) );
 
         // AJAX: Registrations
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
@@ -1958,21 +1959,48 @@ class MSC_Frontend_Dashboard {
                 <p style="color:#888;margin:0">No <?php echo esc_html($type); ?> classes yet.</p>
                 <?php else : ?>
                 <table class="msc-dash-table" style="width:100%">
-                    <thead><tr><th>Class Name</th><th style="width:120px">Actions</th></tr></thead>
+                    <thead><tr><th>Class Name</th><th style="width:160px">Actions</th></tr></thead>
                     <tbody>
-                    <?php foreach ( $classes as $term_id => $name ) : ?>
+                    <?php foreach ( $classes as $term_id => $name ) :
+                        $existing_conds = get_term_meta( $term_id, 'msc_class_conditions', true ) ?: '[]';
+                        $has_conds      = $existing_conds !== '[]' && $existing_conds !== '';
+                    ?>
                     <tr data-term-id="<?php echo esc_attr($term_id); ?>">
                         <td>
                             <span class="vc-name-display"><?php echo esc_html($name); ?></span>
+                            <?php if ( $has_conds ) : ?>
+                            <span class="vc-cond-indicator" style="font-size:11px;color:#2271b1;margin-left:6px" title="Has conditions">&#9679; Conditions set</span>
+                            <?php endif; ?>
                             <input type="text" class="vc-name-input" value="<?php echo esc_attr($name); ?>"
                                    style="display:none;width:100%;box-sizing:border-box">
                         </td>
                         <td>
-                            <div style="display:flex;gap:6px">
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-rename-btn">Rename</button>
                                 <button type="button" class="msc-btn msc-btn-sm vc-save-btn" style="display:none">Save</button>
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cancel-btn" style="display:none">Cancel</button>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cond-btn"
+                                        data-existing="<?php echo esc_attr( $existing_conds ); ?>">Conditions</button>
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-danger vc-delete-btn">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="vc-cond-row" style="display:none">
+                        <td colspan="2" style="padding:14px 16px;background:#f8f9fa;border-top:none">
+                            <div class="vc-cond-builder" style="max-width:680px">
+                                <p style="margin:0 0 10px;font-weight:700;font-size:13px;color:var(--msc-dark)">
+                                    Class Conditions for <em class="vc-cond-classname"><?php echo esc_html($name); ?></em>
+                                </p>
+                                <p style="margin:0 0 12px;font-size:12px;color:#666">
+                                    Define conditions entrants must confirm or select when registering for this class (e.g. tyre type, equipment declarations).
+                                </p>
+                                <div class="vc-cond-rows" style="margin-bottom:10px"></div>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-add-cond-btn">+ Add Condition</button>
+                                <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+                                    <button type="button" class="msc-btn msc-btn-sm vc-cond-save-btn">Save Conditions</button>
+                                    <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cond-close-btn">Cancel</button>
+                                    <span class="vc-cond-msg" style="font-size:12px"></span>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -1994,7 +2022,168 @@ class MSC_Frontend_Dashboard {
                 $('#msc-vc-msg').text(text).css('color', ok ? 'green' : 'red').show();
             }
 
-            // Add class
+            // ── Conditions repeater helpers ────────────────────────────────
+            function makeOptItem(val) {
+                return $('<div>').css({display:'flex',gap:'6px',marginBottom:'4px'}).append(
+                    $('<input>').attr({type:'text',placeholder:'Option text'}).addClass('vc-opt-val').val(val)
+                        .css({flex:'1',padding:'4px 6px',border:'1px solid #ddd',borderRadius:'3px'}),
+                    $('<button>').attr('type','button').addClass('vc-rm-opt')
+                        .css({background:'none',border:'none',color:'#d63638',cursor:'pointer',fontSize:'16px',lineHeight:'1',padding:'0 4px'}).text('✕')
+                );
+            }
+
+            function makeCondRow(cond) {
+                var type    = (cond && cond.type)    || 'confirm';
+                var label   = (cond && cond.label)   || '';
+                var options = (cond && cond.options)  || [];
+
+                var $sel = $('<select>').addClass('vc-cond-type').css({padding:'3px 6px'}).append(
+                    $('<option>').val('confirm').text('Confirm (single tick)'),
+                    $('<option>').val('select_one').text('Select one (radio)'),
+                    $('<option>').val('select_many').text('Select many (checkboxes)')
+                ).val(type);
+
+                var $optList = $('<div>').addClass('vc-opts-list');
+                options.forEach(function(o){ $optList.append(makeOptItem(o)); });
+
+                var $optsWrap = $('<div>').addClass('vc-opts-wrap').css({display: type === 'confirm' ? 'none' : ''}).append(
+                    $('<label>').css({display:'block',marginBottom:'4px',fontWeight:'600'}).text('Options:'),
+                    $optList,
+                    $('<button>').attr('type','button').addClass('vc-add-opt msc-btn msc-btn-sm msc-btn-outline')
+                        .css('marginTop','4px').text('+ Add Option')
+                );
+
+                return $('<div>').addClass('vc-cond-row-item')
+                    .css({border:'1px solid #ddd',padding:'12px',marginBottom:'10px',borderRadius:'4px',background:'#fff'}).append(
+                        $('<div>').css({display:'flex',gap:'8px',alignItems:'center',marginBottom:'8px'}).append(
+                            $('<strong>').css('flexShrink','0').text('Type:'),
+                            $sel,
+                            $('<button>').attr('type','button').addClass('vc-rm-cond')
+                                .css({marginLeft:'auto',background:'none',border:'none',color:'#d63638',cursor:'pointer',fontWeight:'600'}).text('✕ Remove')
+                        ),
+                        $('<div>').css('marginBottom','8px').append(
+                            $('<label>').css({display:'block',marginBottom:'3px',fontWeight:'600'}).text('Label / Question:'),
+                            $('<input>').attr({type:'text',placeholder:'e.g. Tyre specification'}).addClass('vc-cond-label').val(label)
+                                .css({width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:'3px',boxSizing:'border-box'})
+                        ),
+                        $optsWrap
+                    );
+            }
+
+            function serializeConds($builder) {
+                var data = [];
+                $builder.find('.vc-cond-row-item').each(function() {
+                    var $row  = $(this);
+                    var type  = $row.find('.vc-cond-type').val();
+                    var label = $row.find('.vc-cond-label').val().trim();
+                    if (!label) return;
+                    var entry = {type: type, label: label};
+                    if (type !== 'confirm') {
+                        var opts = [];
+                        $row.find('.vc-opt-val').each(function(){ var v=$(this).val().trim(); if(v) opts.push(v); });
+                        if (!opts.length) return;
+                        entry.options = opts;
+                    }
+                    data.push(entry);
+                });
+                return data;
+            }
+
+            // ── Conditions: open panel ─────────────────────────────────────
+            $(document).on('click', '.vc-cond-btn', function() {
+                var $btn    = $(this);
+                var $row    = $btn.closest('tr');
+                var $panel  = $row.next('.vc-cond-row');
+                var isOpen  = $panel.is(':visible');
+
+                // Close all other open panels first
+                $('.vc-cond-row:visible').hide();
+
+                if (isOpen) return; // toggle off
+
+                var $builder = $panel.find('.vc-cond-rows');
+
+                // Only initialise once
+                if (!$panel.data('init')) {
+                    $panel.data('init', true);
+                    var existing = [];
+                    try { existing = JSON.parse($btn.attr('data-existing') || '[]') || []; } catch(e) {}
+                    existing.forEach(function(cond){ $builder.append(makeCondRow(cond)); });
+                }
+
+                $panel.show();
+                $panel[0].scrollIntoView({behavior:'smooth', block:'nearest'});
+            });
+
+            // ── Conditions: add a condition ────────────────────────────────
+            $(document).on('click', '.vc-add-cond-btn', function() {
+                $(this).closest('.vc-cond-builder').find('.vc-cond-rows').append(makeCondRow(null));
+            });
+
+            // ── Conditions: remove condition / add-opt / remove-opt ────────
+            $(document).on('click', '.vc-rm-cond', function() {
+                $(this).closest('.vc-cond-row-item').remove();
+            });
+            $(document).on('click', '.vc-add-opt', function() {
+                $(this).closest('.vc-cond-row-item').find('.vc-opts-list').append(makeOptItem(''));
+            });
+            $(document).on('click', '.vc-rm-opt', function() {
+                $(this).closest('div').remove();
+            });
+
+            // ── Conditions: type change → toggle options ───────────────────
+            $(document).on('change', '.vc-cond-type', function() {
+                var $wrap = $(this).closest('.vc-cond-row-item').find('.vc-opts-wrap');
+                $wrap.toggle($(this).val() !== 'confirm');
+            });
+
+            // ── Conditions: close panel ────────────────────────────────────
+            $(document).on('click', '.vc-cond-close-btn', function() {
+                $(this).closest('.vc-cond-row').hide();
+            });
+
+            // ── Conditions: save ───────────────────────────────────────────
+            $(document).on('click', '.vc-cond-save-btn', function() {
+                var $btn     = $(this);
+                var $panel   = $btn.closest('.vc-cond-row');
+                var $condRow = $panel.prev('tr');
+                var termId   = $condRow.data('term-id');
+                var $msg     = $panel.find('.vc-cond-msg');
+                var data     = serializeConds($panel.find('.vc-cond-rows'));
+
+                $btn.prop('disabled', true).text('Saving…');
+                $.post(ajaxUrl, {
+                    action:     'msc_fe_save_class_conds',
+                    nonce:      nonce,
+                    term_id:    termId,
+                    conditions: JSON.stringify(data)
+                }, function(res) {
+                    $btn.prop('disabled', false).text('Save Conditions');
+                    if (res.success) {
+                        $msg.css('color','green').text('Saved!');
+                        // Update the indicator dot on the class row
+                        var $dot = $condRow.find('.vc-cond-indicator');
+                        if (data.length) {
+                            if (!$dot.length) {
+                                $condRow.find('.vc-name-display').after(
+                                    $('<span>').addClass('vc-cond-indicator')
+                                        .css({fontSize:'11px',color:'#2271b1',marginLeft:'6px'})
+                                        .attr('title','Has conditions').html('&#9679; Conditions set')
+                                );
+                            }
+                        } else {
+                            $dot.remove();
+                        }
+                        // Update the data-existing so re-opening reflects the saved data
+                        $condRow.find('.vc-cond-btn').attr('data-existing', JSON.stringify(data));
+                        setTimeout(function(){ $msg.text(''); }, 2500);
+                    } else {
+                        $msg.css('color','red').text(res.data.message || 'Error saving.');
+                    }
+                });
+            });
+
+            // ── Add class ─────────────────────────────────────────────────
             $('#msc-vc-add-btn').on('click', function(){
                 var btn  = $(this);
                 var name = $('#vc-new-name').val().trim();
@@ -2012,26 +2201,26 @@ class MSC_Frontend_Dashboard {
                 });
             });
 
-            // Rename: show inline input
+            // ── Rename: show inline input ──────────────────────────────────
             $(document).on('click', '.vc-rename-btn', function(){
                 var row = $(this).closest('tr');
                 row.find('.vc-name-display').hide();
                 row.find('.vc-name-input').show().focus();
-                row.find('.vc-rename-btn, .vc-delete-btn').hide();
+                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').hide();
                 row.find('.vc-save-btn, .vc-cancel-btn').show();
             });
 
-            // Cancel rename
+            // ── Cancel rename ──────────────────────────────────────────────
             $(document).on('click', '.vc-cancel-btn', function(){
                 var row = $(this).closest('tr');
-                var original = row.find('.vc-name-display').text();
+                var original = row.find('.vc-name-display').text().trim();
                 row.find('.vc-name-input').val(original).hide();
                 row.find('.vc-name-display').show();
-                row.find('.vc-rename-btn, .vc-delete-btn').show();
+                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').show();
                 row.find('.vc-save-btn, .vc-cancel-btn').hide();
             });
 
-            // Save rename
+            // ── Save rename ────────────────────────────────────────────────
             $(document).on('click', '.vc-save-btn', function(){
                 var btn     = $(this);
                 var row     = btn.closest('tr');
@@ -2044,8 +2233,9 @@ class MSC_Frontend_Dashboard {
                     if (res.success) {
                         row.find('.vc-name-display').text(newName).show();
                         row.find('.vc-name-input').hide();
-                        row.find('.vc-rename-btn, .vc-delete-btn').show();
+                        row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').show();
                         row.find('.vc-save-btn, .vc-cancel-btn').hide();
+                        row.next('.vc-cond-row').find('.vc-cond-classname').text(newName);
                         vcMsg('Class renamed.', true);
                     } else {
                         vcMsg(res.data.message || 'Error.', false);
@@ -2053,17 +2243,18 @@ class MSC_Frontend_Dashboard {
                 });
             });
 
-            // Delete
+            // ── Delete ─────────────────────────────────────────────────────
             $(document).on('click', '.vc-delete-btn', function(){
                 var btn    = $(this);
                 var row    = btn.closest('tr');
                 var termId = row.data('term-id');
-                var name   = row.find('.vc-name-display').text();
+                var name   = row.find('.vc-name-display').text().trim();
                 if (!confirm('Delete class "' + name + '"? It will be removed from any events that use it.')) return;
                 btn.prop('disabled', true).text('Deleting…');
                 $.post(ajaxUrl, { action: 'msc_fe_delete_class', nonce: nonce, term_id: termId }, function(res){
                     if (res.success) {
-                        row.fadeOut(300, function(){ $(this).remove(); });
+                        var $condRow = row.next('.vc-cond-row');
+                        row.add($condRow).fadeOut(300, function(){ $(this).remove(); });
                         vcMsg('Class deleted.', true);
                     } else {
                         btn.prop('disabled', false).text('Delete');
@@ -2142,6 +2333,53 @@ class MSC_Frontend_Dashboard {
         }
 
         wp_send_json_success( array( 'message' => 'Class deleted.' ) );
+    }
+
+    // ─── AJAX: Save Class Conditions ─────────────────────────────────────────
+
+    public static function ajax_save_class_conditions() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $term_id = absint( $_POST['term_id'] ?? 0 );
+        if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
+
+        $term = get_term( $term_id, 'msc_vehicle_class' );
+        if ( ! $term || is_wp_error( $term ) ) wp_send_json_error( array( 'message' => 'Class not found.' ) );
+
+        $raw     = wp_unslash( $_POST['conditions'] ?? '[]' );
+        $decoded = json_decode( $raw, true );
+
+        if ( ! is_array( $decoded ) ) wp_send_json_error( array( 'message' => 'Invalid conditions data.' ) );
+
+        $clean       = array();
+        $valid_types = array( 'confirm', 'select_one', 'select_many' );
+        foreach ( $decoded as $cond ) {
+            if ( empty( $cond['label'] ) ) continue;
+            $ctype = isset( $cond['type'] ) && in_array( $cond['type'], $valid_types, true ) ? $cond['type'] : 'confirm';
+            $entry = array(
+                'type'  => $ctype,
+                'label' => sanitize_text_field( $cond['label'] ),
+            );
+            if ( in_array( $ctype, array( 'select_one', 'select_many' ), true ) ) {
+                if ( ! empty( $cond['options'] ) && is_array( $cond['options'] ) ) {
+                    $opts = array_values( array_filter( array_map( 'sanitize_text_field', $cond['options'] ) ) );
+                } else {
+                    $opts = array();
+                }
+                if ( empty( $opts ) ) continue;
+                $entry['options'] = $opts;
+            }
+            $clean[] = $entry;
+        }
+
+        if ( ! empty( $clean ) ) {
+            update_term_meta( $term_id, 'msc_class_conditions', wp_json_encode( $clean ) );
+        } else {
+            delete_term_meta( $term_id, 'msc_class_conditions' );
+        }
+
+        wp_send_json_success( array( 'message' => 'Conditions saved.', 'count' => count( $clean ) ) );
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────────
