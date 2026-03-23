@@ -94,7 +94,7 @@ class MSC_Emails {
 
         $user_name    = esc_html( $reg->user_name );
         $event_name   = esc_html( $reg->event_name );
-        $vehicle_name = esc_html( $reg->vehicle_name );
+        $vehicle_name = esc_html( MSC_Registration::format_vehicle_label( (int) $reg->vehicle_id ) );
 
         $class_name = '—';
         if ( ! empty( $reg->class_id ) ) {

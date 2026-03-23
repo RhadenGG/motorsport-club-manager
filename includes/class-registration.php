@@ -528,13 +528,23 @@ class MSC_Registration {
         ) );
     }
 
+    /** Build a display label for a vehicle: "Year Make Model Engine" from post meta. Falls back to post title. */
+    public static function format_vehicle_label( $vehicle_id ) {
+        if ( ! $vehicle_id ) return '—';
+        $year   = get_post_meta( $vehicle_id, '_msc_year',        true );
+        $make   = get_post_meta( $vehicle_id, '_msc_make',        true );
+        $model  = get_post_meta( $vehicle_id, '_msc_model',       true );
+        $engine = get_post_meta( $vehicle_id, '_msc_engine_size', true );
+        $label  = trim( "$year $make $model $engine" );
+        return $label ?: ( get_the_title( $vehicle_id ) ?: '—' );
+    }
+
     /** Return class+vehicle pairs for a registration: [['class_name', 'vehicle_name', 'is_primary'], ...] ordered primary first */
     public static function get_class_vehicle_pairs( $reg_id ) {
         global $wpdb;
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT rc.class_id, rc.vehicle_id, rc.is_primary, v.post_title AS vehicle_name
+            "SELECT rc.class_id, rc.vehicle_id, rc.is_primary
              FROM {$wpdb->prefix}msc_registration_classes rc
-             LEFT JOIN {$wpdb->posts} v ON v.ID = rc.vehicle_id
              WHERE rc.registration_id = %d ORDER BY rc.is_primary DESC",
             $reg_id
         ) );
@@ -545,7 +555,7 @@ class MSC_Registration {
             $pairs[] = array(
                 'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
                 'vehicle_id'   => $vid,
-                'vehicle_name' => $row->vehicle_name ?: '—',
+                'vehicle_name' => self::format_vehicle_label( $vid ),
                 'is_primary'   => (bool) $row->is_primary,
                 'comp_number'  => $vid ? get_post_meta( $vid, '_msc_comp_number', true ) : '',
             );
@@ -554,9 +564,8 @@ class MSC_Registration {
         // Fallback for legacy registrations that predate the junction table
         if ( empty( $pairs ) ) {
             $reg = $wpdb->get_row( $wpdb->prepare(
-                "SELECT r.class_id, r.vehicle_id, v.post_title AS vehicle_name
+                "SELECT r.class_id, r.vehicle_id
                  FROM {$wpdb->prefix}msc_registrations r
-                 LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
                  WHERE r.id = %d",
                 $reg_id
             ) );
@@ -566,7 +575,7 @@ class MSC_Registration {
                 $pairs[] = array(
                     'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
                     'vehicle_id'   => $vid,
-                    'vehicle_name' => $reg->vehicle_name ?: '—',
+                    'vehicle_name' => self::format_vehicle_label( $vid ),
                     'is_primary'   => true,
                     'comp_number'  => $vid ? get_post_meta( $vid, '_msc_comp_number', true ) : '',
                 );

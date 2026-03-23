@@ -1127,14 +1127,16 @@ class MSC_Frontend_Dashboard {
         $event      = get_post( $event_id );
 
         $registrations = $wpdb->get_results( $wpdb->prepare(
-            "SELECT r.id, r.class_id, u.display_name AS member_name, v.post_title AS vehicle_name
+            "SELECT r.id, r.class_id, r.vehicle_id, u.display_name AS member_name
              FROM $reg_table r
              LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
-             LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
              WHERE r.event_id = %d AND r.status NOT IN ('rejected','cancelled')
              ORDER BY u.display_name ASC",
             $event_id
         ) );
+        foreach ( $registrations as $reg ) {
+            $reg->vehicle_name = MSC_Registration::format_vehicle_label( (int) $reg->vehicle_id );
+        }
 
         $existing_rows  = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $res_table WHERE event_id = %d", $event_id ) );
         $results_by_reg = array();

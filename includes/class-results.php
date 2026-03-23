@@ -158,13 +158,11 @@ class MSC_Results {
             $ph   = implode( ',', array_fill( 0, count( $class_ids ), '%d' ) );
             $args = array_merge( array( $event_id ), $class_ids );
             $rows = $wpdb->get_results( $wpdb->prepare(
-                "SELECT rc.class_id, r.id AS reg_id,
-                        u.display_name AS member_name,
-                        v.post_title   AS vehicle_name
+                "SELECT rc.class_id, rc.vehicle_id, r.id AS reg_id,
+                        u.display_name AS member_name
                  FROM $rc_table rc
                  JOIN $reg_table r ON r.id = rc.registration_id
                  LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
-                 LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
                  WHERE r.event_id = %d
                    AND r.status NOT IN ('rejected','cancelled')
                    AND rc.class_id IN ($ph)
@@ -172,6 +170,7 @@ class MSC_Results {
                 $args
             ) );
             foreach ( $rows as $row ) {
+                $row->vehicle_name = MSC_Registration::format_vehicle_label( (int) $row->vehicle_id );
                 $registrations_by_class[ intval( $row->class_id ) ][] = $row;
             }
         }
@@ -533,21 +532,24 @@ class MSC_Results {
 
         $results = $wpdb->get_results( $wpdb->prepare(
             "SELECT res.*,
+                    reg.vehicle_id,
                     COALESCE(u.display_name, res.driver_name) AS member_name,
-                    COALESCE(v.post_title,   res.manual_vehicle) AS vehicle_name
+                    res.manual_vehicle AS vehicle_name
              FROM $res_table res
              LEFT JOIN $reg_table       reg ON reg.id = res.registration_id
              LEFT JOIN {$wpdb->users}   u   ON u.ID   = reg.user_id
-             LEFT JOIN {$wpdb->posts}   v   ON v.ID   = reg.vehicle_id
              WHERE res.event_id = %d",
             $event_id
         ) );
 
         if ( empty( $results ) ) return '';
 
-        // Group by class
+        // Group by class; format registered vehicle names from meta
         $by_class = array();
         foreach ( $results as $r ) {
+            if ( $r->registration_id && $r->vehicle_id ) {
+                $r->vehicle_name = MSC_Registration::format_vehicle_label( (int) $r->vehicle_id );
+            }
             $by_class[ intval( $r->class_id ) ][] = $r;
         }
 
