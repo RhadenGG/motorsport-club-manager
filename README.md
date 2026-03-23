@@ -40,12 +40,14 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Multi-step entry form with real-time fee calculation as classes are added or removed.
 - Classes grouped by vehicle type (Cars / Motorcycles) in all dropdowns.
 - Each class (primary and additional) has its own independent vehicle selector, pre-populated from the member's garage.
+- Vehicles are identified throughout by **Year Make Model Engine** (e.g. *2007 Subaru Impreza STI 2.5T*) rather than a nickname, across entry tables, the indemnity PDF, results, and confirmation emails.
 - Electronic indemnity signing — drawn signature via `signature_pad` or typed name.
 - Automatic minor detection: if the member's date of birth indicates they are under 18, mandatory parent/guardian name and signature fields appear.
 - Emergency contact, pit crew, and sponsor fields pre-filled from the member's saved profile; any changes made during entry are saved back to the profile.
 - **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
 - **Proof of Payment (PoP):** PDF, PNG, or JPG upload (up to 5 MB) required when the entry fee is greater than zero. Banking details configured in Settings are shown alongside the upload field.
 - Upon confirmation, each entry is assigned a **sequential entry number** scoped to the event, displayed on the indemnity PDF and the member's entries history.
+- A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds (entry submission can take 5–10 seconds due to synchronous email dispatch).
 
 ### Entry Editing
 - Members can add or remove classes on a pending or confirmed entry from their **My Account** dashboard.
@@ -196,7 +198,8 @@ Migrations run automatically on every WordPress `init` when the stored `msc_db_v
 ### Key Conventions
 - All hooks, options, meta keys, and nonces use the `msc_` prefix.
 - All CSS classes use the `msc-` prefix.
-- Vehicle meta keys: `_msc_make`, `_msc_model`, `_msc_year`, `_msc_type`, `_msc_comp_number` (Race Number).
+- Vehicle meta keys: `_msc_make`, `_msc_model`, `_msc_year`, `_msc_type`, `_msc_engine_size`, `_msc_comp_number` (Race Number).
+- `MSC_Registration::format_vehicle_label($vehicle_id)` is the single source of truth for building the human-readable vehicle string from meta.
 - Event meta keys: `_msc_event_date`, `_msc_event_end_date`, `_msc_event_location`, `_msc_entry_fee`, `_msc_capacity`, `_msc_event_status` (`closed` locks entries).
 - AJAX nonce: `msc_nonce`.
 
