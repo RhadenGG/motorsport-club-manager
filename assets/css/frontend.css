@@ -121,6 +121,35 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-notice-error   { background: var(--msc-error);   color: #842029; border-color: #dc3545; }
 .msc-success-big    { font-size: 16px; padding: 20px; text-align: center; }
 
+/* ── Submission in-progress banner ───────────────────────────────────────── */
+@keyframes msc-spin { to { transform: rotate(360deg); } }
+
+.msc-submitting-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--msc-dark);
+    color: #fff;
+    padding: 18px 20px;
+    border-radius: var(--msc-radius);
+    margin-bottom: 20px;
+    position: sticky;
+    top: 8px;
+    z-index: 100;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+}
+.msc-submitting-spinner {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: msc-spin 0.75s linear infinite;
+}
+.msc-submitting-banner strong { display: block; font-size: 15px; margin-bottom: 2px; }
+.msc-submitting-banner span   { font-size: 13px; opacity: 0.8; }
+
 /* ── Registration Form ───────────────────────────────────────────────────── */
 .msc-registration-wrap { margin: 30px 0; }
 .msc-section-title { font-size: 22px; color: var(--msc-dark); border-bottom: 3px solid var(--msc-primary); padding-bottom: 8px; margin-bottom: 20px; }

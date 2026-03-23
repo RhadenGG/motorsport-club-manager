@@ -600,6 +600,24 @@ jQuery(function ($) {
                 var btn = $(this);
                 btn.prop('disabled', true).text('Submitting…');
 
+                // Prominent "please wait" banner — sticky so it stays visible while scrolled
+                var $banner = $('<div>').addClass('msc-submitting-banner').append(
+                    $('<div>').addClass('msc-submitting-spinner'),
+                    $('<div>').append(
+                        $('<strong>').text('Submitting your entry\u2026'),
+                        $('<span>').text('Please do not close or refresh this page. This may take up to 10 seconds.')
+                    )
+                );
+                $('#msc-reg-wrap').prepend($banner);
+                $banner[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Warn if user tries to navigate away mid-submit
+                var beforeUnloadHandler = function (e) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                };
+                window.addEventListener('beforeunload', beforeUnloadHandler);
+
                 var fd = new FormData();
                 fd.append('action',              'msc_submit_registration');
                 fd.append('nonce',               mscData.nonce);
@@ -657,6 +675,8 @@ jQuery(function ($) {
                     processData: false,
                     contentType: false,
                     success: function (res) {
+                        window.removeEventListener('beforeunload', beforeUnloadHandler);
+                        $banner.remove();
                         if (res.success) {
                             var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
                             $('#msc-reg-wrap').empty().append(
@@ -668,6 +688,8 @@ jQuery(function ($) {
                         }
                     },
                     error: function () {
+                        window.removeEventListener('beforeunload', beforeUnloadHandler);
+                        $banner.remove();
                         msc.showError('Network error. Please try again.');
                         btn.prop('disabled', false).text('Submit Registration');
                     }
