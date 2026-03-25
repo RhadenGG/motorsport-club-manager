@@ -92,8 +92,11 @@ class MSC_Admin_Participants {
             style="cursor:pointer" title="Click to expand">
             <td style="text-align:center;color:#aaa;font-size:16px" class="msc-p-chevron">&#9654;</td>
             <td>
-                <strong><?php echo esc_html( $user->display_name ); ?></strong><br>
-                <span style="color:#666;font-size:12px"><?php echo esc_html( $user->first_name . ' ' . $user->last_name ); ?></span>
+                <?php
+                $full_name = trim( $user->first_name . ' ' . $user->last_name );
+                ?>
+                <strong><?php echo esc_html( $full_name ?: $user->display_name ); ?></strong><br>
+                <span style="color:#666;font-size:12px"><?php echo esc_html( $user->user_login ); ?></span>
             </td>
             <td><?php echo esc_html( $user->user_email ); ?></td>
             <td><?php echo esc_html( $phone ?: '—' ); ?></td>
@@ -284,8 +287,9 @@ class MSC_Admin_Participants {
                     <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
                         <span class="msc-p-chevron" style="color:#aaa;font-size:13px;flex-shrink:0">&#9654;</span>
                         <div style="min-width:0">
-                            <strong style="display:block"><?php echo esc_html( $user->display_name ); ?></strong>
-                            <span style="font-size:12px;color:#888"><?php echo esc_html( $user->user_email ); ?></span>
+                            <?php $full_name = trim( $user->first_name . ' ' . $user->last_name ); ?>
+                            <strong style="display:block"><?php echo esc_html( $full_name ?: $user->display_name ); ?></strong>
+                            <span style="font-size:12px;color:#888"><?php echo esc_html( $user->user_login . ' · ' . $user->user_email ); ?></span>
                         </div>
                     </div>
                     <div style="display:flex;gap:24px;flex-shrink:0;font-size:13px;color:#555">
