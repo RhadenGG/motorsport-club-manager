@@ -80,9 +80,9 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Staff Dashboard
 - Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators and the `msc_event_creator` role.
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event and/or status; each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, Race # aligned with its vehicle).
+- **Entries tab:** filter by event and/or status; each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Phone and Sponsors columns, Race # aligned with its vehicle).
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
-- **Participants tab:** searchable CRM table of all members who have ever entered an event, with expandable rows showing personal details, motorsport credentials, and emergency contact information.
+- **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
 - **Pricing tab:** create and manage Pricing Sets and configure per-class fees.
 
@@ -92,8 +92,8 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Manual driver entries (name + vehicle description) for walk-ins not in the system.
 
 ### Admin (wp-admin)
-- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, and Race # as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, and indemnity PDF links.
-- **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard.
+- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, and indemnity PDF links.
+- **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
 - **Motorsport Club → Vehicle Classes:** taxonomy term management.
 - **Motorsport Club → Settings:** banking details, auth page URLs, and SMTP configuration.
 
