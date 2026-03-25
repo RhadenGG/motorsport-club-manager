@@ -489,6 +489,7 @@ class MSC_Admin_Events {
         <th style="white-space:nowrap">Entry #</th>
         <th>Entrant</th>
         <th>Sponsors</th>
+        <th>Phone</th>
         <th>Email</th>
         <th>Event</th>
         <th>Class</th>
@@ -505,7 +506,7 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="16">No registrations found.</td></tr>
+        <tr><td colspan="17">No registrations found.</td></tr>
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
@@ -521,6 +522,7 @@ class MSC_Admin_Events {
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_name) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_email) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->event_name) ?></td>
         <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>

@@ -798,6 +798,7 @@ class MSC_Frontend_Dashboard {
                     <th style="white-space:nowrap">Entry #</th>
                     <th>Entrant</th>
                     <th>Sponsors</th>
+                    <th>Phone</th>
                     <th>Event</th>
                     <th>Class</th>
                     <th>Vehicle</th>
@@ -822,7 +823,20 @@ class MSC_Frontend_Dashboard {
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->user_name ); ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
+                        <?php
+                        $sponsors_raw = get_user_meta( $r->user_id, 'msc_sponsors', true );
+                        if ( $sponsors_raw ) {
+                            $sponsor_list = array_filter( array_map( 'trim', explode( ',', $sponsors_raw ) ) );
+                            foreach ( $sponsor_list as $sp ) {
+                                echo '<span class="msc-sponsor-pill">' . esc_html( $sp ) . '</span>';
+                            }
+                        } else {
+                            echo '<span style="color:#aaa">—</span>';
+                        }
+                        ?>
+                    </td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ); ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->event_name ); ?></td>
                     <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
                     <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
@@ -881,7 +895,7 @@ class MSC_Frontend_Dashboard {
                 <?php endforeach; ?>
                 <?php if ( ! empty( $conditions_display ) ) : ?>
                 <tr class="msc-conditions-detail-row" id="msc-cond-row-<?php echo $r->id; ?>" style="display:none">
-                    <td colspan="13">
+                    <td colspan="14">
                         <span class="msc-cond-detail-title">Class Conditions</span>
                         <?php foreach ( $conditions_display as $class_data ) : ?>
                         <div class="msc-cond-detail-class">
@@ -2431,7 +2445,7 @@ class MSC_Frontend_Dashboard {
         if ( $status_filter ) { $conditions[] = 'r.status = %s';   $values[] = $status_filter; }
 
         $where = implode( ' AND ', $conditions );
-        $sql = "SELECT r.id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
+        $sql = "SELECT r.id, r.user_id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
                        r.emergency_name, r.emergency_phone,
                        p.post_title AS event_name, v.post_title AS vehicle_name,
                        u.display_name AS user_name, u.user_email
@@ -2452,10 +2466,12 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Phone', 'Sponsors', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
 
         $i = 1;
         foreach ( $regs as $r ) {
+            $phone    = get_user_meta( $r->user_id, 'phone', true ) ?: '—';
+            $sponsors = get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—';
             $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
             if ( $cv_pairs ) {
                 foreach ( $cv_pairs as $idx => $p ) {
@@ -2463,6 +2479,8 @@ class MSC_Frontend_Dashboard {
                         $idx === 0 ? $i : '',
                         $idx === 0 ? $r->user_name : '',
                         $idx === 0 ? $r->user_email : '',
+                        $idx === 0 ? $phone : '',
+                        $idx === 0 ? $sponsors : '',
                         $idx === 0 ? $r->event_name : '',
                         $p['class_name'],
                         $p['vehicle_name'],
@@ -2475,7 +2493,7 @@ class MSC_Frontend_Dashboard {
                     ) );
                 }
             } else {
-                fputcsv( $out, array( $i, $r->user_name, $r->user_email, $r->event_name, '—', '—', '—',
+                fputcsv( $out, array( $i, $r->user_name, $r->user_email, $phone, $sponsors, $r->event_name, '—', '—', '—',
                     $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
                     $r->fee_paid ? 'Yes' : 'No',
                     trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
