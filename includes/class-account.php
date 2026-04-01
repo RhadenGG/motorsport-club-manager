@@ -567,6 +567,11 @@ class MSC_Account {
             <?php endif; ?>
 
         </div>
+
+        <div style="margin-top:24px;text-align:right;">
+            <a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>" class="msc-btn msc-btn-outline">Logout</a>
+        </div>
+
         <?php
         return ob_get_clean();
     }
