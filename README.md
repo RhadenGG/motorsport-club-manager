@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.8.1 | **License:** GPLv2 or later
+**Current version:** 0.8.3 | **License:** GPLv2 or later
 
 ---
 
@@ -72,6 +72,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
   - **My Entries:** history of all entries with status badges, entered class names, and view links for indemnity PDFs and PoPs.
   - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
   - **Profile photo:** upload, preview, and remove a custom photo.
+  - **Logout button** at the bottom of the dashboard for easy sign-out.
 - Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, Administrator → Admin).
 
 ### Custom Auth Flow
@@ -105,6 +106,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 |---|---|
 | `administrator` | Full access |
 | `msc_event_creator` | Create/manage events, view and manage entries and participants via the frontend dashboard |
+| `msc_class_rep` | Read-only access to the Entries tab of the staff dashboard (all events); can filter by class and export CSV; no status changes or bulk actions |
 | Subscriber / other | Entry submission and My Account only |
 
 The custom `msc_view_participants` capability gates participant data and indemnity/PoP document access.
@@ -136,10 +138,11 @@ The custom `msc_view_participants` capability gates participant data and indemni
 | Events | `[msc_events_list]` |
 | Staff Dashboard | `[msc_event_dashboard]` |
 
-4. Configure banking details and SMTP in **Motorsport Club → Settings**.
-5. Create vehicle classes under **Motorsport Club → Vehicle Classes**.
-6. Create a Pricing Set under the **Pricing** tab of the staff dashboard, then assign it to events.
-7. Create your first event as an `msc_event` post and publish it.
+4. To add a **Logout** link to a nav menu, create a Custom Link with URL `#msc-logout` — the plugin will replace it with the correct WordPress logout URL at render time.
+5. Configure banking details and SMTP in **Motorsport Club → Settings**.
+6. Create vehicle classes under **Motorsport Club → Vehicle Classes**.
+7. Create a Pricing Set under the **Pricing** tab of the staff dashboard, then assign it to events.
+8. Create your first event as an `msc_event` post and publish it.
 
 ---
 

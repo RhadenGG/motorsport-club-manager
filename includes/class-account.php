@@ -15,6 +15,16 @@ class MSC_Account {
         add_action( 'wp_ajax_msc_update_profile',       array( __CLASS__, 'ajax_update_profile' ) );
         add_action( 'wp_ajax_msc_upload_profile_photo',  array( __CLASS__, 'ajax_upload_profile_photo' ) );
         add_action( 'wp_ajax_msc_remove_profile_photo',  array( __CLASS__, 'ajax_remove_profile_photo' ) );
+        add_filter( 'wp_nav_menu_objects', array( __CLASS__, 'filter_logout_nav_item' ) );
+    }
+
+    public static function filter_logout_nav_item( $items ) {
+        foreach ( $items as $item ) {
+            if ( '#msc-logout' === $item->url ) {
+                $item->url = wp_logout_url( home_url( '/' ) );
+            }
+        }
+        return $items;
     }
 
     public static function render() {
