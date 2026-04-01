@@ -425,7 +425,7 @@ class MSC_Account {
                         </div>
                         <div class="msc-reg-card-actions">
                             <a href="<?php echo esc_url( add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ) ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>
-                            <?php if ( in_array( $r->status, array( 'pending', 'confirmed' ) ) ) : ?>
+                            <?php if ( in_array( $r->status, array( 'pending', 'confirmed' ) ) && ! MSC_Results::is_closed( $r->event_id ) ) : ?>
                             <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-edit-entry" data-id="<?php echo $r->id; ?>">Edit Entry</button>
                             <a href="#" class="msc-cancel-reg msc-danger-link" data-id="<?php echo $r->id; ?>">Cancel</a>
                             <?php endif; ?>

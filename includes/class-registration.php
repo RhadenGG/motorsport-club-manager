@@ -623,6 +623,10 @@ class MSC_Registration {
         $event = get_post( $reg->event_id );
         if ( ! $event ) wp_send_json_error( array( 'message' => 'Event not found.' ) );
 
+        if ( MSC_Results::is_closed( $reg->event_id ) ) {
+            wp_send_json_error( array( 'message' => 'This event is closed and entries can no longer be edited.' ) );
+        }
+
         // Current class rows
         $class_rows = $wpdb->get_results( $wpdb->prepare(
             "SELECT class_id, is_primary, vehicle_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d ORDER BY is_primary DESC",
@@ -735,6 +739,10 @@ class MSC_Registration {
         ) );
         if ( ! $reg || ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
             wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
+        }
+
+        if ( MSC_Results::is_closed( $reg->event_id ) ) {
+            wp_send_json_error( array( 'message' => 'This event is closed and entries can no longer be edited.' ) );
         }
 
         // Validate classes are allowed for this event
