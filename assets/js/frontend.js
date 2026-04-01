@@ -517,7 +517,7 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration', function() {
+            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration, #msc-indemnity-accept', function() {
                 msc.checkRegValidity();
             });
 
@@ -635,6 +635,7 @@ jQuery(function ($) {
                     var comp = msc.vehicleCompNumbers[vid];
                     if (comp) fd.append('vehicle_comp_numbers[' + vid + ']', comp);
                 });
+                fd.append('indemnity_accept',  $('#msc-indemnity-accept').is(':checked') ? '1' : '0');
                 fd.append('indemnity_method', 'signed');
                 fd.append('indemnity_sig',    sig);
                 fd.append('parent_sig',       parentSig);
@@ -759,6 +760,9 @@ jQuery(function ($) {
             if (msc.totalFee > 0) {
                 if (!$('#msc-pop-file')[0] || !$('#msc-pop-file')[0].files[0]) isValid = false;
             }
+
+            // Indemnity accept checkbox
+            if (!$('#msc-indemnity-accept').is(':checked')) isValid = false;
 
             // Custom Declarations (Mandatory Checkboxes)
             $('.msc-custom-declaration').each(function() {
@@ -1076,6 +1080,8 @@ jQuery(function ($) {
                 if ($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files[0]) {
                     fd.append('pop_file', $('#msc-edit-pop-file')[0].files[0]);
                 }
+                fd.append('msc_pit_crew_1', $('#msc-edit-pit-crew-1').val());
+                fd.append('msc_pit_crew_2', $('#msc-edit-pit-crew-2').val());
                 // Condition answers for newly-added classes
                 $('#msc-edit-conditions-wrap .msc-edit-cond-group').each(function() {
                     var classId = $(this).data('class-id');
@@ -1430,6 +1436,9 @@ jQuery(function ($) {
         var primaryVehicle = currentVehicleMap[currentPrimary] || (vehicles.length ? vehicles[0].id : 0);
 
         var panel = $('<div class="msc-entry-edit-panel" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:8px;padding:20px;margin-top:10px"></div>');
+        var pitCrew1 = data.pit_crew_1 || '';
+        var pitCrew2 = data.pit_crew_2 || '';
+
         panel.html(
             '<h4 style="margin:0 0 16px">Edit Entry: ' + $('<span>').text(reg.event_name).html() + '</h4>'
             + '<div style="margin-bottom:16px">'
@@ -1452,6 +1461,15 @@ jQuery(function ($) {
             + '  <label style="font-weight:600">Proof of Payment for amount owed <span style="color:#d63638">*</span></label>'
             + '  <input type="file" id="msc-edit-pop-file" accept="application/pdf,image/png,image/jpeg" style="display:block;margin-top:6px">'
             + '  <p style="font-size:12px;color:#888;margin:4px 0 0">PDF, PNG or JPG, max 5MB.</p>'
+            + '</div>'
+            + '<div style="margin-bottom:16px">'
+            + '  <p class="msc-reg-section-label" style="margin-bottom:8px">Pit Crew</p>'
+            + '  <div class="msc-reg-grid-2">'
+            + '    <div class="msc-field"><label>Name #1</label>'
+            + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Pit crew member name"></div>'
+            + '    <div class="msc-field"><label>Name #2</label>'
+            + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Pit crew member name"></div>'
+            + '  </div>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'
             + '<div style="display:flex;gap:10px;flex-wrap:wrap">'

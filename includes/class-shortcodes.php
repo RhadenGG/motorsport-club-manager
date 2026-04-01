@@ -454,6 +454,12 @@ class MSC_Shortcodes {
                     <div class="msc-indemnity-section" style="margin-top:0; margin-bottom:24px;">
                         <h4 style="margin-bottom:10px;">Indemnity Declaration</h4>
                         <div class="msc-indemnity-text" style="margin-bottom:12px;"><?php echo nl2br(esc_html($indemnity)) ?></div>
+                        <div class="msc-declaration-section">
+                            <label>
+                                <input type="checkbox" id="msc-indemnity-accept">
+                                <span>I have read and accept the above indemnity declaration <span style="color:var(--msc-primary)">*</span></span>
+                            </label>
+                        </div>
                     </div>
 
                     <div style="margin-bottom:20px;">

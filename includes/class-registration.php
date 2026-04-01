@@ -238,6 +238,9 @@ class MSC_Registration {
         $ind_full = $user_obj ? $user_obj->display_name : 'Unknown';
 
         // Validations
+        if ( empty( $_POST['indemnity_accept'] ) || $_POST['indemnity_accept'] !== '1' ) {
+            wp_send_json_error( array( 'message' => 'You must accept the indemnity declaration to submit your entry.' ) );
+        }
         if ( ! $msa_licence ) {
             wp_send_json_error( array( 'message' => 'Please enter your MSA Licence Number.' ) );
         }
@@ -696,6 +699,8 @@ class MSC_Registration {
             'pricing'         => $pricing,
             'base_fee'        => $base_fee,
             'user_vehicles'   => $user_vehicles,
+            'pit_crew_1'      => get_user_meta( $user_id, 'msc_pit_crew_1', true ),
+            'pit_crew_2'      => get_user_meta( $user_id, 'msc_pit_crew_2', true ),
         ) );
     }
 
@@ -913,6 +918,14 @@ class MSC_Registration {
                 ),
                 array( '%d', '%d', '%f', '%d', '%d', '%s' )
             );
+        }
+
+        // Update pit crew if submitted
+        if ( isset( $_POST['msc_pit_crew_1'] ) ) {
+            update_user_meta( $user_id, 'msc_pit_crew_1', sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_1'] ) ) );
+        }
+        if ( isset( $_POST['msc_pit_crew_2'] ) ) {
+            update_user_meta( $user_id, 'msc_pit_crew_2', sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_2'] ) ) );
         }
 
         $msg = ( $reg->status === 'confirmed' )
