@@ -107,8 +107,8 @@ class MSC_Frontend_Dashboard {
         $tab = isset( $_GET['msc_etab'] ) ? sanitize_key( $_GET['msc_etab'] ) : 'events';
         $valid_tabs = array( 'events', 'registrations', 'results', 'participants', 'vehicle-classes', 'pricing' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
-        // Class Reps only have access to the Entries tab
-        if ( self::is_class_rep() ) $tab = 'registrations';
+        // Class Reps only have access to the Entries and Participants tabs
+        if ( self::is_class_rep() && ! in_array( $tab, array( 'registrations', 'participants' ), true ) ) $tab = 'registrations';
 
         $events_args = array(
             'post_type'   => 'msc_event',
@@ -118,7 +118,7 @@ class MSC_Frontend_Dashboard {
             'meta_key'    => '_msc_event_date',
             'order'       => 'DESC',
         );
-        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() && ! self::is_class_rep() ) {
             $events_args['author'] = get_current_user_id();
         }
         $all_events   = get_posts( $events_args );
@@ -141,7 +141,7 @@ class MSC_Frontend_Dashboard {
             );
             $class_rep = self::is_class_rep();
             foreach ( $tabs as $t => $label ) :
-                if ( $class_rep && $t !== 'registrations' ) continue;
+                if ( $class_rep && ! in_array( $t, array( 'registrations', 'participants' ), true ) ) continue;
                 $url = add_query_arg( 'msc_etab', $t, get_permalink() );
             ?>
             <a href="<?php echo esc_url( $url ); ?>"
@@ -782,13 +782,13 @@ class MSC_Frontend_Dashboard {
                 <?php foreach ( $_GET as $k => $v ) : if ( in_array($k, array('msc_filter_event','msc_filter_status','msc_filter_class'), true) ) continue; ?>
                 <input type="hidden" name="<?php echo esc_attr($k); ?>" value="<?php echo esc_attr($v); ?>">
                 <?php endforeach; ?>
-                <?php if ( ! $class_rep ) : ?>
                 <select name="msc_filter_event" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px">
                     <option value="">All Events</option>
                     <?php foreach ( $all_events as $e ) : ?>
                     <option value="<?php echo $e->ID; ?>" <?php selected( $event_filter, $e->ID ); ?>><?php echo esc_html( $e->post_title ); ?></option>
                     <?php endforeach; ?>
                 </select>
+                <?php if ( ! $class_rep ) : ?>
                 <select name="msc_filter_status" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px">
                     <option value="">All Statuses</option>
                     <?php foreach ( $valid_statuses as $s ) : ?>
