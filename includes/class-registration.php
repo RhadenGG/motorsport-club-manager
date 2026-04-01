@@ -563,6 +563,7 @@ class MSC_Registration {
             $term = get_term( (int) $row->class_id, 'msc_vehicle_class' );
             $vid  = (int) $row->vehicle_id;
             $pairs[] = array(
+                'class_id'     => (int) $row->class_id,
                 'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
                 'vehicle_id'   => $vid,
                 'vehicle_name' => self::format_vehicle_label( $vid ),
@@ -583,6 +584,7 @@ class MSC_Registration {
                 $term = $reg->class_id ? get_term( (int) $reg->class_id, 'msc_vehicle_class' ) : null;
                 $vid  = (int) $reg->vehicle_id;
                 $pairs[] = array(
+                    'class_id'     => $reg->class_id ? (int) $reg->class_id : 0,
                     'class_name'   => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
                     'vehicle_id'   => $vid,
                     'vehicle_name' => self::format_vehicle_label( $vid ),

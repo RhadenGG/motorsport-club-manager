@@ -39,15 +39,35 @@ class MSC_Frontend_Dashboard {
     // ─── Access guard ─────────────────────────────────────────────────────────
 
     /**
-     * Only administrators and users with the msc_event_creator role
-     * (or any role that has been granted msc_view_participants) may access.
+     * Only administrators, msc_event_creator, msc_class_rep, or any role with
+     * msc_view_participants may access the dashboard.
      */
     private static function can_access() {
         if ( ! is_user_logged_in() ) return false;
         $user = wp_get_current_user();
-        $allowed_roles = array( 'administrator', 'msc_event_creator' );
+        $allowed_roles = array( 'administrator', 'msc_event_creator', 'msc_class_rep' );
         $has_role = (bool) array_intersect( $allowed_roles, (array) $user->roles );
         return $has_role || current_user_can( MSC_Admin_Participants::required_cap() );
+    }
+
+    /**
+     * Class Reps have read-only access: they can view the Entries tab and export CSV,
+     * but cannot edit events, change entry statuses, or access other tabs.
+     */
+    private static function is_class_rep() {
+        if ( ! is_user_logged_in() ) return false;
+        if ( current_user_can( 'manage_options' ) ) return false;
+        $user = wp_get_current_user();
+        return in_array( 'msc_class_rep', (array) $user->roles, true )
+            && ! in_array( 'msc_event_creator', (array) $user->roles, true );
+    }
+
+    /**
+     * Whether the current user may perform write/mutation operations.
+     * Class Reps are explicitly excluded regardless of shared-ops mode or event authorship.
+     */
+    private static function can_mutate() {
+        return self::can_access() && ! self::is_class_rep();
     }
 
     /** Event creator operational scope: strict ownership (default) or shared ops. */
@@ -87,6 +107,8 @@ class MSC_Frontend_Dashboard {
         $tab = isset( $_GET['msc_etab'] ) ? sanitize_key( $_GET['msc_etab'] ) : 'events';
         $valid_tabs = array( 'events', 'registrations', 'results', 'participants', 'vehicle-classes', 'pricing' );
         if ( ! in_array( $tab, $valid_tabs, true ) ) $tab = 'events';
+        // Class Reps only have access to the Entries tab
+        if ( self::is_class_rep() ) $tab = 'registrations';
 
         $events_args = array(
             'post_type'   => 'msc_event',
@@ -117,7 +139,9 @@ class MSC_Frontend_Dashboard {
                 'vehicle-classes' => 'Vehicle Classes',
                 'pricing'         => 'Pricing',
             );
+            $class_rep = self::is_class_rep();
             foreach ( $tabs as $t => $label ) :
+                if ( $class_rep && $t !== 'registrations' ) continue;
                 $url = add_query_arg( 'msc_etab', $t, get_permalink() );
             ?>
             <a href="<?php echo esc_url( $url ); ?>"
@@ -710,21 +734,29 @@ class MSC_Frontend_Dashboard {
 
     private static function tab_registrations( $all_events ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'msc_registrations';
+        $table      = $wpdb->prefix . 'msc_registrations';
+        $class_rep  = self::is_class_rep();
 
         $event_filter   = isset( $_GET['msc_filter_event'] ) ? intval( $_GET['msc_filter_event'] ) : 0;
         $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
         $status_filter  = isset( $_GET['msc_filter_status'] ) && in_array( $_GET['msc_filter_status'], $valid_statuses, true )
             ? $_GET['msc_filter_status'] : '';
+        $class_filter   = isset( $_GET['msc_filter_class'] ) ? intval( $_GET['msc_filter_class'] ) : 0;
 
         $conditions = array( '1=1' );
         $values     = array();
-        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
+        // Class reps see all events' entries; other non-admins are restricted to their own events (unless shared ops)
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() && ! $class_rep ) {
             $conditions[] = 'p.post_author = %d';
             $values[]     = get_current_user_id();
         }
         if ( $event_filter ) { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
         if ( $status_filter ) { $conditions[] = 'r.status = %s'; $values[] = $status_filter; }
+        if ( $class_filter ) {
+            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id = %d) OR r.class_id = %d)";
+            $values[]     = $class_filter;
+            $values[]     = $class_filter;
+        }
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
@@ -747,9 +779,10 @@ class MSC_Frontend_Dashboard {
 
             <!-- Filters -->
             <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
-                <?php foreach ( $_GET as $k => $v ) : if ( in_array($k, array('msc_filter_event','msc_filter_status'), true) ) continue; ?>
+                <?php foreach ( $_GET as $k => $v ) : if ( in_array($k, array('msc_filter_event','msc_filter_status','msc_filter_class'), true) ) continue; ?>
                 <input type="hidden" name="<?php echo esc_attr($k); ?>" value="<?php echo esc_attr($v); ?>">
                 <?php endforeach; ?>
+                <?php if ( ! $class_rep ) : ?>
                 <select name="msc_filter_event" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px">
                     <option value="">All Events</option>
                     <?php foreach ( $all_events as $e ) : ?>
@@ -762,15 +795,28 @@ class MSC_Frontend_Dashboard {
                     <option value="<?php echo $s; ?>" <?php selected( $status_filter, $s ); ?>><?php echo ucfirst($s); ?></option>
                     <?php endforeach; ?>
                 </select>
+                <?php endif; ?>
+                <?php
+                $all_classes = get_terms( array( 'taxonomy' => 'msc_vehicle_class', 'hide_empty' => false ) );
+                if ( ! empty( $all_classes ) && ! is_wp_error( $all_classes ) ) :
+                ?>
+                <select name="msc_filter_class" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px">
+                    <option value="">All Classes</option>
+                    <?php foreach ( $all_classes as $cls ) : ?>
+                    <option value="<?php echo $cls->term_id; ?>" <?php selected( $class_filter, $cls->term_id ); ?>><?php echo esc_html( $cls->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <?php endif; ?>
                 <button type="submit" class="msc-btn msc-btn-sm">Filter</button>
-                <?php if ( $event_filter || $status_filter ) : ?>
+                <?php if ( $event_filter || $status_filter || $class_filter ) : ?>
                 <a href="<?php echo esc_url( add_query_arg( 'msc_etab', 'registrations', get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline">Clear</a>
                 <?php endif; ?>
             </form>
             <?php
             $csv_args = array( 'msc_export_regs' => 1, 'msc_export_nonce' => wp_create_nonce('msc_export_regs') );
-            if ( $event_filter )  $csv_args['event_id'] = $event_filter;
-            if ( $status_filter ) $csv_args['status']   = $status_filter;
+            if ( $event_filter )  $csv_args['event_id']  = $event_filter;
+            if ( $status_filter ) $csv_args['status']    = $status_filter;
+            if ( $class_filter )  $csv_args['class_id']  = $class_filter;
             ?>
             <a href="<?php echo esc_url( add_query_arg( $csv_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Export CSV</a>
 
@@ -779,6 +825,7 @@ class MSC_Frontend_Dashboard {
             <?php if ( empty( $regs ) ) : ?>
             <p style="color:#888">No entries found.</p>
             <?php else : ?>
+            <?php if ( ! $class_rep ) : ?>
             <!-- Bulk action bar (shown when items are checked) -->
             <div id="msc-bulk-bar" style="display:none;margin-bottom:10px;gap:10px;align-items:center;flex-wrap:wrap">
                 <label style="font-weight:600">Bulk action:</label>
@@ -791,10 +838,12 @@ class MSC_Frontend_Dashboard {
                 <button type="button" id="msc-bulk-apply" class="msc-btn msc-btn-sm">Apply</button>
                 <span id="msc-bulk-count" style="color:#888;font-size:13px"></span>
             </div>
+            <?php endif; ?>
+            <?php $cond_colspan = $class_rep ? 12 : 14; ?>
             <div style="overflow-x:auto">
             <table class="msc-dash-table">
                 <thead><tr>
-                    <th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th>
+                    <?php if ( ! $class_rep ) : ?><th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th><?php endif; ?>
                     <th style="white-space:nowrap">Entry #</th>
                     <th>Entrant</th>
                     <th>Sponsors</th>
@@ -807,20 +856,25 @@ class MSC_Frontend_Dashboard {
                     <th>Date</th>
                     <th>Status</th>
                     <th>Docs</th>
-                    <th>Actions</th>
+                    <?php if ( ! $class_rep ) : ?><th>Actions</th><?php endif; ?>
                 </tr></thead>
                 <tbody>
                 <?php foreach ( $regs as $r ) :
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
-                    $cv_pairs           = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    $rs                 = max( 1, count( $cv_pairs ) );
-                    $first              = $cv_pairs ? $cv_pairs[0] : null;
-                    $extra              = array_slice( $cv_pairs, 1 );
+                    $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
+                    if ( $class_filter ) {
+                        $cv_pairs = array_values( array_filter( $cv_pairs, function( $p ) use ( $class_filter ) {
+                            return isset( $p['class_id'] ) && (int) $p['class_id'] === $class_filter;
+                        } ) );
+                    }
+                    $rs    = max( 1, count( $cv_pairs ) );
+                    $first = $cv_pairs ? $cv_pairs[0] : null;
+                    $extra = array_slice( $cv_pairs, 1 );
                     $conditions_display = MSC_Registration::get_conditions_for_display( $r->id );
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td>
+                    <?php if ( ! $class_rep ) : ?><td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td><?php endif; ?>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->user_name ); ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
@@ -868,6 +922,7 @@ class MSC_Frontend_Dashboard {
                                 data-id="<?php echo $r->id; ?>" title="View class conditions">Conditions ▾</button>
                         <?php endif; ?>
                     </td>
+                    <?php if ( ! $class_rep ) : ?>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                         <?php if ( in_array($r->status, array('pending','confirmed'), true) ) : ?>
@@ -890,6 +945,7 @@ class MSC_Frontend_Dashboard {
                         <?php endif; ?>
                         </div>
                     </td>
+                    <?php endif; ?>
                 </tr>
                 <?php foreach ( $extra as $ep ) : ?>
                 <tr class="msc-entry-subrow">
@@ -900,7 +956,7 @@ class MSC_Frontend_Dashboard {
                 <?php endforeach; ?>
                 <?php if ( ! empty( $conditions_display ) ) : ?>
                 <tr class="msc-conditions-detail-row" id="msc-cond-row-<?php echo $r->id; ?>" style="display:none">
-                    <td colspan="14">
+                    <td colspan="<?php echo $cond_colspan; ?>">
                         <span class="msc-cond-detail-title">Class Conditions</span>
                         <?php foreach ( $conditions_display as $class_data ) : ?>
                         <div class="msc-cond-detail-class">
@@ -1571,7 +1627,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_create_event() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
         if ( ! $title ) wp_send_json_error( array( 'message' => 'Event title is required.' ) );
@@ -1643,7 +1699,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_update_event() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $event_id = absint( $_POST['event_id'] ?? 0 );
         if ( ! $event_id ) wp_send_json_error( array( 'message' => 'Invalid event.' ) );
@@ -1723,7 +1779,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_set_event_status() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $event_id = absint( $_POST['event_id'] ?? 0 );
         $status   = in_array( $_POST['status'] ?? '', array( 'open', 'closed' ), true ) ? $_POST['status'] : '';
@@ -1746,7 +1802,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_update_reg_status() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         global $wpdb;
         $reg_id = absint( $_POST['reg_id'] ?? 0 );
@@ -1788,7 +1844,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_toggle_paid() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         global $wpdb;
         $reg_id   = absint( $_POST['reg_id'] ?? 0 );
@@ -1819,7 +1875,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_bulk_reg_status() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         global $wpdb;
         $valid   = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
@@ -1861,7 +1917,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_save_results() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         global $wpdb;
         $event_id = absint( $_POST['event_id'] ?? 0 );
@@ -2292,7 +2348,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_add_class() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $name = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
         if ( ! $name ) wp_send_json_error( array( 'message' => 'Class name is required.' ) );
@@ -2313,7 +2369,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_rename_class() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $term_id = absint( $_POST['term_id'] ?? 0 );
         $name    = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
@@ -2338,7 +2394,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_delete_class() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $term_id = absint( $_POST['term_id'] ?? 0 );
         if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
@@ -2360,7 +2416,7 @@ class MSC_Frontend_Dashboard {
 
     public static function ajax_save_class_conditions() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
-        if ( ! self::can_access() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
 
         $term_id = absint( $_POST['term_id'] ?? 0 );
         if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
@@ -2439,15 +2495,22 @@ class MSC_Frontend_Dashboard {
         $event_filter   = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
         $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
         $status_filter  = isset( $_GET['status'] ) && in_array( $_GET['status'], $valid_statuses, true ) ? $_GET['status'] : '';
+        $class_filter   = isset( $_GET['class_id'] ) ? intval( $_GET['class_id'] ) : 0;
+        $class_rep      = self::is_class_rep();
 
         $conditions = array( '1=1' );
         $values     = array();
-        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() ) {
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() && ! $class_rep ) {
             $conditions[] = 'p.post_author = %d';
             $values[]     = get_current_user_id();
         }
         if ( $event_filter )  { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
         if ( $status_filter ) { $conditions[] = 'r.status = %s';   $values[] = $status_filter; }
+        if ( $class_filter )  {
+            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id = %d) OR r.class_id = %d)";
+            $values[]     = $class_filter;
+            $values[]     = $class_filter;
+        }
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
@@ -2478,6 +2541,12 @@ class MSC_Frontend_Dashboard {
             $phone    = get_user_meta( $r->user_id, 'phone', true ) ?: '—';
             $sponsors = get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—';
             $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
+            // When filtering by class, only output the matching class row(s)
+            if ( $class_filter ) {
+                $cv_pairs = array_values( array_filter( $cv_pairs, function( $p ) use ( $class_filter ) {
+                    return isset( $p['class_id'] ) && (int) $p['class_id'] === $class_filter;
+                } ) );
+            }
             if ( $cv_pairs ) {
                 foreach ( $cv_pairs as $idx => $p ) {
                     fputcsv( $out, array(

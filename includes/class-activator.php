@@ -151,7 +151,7 @@ class MSC_Activator {
         }
     }
  
-    private static function setup_roles() {
+    public static function setup_roles() {
         // Create the Event Creator role if it doesn't exist
         if ( ! get_role( 'msc_event_creator' ) ) {
             add_role( 'msc_event_creator', 'Event Creator', array(
@@ -166,6 +166,17 @@ class MSC_Activator {
             // Ensure existing role has all required capabilities
             $role = get_role( 'msc_event_creator' );
             $role->add_cap( 'upload_files' );
+            $role->add_cap( 'msc_view_participants' );
+        }
+
+        // Create the Class Rep role if it doesn't exist (read-only dashboard access)
+        if ( ! get_role( 'msc_class_rep' ) ) {
+            add_role( 'msc_class_rep', 'Class Rep', array(
+                'read'                  => true,
+                'msc_view_participants' => true,
+            ) );
+        } else {
+            $role = get_role( 'msc_class_rep' );
             $role->add_cap( 'msc_view_participants' );
         }
 
