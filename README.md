@@ -73,7 +73,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
   - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
   - **Profile photo:** upload, preview, and remove a custom photo.
   - **Logout button** at the bottom of the dashboard for easy sign-out.
-- Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, Administrator → Admin).
+- Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, msc_class_rep → Class Rep, Administrator → Admin).
 
 ### Custom Auth Flow
 - Styled shortcode pages for login (`[msc_login]`), registration (`[msc_register]`), and password setup (`[msc_set_password]`).
@@ -82,9 +82,9 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Compatible with Cloudflare Turnstile / CAPTCHA.
 
 ### Staff Dashboard
-- Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators and the `msc_event_creator` role.
+- Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators, `msc_event_creator`, and `msc_class_rep` roles (class reps see the Entries tab only, in read-only mode).
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event and/or status; each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Phone and Sponsors columns, Race # aligned with its vehicle).
+- **Entries tab:** filter by event, class, and/or status; each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Phone and Sponsors columns, Race # aligned with its vehicle). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
@@ -192,7 +192,7 @@ Migrations run automatically on every WordPress `init` when the stored `msc_db_v
 | `class-results.php` | `MSC_Results` | Results table, event open/closed lifecycle |
 | `class-pricing.php` | `MSC_Pricing` | Pricing set CRUD and fee calculation helpers |
 | `class-shortcodes.php` | `MSC_Shortcodes` | All public-facing shortcodes and single event page injection |
-| `class-account.php` | `MSC_Account` | Member dashboard — garage, entries history, profile editing |
+| `class-account.php` | `MSC_Account` | Member dashboard — garage, entries history, profile editing; nav menu logout URL filter |
 | `class-auth.php` | `MSC_Auth` | Login, register, set-password shortcodes and URL helpers |
 | `class-security.php` | `MSC_Security` | Email verification, login branding, onboarding redirect |
 | `class-emails.php` | `MSC_Emails` | HTML email wrappers and SMTP configuration |
