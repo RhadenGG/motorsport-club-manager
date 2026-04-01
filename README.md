@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.7.9 | **License:** GPLv2 or later
+**Current version:** 0.8.1 | **License:** GPLv2 or later
 
 ---
 
@@ -42,6 +42,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Each class (primary and additional) has its own independent vehicle selector, pre-populated from the member's garage.
 - Vehicles are identified throughout by **Year Make Model Engine** (e.g. *2007 Subaru Impreza STI 2.5T*) rather than a nickname, across entry tables, the indemnity PDF, results, and confirmation emails.
 - Electronic indemnity signing — drawn signature via `signature_pad` or typed name.
+- An **"I accept"** checkbox below the indemnity text is required before the Submit button enables; acceptance is also enforced server-side.
 - Automatic minor detection: if the member's date of birth indicates they are under 18, mandatory parent/guardian name and signature fields appear.
 - Emergency contact, pit crew, and sponsor fields pre-filled from the member's saved profile; any changes made during entry are saved back to the profile.
 - **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
@@ -50,11 +51,13 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds (entry submission can take 5–10 seconds due to synchronous email dispatch).
 
 ### Entry Editing
-- Members can add or remove classes on a pending or confirmed entry from their **My Account** dashboard.
+- Members can add or remove classes and update pit crew names on a pending or confirmed entry from their **My Account** dashboard.
+- Editing is locked once the event is closed — the Edit and Cancel buttons are hidden in the UI, and the server rejects any direct POST attempts.
 - Rules enforced:
   - No downgrade below the original paid amount.
   - Same or lower total (within rounding) saves immediately.
   - Higher total requires a top-up PoP upload for the difference only.
+- The top-up PoP is stored as a separate **PoP 2** file (served via `?msc_pop_file={id}&pop=2`) and shown as a distinct button alongside the original PoP in both the staff dashboard and wp-admin entries table, so organisers can review both payments before confirming an entry.
 - If a **confirmed** entry is edited, it is automatically reset to **pending** and must be re-approved by the organiser.
 - Vehicle assignments per class are preserved across edits; only newly added classes fall back to the primary vehicle.
 
@@ -166,7 +169,7 @@ The custom `msc_view_participants` capability gates participant data and indemni
 ### Database Tables
 | Table | Purpose |
 |---|---|
-| `{prefix}msc_registrations` | Entry records — status, fee, indemnity data, PoP attachment ID |
+| `{prefix}msc_registrations` | Entry records — status, fee, indemnity data, original PoP attachment ID (`pop_file_id`), top-up PoP ID (`pop_file_id_2`) |
 | `{prefix}msc_registration_classes` | Per-entry class rows with fee, vehicle, primary flag, and conditions answers (JSON) |
 | `{prefix}msc_event_results` | Race results per entry (position, lap time, status) |
 | `{prefix}msc_pricing_sets` | Named pricing schedules |
