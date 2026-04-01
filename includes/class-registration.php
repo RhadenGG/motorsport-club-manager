@@ -508,6 +508,9 @@ class MSC_Registration {
             $reg_id, $user_id
         ) );
         if ( ! $reg ) wp_send_json_error( array( 'message' => 'Registration not found.' ) );
+        if ( MSC_Results::is_closed( $reg->event_id ) ) {
+            wp_send_json_error( array( 'message' => 'This event is closed and entries can no longer be cancelled.' ) );
+        }
         $wpdb->update(
             "{$wpdb->prefix}msc_registrations",
             array( 'status' => 'cancelled' ),
