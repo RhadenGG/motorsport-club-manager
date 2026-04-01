@@ -728,7 +728,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
-                       r.pop_file_id, r.indemnity_method, r.entry_number,
+                       r.pop_file_id, r.pop_file_id_2, r.indemnity_method, r.entry_number,
                        p.post_title AS event_name, v.post_title AS vehicle_name, u.display_name AS user_name
                 FROM $table r
                 LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
@@ -857,6 +857,11 @@ class MSC_Frontend_Dashboard {
                             $pop_url = add_query_arg( 'msc_pop_file', $r->id, home_url() ); ?>
                         <a href="<?php echo esc_url( $pop_url ); ?>"
                            target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View proof of payment">PoP</a>
+                        <?php endif; ?>
+                        <?php if ( ! empty( $r->pop_file_id_2 ) ) :
+                            $pop2_url = add_query_arg( array( 'msc_pop_file' => $r->id, 'pop' => '2' ), home_url() ); ?>
+                        <a href="<?php echo esc_url( $pop2_url ); ?>"
+                           target="_blank" class="msc-btn msc-btn-sm msc-btn-outline" title="View additional proof of payment">PoP 2</a>
                         <?php endif; ?>
                         <?php if ( ! empty( $conditions_display ) ) : ?>
                         <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-conditions-toggle"

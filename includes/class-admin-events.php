@@ -536,6 +536,10 @@ class MSC_Admin_Events {
             } else {
                 echo '<span style="color:#aaa">—</span>';
             }
+            if ( ! empty( $r->pop_file_id_2 ) ) {
+                $url2 = add_query_arg( array( 'msc_pop_file' => $r->id, 'pop' => '2' ), home_url() );
+                echo ' <a href="' . esc_url($url2) . '" target="_blank" class="button button-small">📄 View PoP 2</a>';
+            }
         ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->fee_paid ? '<span style="color:green">✓ Paid</span>' : '<span style="color:#aaa">—</span>' ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php

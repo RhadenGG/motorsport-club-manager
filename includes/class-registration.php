@@ -34,16 +34,20 @@ class MSC_Registration {
             exit;
         }
 
+        $pop_slot = isset( $_GET['pop'] ) && $_GET['pop'] === '2' ? 2 : 1;
+
         global $wpdb;
         $reg = $wpdb->get_row( $wpdb->prepare(
-            "SELECT r.pop_file_id, r.user_id, p.post_author as event_author
+            "SELECT r.pop_file_id, r.pop_file_id_2, r.user_id, p.post_author as event_author
              FROM {$wpdb->prefix}msc_registrations r
              LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
              WHERE r.id = %d",
             $reg_id
         ) );
 
-        if ( ! $reg || ! $reg->pop_file_id ) wp_die( 'File not found.' );
+        if ( ! $reg ) wp_die( 'File not found.' );
+        $file_id = $pop_slot === 2 ? (int) $reg->pop_file_id_2 : (int) $reg->pop_file_id;
+        if ( ! $file_id ) wp_die( 'File not found.' );
 
         $current_user_id = get_current_user_id();
         $is_owner     = ( (int) $reg->user_id === $current_user_id );
@@ -54,7 +58,7 @@ class MSC_Registration {
             wp_die( 'You do not have permission to view this file.' );
         }
 
-        $file_path = get_attached_file( (int) $reg->pop_file_id );
+        $file_path = get_attached_file( $file_id );
         if ( ! $file_path || ! file_exists( $file_path ) ) {
             wp_die( 'File not found on server.' );
         }
@@ -818,8 +822,8 @@ class MSC_Registration {
             $update_formats[]      = '%s';
         }
         if ( $new_pop_file_id !== null ) {
-            $update_data['pop_file_id'] = $new_pop_file_id;
-            $update_formats[]           = '%d';
+            $update_data['pop_file_id_2'] = $new_pop_file_id;
+            $update_formats[]             = '%d';
         }
         $wpdb->update(
             "{$wpdb->prefix}msc_registrations",

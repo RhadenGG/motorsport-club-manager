@@ -56,6 +56,9 @@ class MSC_Activator {
         if ( ! in_array( 'entry_number', $reg_cols, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN entry_number int(10) unsigned DEFAULT NULL" );
         }
+        if ( ! in_array( 'pop_file_id_2', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN pop_file_id_2 bigint(20) unsigned DEFAULT NULL" );
+        }
 
         // Ensure unique index on (event_id, entry_number) to enforce no duplicates at DB level
         $idx = $wpdb->get_results( "SHOW INDEX FROM {$wpdb->prefix}msc_registrations WHERE Key_name = 'unique_event_entry_number'" );
