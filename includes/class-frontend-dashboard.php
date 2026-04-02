@@ -803,17 +803,72 @@ class MSC_Frontend_Dashboard {
                 $all_classes = get_terms( array( 'taxonomy' => 'msc_vehicle_class', 'hide_empty' => false ) );
                 if ( ! empty( $all_classes ) && ! is_wp_error( $all_classes ) ) :
                 ?>
-                <select name="msc_filter_class[]" multiple style="padding:7px 10px;border:1px solid #ddd;border-radius:4px;min-height:36px">
-                    <?php foreach ( $all_classes as $cls ) : ?>
-                    <option value="<?php echo $cls->term_id; ?>" <?php echo in_array( (int) $cls->term_id, $class_filter, true ) ? 'selected' : ''; ?>><?php echo esc_html( $cls->name ); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="msc-multiselect" style="position:relative;display:inline-block">
+                    <?php
+                    if ( empty( $class_filter ) ) {
+                        $ms_label = 'All Classes';
+                    } elseif ( count( $class_filter ) === 1 ) {
+                        $ms_idx   = array_search( $class_filter[0], array_column( $all_classes, 'term_id' ), true );
+                        $ms_label = $ms_idx !== false ? esc_html( $all_classes[ $ms_idx ]->name ) : '1 Class';
+                    } else {
+                        $ms_label = count( $class_filter ) . ' Classes';
+                    }
+                    ?>
+                    <button type="button" class="msc-multiselect-toggle" style="padding:7px 28px 7px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;white-space:nowrap;min-width:130px;text-align:left;position:relative;line-height:1.4">
+                        <span class="msc-multiselect-label"><?php echo $ms_label; ?></span>
+                        <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:#666">&#9660;</span>
+                    </button>
+                    <div class="msc-multiselect-dropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid #ddd;border-radius:4px;z-index:200;min-width:160px;max-height:220px;overflow-y:auto;padding:4px 0;box-shadow:0 2px 8px rgba(0,0,0,.12)">
+                        <?php foreach ( $all_classes as $cls ) : ?>
+                        <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;white-space:nowrap;user-select:none">
+                            <input type="checkbox" name="msc_filter_class[]" value="<?php echo $cls->term_id; ?>" <?php echo in_array( (int) $cls->term_id, $class_filter, true ) ? 'checked' : ''; ?>>
+                            <?php echo esc_html( $cls->name ); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
                 <?php endif; ?>
                 <button type="submit" class="msc-btn msc-btn-sm">Filter</button>
                 <?php if ( $event_filter || $status_filter || $class_filter ) : ?>
                 <a href="<?php echo esc_url( add_query_arg( 'msc_etab', 'registrations', get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline">Clear</a>
                 <?php endif; ?>
             </form>
+            <script>
+            (function() {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.addEventListener('click', function(e) {
+                        document.querySelectorAll('.msc-multiselect-dropdown').forEach(function(dd) {
+                            if (!dd.closest('.msc-multiselect').contains(e.target)) {
+                                dd.style.display = 'none';
+                            }
+                        });
+                    });
+                    document.querySelectorAll('.msc-multiselect').forEach(function(wrap) {
+                        var btn  = wrap.querySelector('.msc-multiselect-toggle');
+                        var dd   = wrap.querySelector('.msc-multiselect-dropdown');
+                        var lbl  = wrap.querySelector('.msc-multiselect-label');
+                        function updateLabel() {
+                            var checked = Array.from(dd.querySelectorAll('input:checked'));
+                            if (checked.length === 0) {
+                                lbl.textContent = 'All Classes';
+                            } else if (checked.length === 1) {
+                                lbl.textContent = checked[0].closest('label').textContent.trim();
+                            } else {
+                                lbl.textContent = checked.length + ' Classes';
+                            }
+                        }
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+                        });
+                        dd.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+                            cb.addEventListener('change', updateLabel);
+                        });
+                        updateLabel();
+                    });
+                });
+            })();
+            </script>
             <?php
             $csv_args = array( 'msc_export_regs' => 1, 'msc_export_nonce' => wp_create_nonce('msc_export_regs') );
             if ( $event_filter )  $csv_args['event_id']  = $event_filter;
