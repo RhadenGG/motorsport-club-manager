@@ -764,11 +764,15 @@ class MSC_Frontend_Dashboard {
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
                        r.pop_file_id, r.pop_file_id_2, r.indemnity_method, r.entry_number,
-                       p.post_title AS event_name, v.post_title AS vehicle_name, u.display_name AS user_name
+                       p.post_title AS event_name, v.post_title AS vehicle_name,
+                       NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
+                       u.display_name AS user_name
                 FROM $table r
-                LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
-                LEFT JOIN {$wpdb->posts}  v ON v.ID = r.vehicle_id
-                LEFT JOIN {$wpdb->users}  u ON u.ID = r.user_id
+                LEFT JOIN {$wpdb->posts}    p     ON p.ID = r.event_id
+                LEFT JOIN {$wpdb->posts}    v     ON v.ID = r.vehicle_id
+                LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
+                LEFT JOIN {$wpdb->usermeta} um_fn ON um_fn.user_id = u.ID AND um_fn.meta_key = 'first_name'
+                LEFT JOIN {$wpdb->usermeta} um_ln ON um_ln.user_id = u.ID AND um_ln.meta_key = 'last_name'
                 WHERE $where ORDER BY r.created_at DESC";
         $regs = $values ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) ) : $wpdb->get_results( $sql );
 
@@ -933,7 +937,7 @@ class MSC_Frontend_Dashboard {
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
                     <?php if ( ! $class_rep ) : ?><td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td><?php endif; ?>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->user_name ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->full_name ?: $r->user_name ); ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
                         <?php
                         $sponsors_raw = get_user_meta( $r->user_id, 'msc_sponsors', true );
@@ -2576,11 +2580,14 @@ class MSC_Frontend_Dashboard {
         $sql = "SELECT r.id, r.user_id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
                        r.emergency_name, r.emergency_phone,
                        p.post_title AS event_name, v.post_title AS vehicle_name,
+                       NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
                        u.display_name AS user_name, u.user_email
                 FROM $table r
-                LEFT JOIN {$wpdb->posts}  p ON p.ID = r.event_id
-                LEFT JOIN {$wpdb->posts}  v ON v.ID = r.vehicle_id
-                LEFT JOIN {$wpdb->users}  u ON u.ID = r.user_id
+                LEFT JOIN {$wpdb->posts}    p     ON p.ID = r.event_id
+                LEFT JOIN {$wpdb->posts}    v     ON v.ID = r.vehicle_id
+                LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
+                LEFT JOIN {$wpdb->usermeta} um_fn ON um_fn.user_id = u.ID AND um_fn.meta_key = 'first_name'
+                LEFT JOIN {$wpdb->usermeta} um_ln ON um_ln.user_id = u.ID AND um_ln.meta_key = 'last_name'
                 WHERE $where ORDER BY r.created_at DESC";
         $regs = $values ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) ) : $wpdb->get_results( $sql );
 
@@ -2607,11 +2614,12 @@ class MSC_Frontend_Dashboard {
                     return isset( $p['class_id'] ) && in_array( (int) $p['class_id'], $class_filter, true );
                 } ) );
             }
+            $entrant_name = $r->full_name ?: $r->user_name;
             if ( $cv_pairs ) {
                 foreach ( $cv_pairs as $idx => $p ) {
                     fputcsv( $out, array(
                         $idx === 0 ? $i : '',
-                        $idx === 0 ? $r->user_name : '',
+                        $idx === 0 ? $entrant_name : '',
                         $idx === 0 ? $r->user_email : '',
                         $idx === 0 ? $phone : '',
                         $idx === 0 ? $sponsors : '',
@@ -2627,7 +2635,7 @@ class MSC_Frontend_Dashboard {
                     ) );
                 }
             } else {
-                fputcsv( $out, array( $i, $r->user_name, $r->user_email, $phone, $sponsors, $r->event_name, '—', '—', '—',
+                fputcsv( $out, array( $i, $entrant_name, $r->user_email, $phone, $sponsors, $r->event_name, '—', '—', '—',
                     $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
                     $r->fee_paid ? 'Yes' : 'No',
                     trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',

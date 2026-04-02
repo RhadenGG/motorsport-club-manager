@@ -688,11 +688,22 @@ jQuery(function ($) {
                             btn.prop('disabled', false).text('Submit Registration');
                         }
                     },
-                    error: function () {
+                    error: function (jqXHR) {
                         window.removeEventListener('beforeunload', beforeUnloadHandler);
                         $banner.remove();
-                        msc.showError('Network error. Please try again.');
+                        var status = jqXHR.status || 0;
+                        var hint   = status === 413 ? ' (file too large)' : status === 500 ? ' (server error)' : status === 403 ? ' (access denied)' : '';
+                        msc.showError('Network error (HTTP ' + status + ')' + hint + '. Please try again.');
                         btn.prop('disabled', false).text('Submit Registration');
+                        // Report to server log
+                        $.post(mscData.ajaxUrl, {
+                            action:           'msc_log_client_error',
+                            nonce:            mscData.nonce,
+                            msc_action:       'msc_submit_registration',
+                            event_id:         $wrap.data('event-id') || 0,
+                            http_status:      status,
+                            response_snippet: (jqXHR.responseText || '').substring(0, 500)
+                        });
                     }
                 });
             });

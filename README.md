@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.8.3 | **License:** GPLv2 or later
+**Current version:** 0.8.4 | **License:** GPLv2 or later
 
 ---
 
@@ -84,7 +84,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Staff Dashboard
 - Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators, `msc_event_creator`, and `msc_class_rep` roles (class reps see the Entries tab only, in read-only mode).
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event, class, and/or status; each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Phone and Sponsors columns, Race # aligned with its vehicle). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
+- **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Full Name, Phone and Sponsors columns, Race # aligned with its vehicle). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
@@ -99,7 +99,8 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, and indemnity PDF links.
 - **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
 - **Motorsport Club → Vehicle Classes:** taxonomy term management.
-- **Motorsport Club → Settings:** banking details, auth page URLs, and SMTP configuration.
+- **Motorsport Club → Settings:** banking details, auth page URLs, SMTP configuration, and **debug logging** toggle.
+- **Motorsport Club → Logs:** in-browser log viewer — select a daily log file, read colour-coded entries (INFO / WARNING / ERROR, newest first), clear a file, or purge logs older than 7 days. Only visible when logging is enabled.
 
 ### Roles & Capabilities
 | Role | Capabilities |
@@ -200,6 +201,7 @@ Migrations run automatically on every WordPress `init` when the stored `msc_db_v
 | `class-admin-events.php` | `MSC_Admin_Events` | wp-admin event meta boxes and admin entries pages |
 | `class-admin-garage.php` | `MSC_Admin_Garage` | Admin vehicle list; vehicle-to-event class matching |
 | `class-admin-participants.php` | `MSC_Admin_Participants` | Participant CRM (admin menu + dashboard tab) |
+| `class-msc-logger.php` | `MSC_Logger` | Toggleable debug logger — writes to `uploads/msc-logs/msc-debug-YYYY-MM-DD.log`; client-side error AJAX endpoint |
 
 ### Key Conventions
 - All hooks, options, meta keys, and nonces use the `msc_` prefix.

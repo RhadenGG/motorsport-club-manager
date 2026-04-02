@@ -29,8 +29,10 @@ class MSC_Emails {
 
     /** Wrapper for wp_mail() that logs failures. */
     public static function send_mail( $to, $subject, $body, $headers = array(), $attachments = array() ) {
+        MSC_Logger::info( 'Email', 'Sending', array( 'to' => $to, 'subject' => $subject ) );
         $sent = wp_mail( $to, $subject, $body, $headers, $attachments );
         if ( ! $sent ) {
+            MSC_Logger::error( 'Email', 'Send failed', array( 'to' => $to, 'subject' => $subject ) );
             error_log( 'MSC Email failed: To=' . $to . ' | Subject=' . $subject );
         }
         return $sent;

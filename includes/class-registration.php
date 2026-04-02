@@ -172,10 +172,12 @@ class MSC_Registration {
         check_ajax_referer( 'msc_nonce', 'nonce' );
         global $wpdb;
 
-        $user_id          = get_current_user_id();
-        $event_id         = absint( $_POST['event_id'] ?? 0 );
-        $primary_class_id = absint( $_POST['primary_class_id'] ?? 0 );
+        $user_id            = get_current_user_id();
+        $event_id           = absint( $_POST['event_id'] ?? 0 );
+        $primary_class_id   = absint( $_POST['primary_class_id'] ?? 0 );
         $primary_vehicle_id = absint( $_POST['primary_vehicle_id'] ?? 0 );
+
+        MSC_Logger::info( 'Registration', 'Submit attempt', array( 'event_id' => $event_id ) );
 
         // Additional class IDs and their vehicle IDs
         $raw_add_class_ids   = isset( $_POST['additional_class_ids'] )   ? (array) $_POST['additional_class_ids']   : array();
@@ -378,6 +380,11 @@ class MSC_Registration {
         // Handle Proof of Payment upload
         $pop_file_id = null;
         if ( ! empty( $_FILES['pop_file'] ) && ! empty( $_FILES['pop_file']['name'] ) ) {
+            MSC_Logger::info( 'Registration', 'PoP upload started', array(
+                'event_id' => $event_id,
+                'filename' => sanitize_text_field( $_FILES['pop_file']['name'] ),
+                'size'     => $_FILES['pop_file']['size'],
+            ) );
             require_once ABSPATH . 'wp-admin/includes/image.php';
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -386,10 +393,12 @@ class MSC_Registration {
             $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
             $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
             if ( ! in_array( $check['ext'], $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+                MSC_Logger::warning( 'Registration', 'PoP rejected: invalid file type', array( 'ext' => $check['ext'], 'type' => $check['type'] ) );
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
             }
 
             if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
+                MSC_Logger::warning( 'Registration', 'PoP rejected: file too large', array( 'size' => $_FILES['pop_file']['size'] ) );
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
@@ -397,9 +406,11 @@ class MSC_Registration {
             $attachment_id = media_handle_upload( 'pop_file', 0 );
             remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
             if ( is_wp_error( $attachment_id ) ) {
+                MSC_Logger::error( 'Registration', 'PoP upload failed: ' . $attachment_id->get_error_message(), array( 'event_id' => $event_id ) );
                 wp_send_json_error( array( 'message' => 'Failed to upload Proof of Payment: ' . $attachment_id->get_error_message() ) );
             }
             $pop_file_id = $attachment_id;
+            MSC_Logger::info( 'Registration', 'PoP upload successful', array( 'attachment_id' => $pop_file_id ) );
         } elseif ( $total_fee > 0 ) {
             wp_send_json_error( array( 'message' => 'Proof of Payment is required for this event.' ) );
         }
@@ -431,11 +442,13 @@ class MSC_Registration {
         ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ) );
 
         if ( false === $inserted ) {
+            MSC_Logger::error( 'Registration', 'DB insert failed', array( 'event_id' => $event_id, 'db_error' => $wpdb->last_error ) );
             error_log( 'MSC Registration Error: ' . $wpdb->last_error );
             wp_send_json_error( array( 'message' => 'Failed to save your entry. Please contact the administrator.' ) );
         }
 
         $reg_id = $wpdb->insert_id;
+        MSC_Logger::info( 'Registration', 'Entry inserted', array( 'reg_id' => $reg_id, 'event_id' => $event_id, 'status' => $status ) );
 
         // Insert primary class row
         $primary_cond_data = self::build_conditions_data( $primary_class_id, $submitted_conditions );
@@ -487,11 +500,16 @@ class MSC_Registration {
         if ( isset( $_POST['sponsors'] ) )      update_user_meta( $user_id, 'msc_sponsors',      $sponsors );
         if ( isset( $_POST['emergency_rel'] ) ) update_user_meta( $user_id, 'msc_emergency_rel', $em_rel );
 
+        MSC_Logger::info( 'Registration', 'Sending registration received email', array( 'reg_id' => $reg_id ) );
         MSC_Emails::send_registration_received( $reg_id );
         if ( $status === 'confirmed' ) self::assign_entry_number( $reg_id );
-        if ( $status === 'confirmed' ) MSC_Emails::send_confirmation( $reg_id );
+        if ( $status === 'confirmed' ) {
+            MSC_Logger::info( 'Registration', 'Sending confirmation email', array( 'reg_id' => $reg_id ) );
+            MSC_Emails::send_confirmation( $reg_id );
+        }
 
         if ( $ind_method === 'signed' ) {
+            MSC_Logger::info( 'Registration', 'Emailing signed indemnity PDF', array( 'reg_id' => $reg_id ) );
             MSC_Indemnity::email_signed_pdf( $reg_id );
         }
 
@@ -499,6 +517,7 @@ class MSC_Registration {
             ? 'You\'re registered! A confirmation email has been sent.'
             : 'Your entry has been submitted and is awaiting approval. We\'ll email you once confirmed.';
 
+        MSC_Logger::info( 'Registration', 'Submit complete', array( 'reg_id' => $reg_id, 'status' => $status ) );
         wp_send_json_success( array( 'message' => $message, 'status' => $status, 'reg_id' => $reg_id ) );
     }
 
@@ -511,8 +530,12 @@ class MSC_Registration {
             "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id=%d AND user_id=%d",
             $reg_id, $user_id
         ) );
-        if ( ! $reg ) wp_send_json_error( array( 'message' => 'Registration not found.' ) );
+        if ( ! $reg ) {
+            MSC_Logger::warning( 'Registration', 'Cancel failed: not found', array( 'reg_id' => $reg_id ) );
+            wp_send_json_error( array( 'message' => 'Registration not found.' ) );
+        }
         if ( MSC_Results::is_closed( $reg->event_id ) ) {
+            MSC_Logger::warning( 'Registration', 'Cancel blocked: event closed', array( 'reg_id' => $reg_id, 'event_id' => $reg->event_id ) );
             wp_send_json_error( array( 'message' => 'This event is closed and entries can no longer be cancelled.' ) );
         }
         $wpdb->update(
@@ -522,6 +545,7 @@ class MSC_Registration {
             array( '%s' ),
             array( '%d' )
         );
+        MSC_Logger::info( 'Registration', 'Entry cancelled', array( 'reg_id' => $reg_id, 'event_id' => $reg->event_id ) );
         wp_send_json_success( array( 'message' => 'Registration cancelled.' ) );
     }
 

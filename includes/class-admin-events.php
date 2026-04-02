@@ -27,6 +27,7 @@ class MSC_Admin_Events {
         add_submenu_page( 'motorsport-club', 'Vehicle Classes', 'Vehicle Classes', 'manage_options', 'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle' );
         add_submenu_page( 'motorsport-club', 'Pricing', 'Pricing', 'manage_options', 'msc-pricing', array( 'MSC_Pricing', 'admin_page' ) );
         add_submenu_page( 'motorsport-club', 'Settings', 'Settings', 'manage_options', 'msc-settings', array( __CLASS__, 'settings_page' ) );
+        add_submenu_page( 'motorsport-club', 'Logs', 'Logs', 'manage_options', 'msc-logs', array( __CLASS__, 'logs_page' ) );
     }
 
     public static function reorder_submenu() {
@@ -42,6 +43,7 @@ class MSC_Admin_Events {
             'edit-tags.php?taxonomy=msc_vehicle_class&post_type=msc_vehicle',   // Vehicle Classes
             'msc-pricing',                                                      // Pricing
             'msc-settings',                                                     // Settings
+            'msc-logs',                                                         // Logs
         );
 
         $sorted = array();
@@ -419,11 +421,14 @@ class MSC_Admin_Events {
 
         $paged_values = array_merge( $values, array( $per_page, $offset ) );
         $sql = "SELECT r.*, p.post_title as event_name, v.post_title as vehicle_name,
+        NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
         u.display_name as user_name, u.user_email
         FROM $table r
-        LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
-        LEFT JOIN {$wpdb->posts} v ON v.ID = r.vehicle_id
-        LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
+        LEFT JOIN {$wpdb->posts}    p     ON p.ID = r.event_id
+        LEFT JOIN {$wpdb->posts}    v     ON v.ID = r.vehicle_id
+        LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
+        LEFT JOIN {$wpdb->usermeta} um_fn ON um_fn.user_id = u.ID AND um_fn.meta_key = 'first_name'
+        LEFT JOIN {$wpdb->usermeta} um_ln ON um_ln.user_id = u.ID AND um_ln.meta_key = 'last_name'
         WHERE $where_sql ORDER BY r.created_at DESC LIMIT %d OFFSET %d";
         $regs = $wpdb->get_results( $wpdb->prepare( $sql, ...$paged_values ) );
 
@@ -520,7 +525,7 @@ class MSC_Admin_Events {
         <tr>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" name="bulk_ids[]" value="<?php echo $r->id ?>" class="msc-admin-bulk-cb"></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
-        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_name) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->full_name ?: $r->user_name ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_email) ?></td>
@@ -555,7 +560,7 @@ class MSC_Admin_Events {
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html(date('d M Y', strtotime($r->created_at))) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
         <form method="post" style="flex-wrap:wrap;gap:4px;" class="msc-admin-row-form"
-        onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration for <?php echo esc_js($r->user_name) ?>? This cannot be undone.');">
+        onsubmit="if(this.msc_delete_reg && this.msc_delete_reg === document.activeElement) return confirm('Permanently delete registration for <?php echo esc_js( $r->full_name ?: $r->user_name ) ?>? This cannot be undone.');">
         <?php wp_nonce_field('msc_reg_action') ?>
         <input type="hidden" name="reg_id" value="<?php echo $r->id ?>">
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
@@ -676,6 +681,15 @@ class MSC_Admin_Events {
     }
 
     public static function settings_page() {
+        if ( ! current_user_can( 'manage_options' ) ) return;
+
+        if ( isset( $_GET['msc_purge_logs'] ) ) {
+            check_admin_referer( 'msc_purge_logs' );
+            $removed = MSC_Logger::purge_old_logs( 7 );
+            echo '<div class="updated"><p>Purged ' . intval( $removed ) . ' old log file(s).</p></div>';
+        }
+        // (purge link also accessible from the Logs page)
+
         if ( isset($_POST['msc_save_settings']) ) {
             if ( ! current_user_can( 'manage_options' ) ) return;
             check_admin_referer('msc_save_settings');
@@ -694,6 +708,11 @@ class MSC_Admin_Events {
             }
             update_option( 'msc_dashboard_event_access_mode', $access_mode );
             
+            update_option( 'msc_debug_logging', isset( $_POST['msc_debug_logging'] ) ? 1 : 0 );
+            if ( get_option( 'msc_debug_logging' ) ) {
+                MSC_Logger::maybe_setup_dir();
+            }
+
             update_option('msc_smtp_enabled', isset($_POST['msc_smtp_enabled']) ? 1 : 0);
             update_option('msc_smtp_host', sanitize_text_field(wp_unslash($_POST['msc_smtp_host'] ?? '')));
             update_option('msc_smtp_port', intval($_POST['msc_smtp_port'] ?? 587));
@@ -852,11 +871,155 @@ class MSC_Admin_Events {
                             <p class="description">Add additional mandatory checkboxes to the registration form. <strong>One per line.</strong> HTML (like links) is allowed. If empty, no extra checkboxes will be shown.</p>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row">Debug Logging</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="msc_debug_logging" value="1" <?php checked( get_option( 'msc_debug_logging', 0 ), 1 ); ?>>
+                                <strong>Enable debug logging</strong>
+                            </label>
+                            <p class="description">
+                                When enabled, plugin activity (registration attempts, email sends, file uploads, errors) is written to a daily log file.
+                                Disable when not actively debugging — logs are not automatically purged.
+                            </p>
+                            <?php
+                            $log_dir  = MSC_Logger::get_log_dir();
+                            $log_path = MSC_Logger::get_log_path();
+                            $log_file = basename( $log_path );
+                            // Display path relative to ABSPATH for clarity
+                            $display_path = str_replace( ABSPATH, '', $log_path );
+                            ?>
+                            <p class="description" style="margin-top:6px">
+                                <strong>Log location:</strong>
+                                <code><?php echo esc_html( $display_path ); ?></code>
+                                (one file per day, inside <code><?php echo esc_html( str_replace( ABSPATH, '', $log_dir ) ); ?>/</code>)
+                            </p>
+                            <?php
+                            $log_files = glob( $log_dir . '/msc-debug-*.log' ) ?: array();
+                            if ( $log_files ) :
+                                $total_size = array_sum( array_map( 'filesize', $log_files ) );
+                            ?>
+                            <p class="description" style="margin-top:4px">
+                                <?php echo count( $log_files ); ?> log file(s) on disk — <?php echo esc_html( size_format( $total_size ) ); ?>.
+                                <a href="<?php echo esc_url( add_query_arg( array( 'msc_purge_logs' => 1, '_wpnonce' => wp_create_nonce( 'msc_purge_logs' ) ), admin_url( 'admin.php?page=msc-settings' ) ) ); ?>">Purge logs older than 7 days</a>
+                            </p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
                 </table>
                 <p class="submit">
                     <button type="submit" name="msc_save_settings" class="button button-primary">Save Settings</button>
                 </p>
             </form>
+        </div>
+        <?php
+    }
+
+    public static function logs_page() {
+        if ( ! current_user_can( 'manage_options' ) ) return;
+
+        $log_dir = MSC_Logger::get_log_dir();
+
+        // Handle clear action
+        if ( isset( $_POST['msc_clear_log'] ) ) {
+            check_admin_referer( 'msc_clear_log' );
+            $file_to_clear = $log_dir . '/' . basename( sanitize_file_name( wp_unslash( $_POST['msc_clear_log'] ) ) );
+            if ( is_file( $file_to_clear ) && strpos( $file_to_clear, $log_dir ) === 0 ) {
+                file_put_contents( $file_to_clear, '' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+                echo '<div class="updated"><p>Log cleared.</p></div>';
+            }
+        }
+
+        // Handle purge action
+        if ( isset( $_GET['msc_purge_logs'] ) ) {
+            check_admin_referer( 'msc_purge_logs' );
+            $removed = MSC_Logger::purge_old_logs( 7 );
+            echo '<div class="updated"><p>Purged ' . intval( $removed ) . ' log file(s) older than 7 days.</p></div>';
+        }
+
+        $log_files  = array_reverse( glob( $log_dir . '/msc-debug-*.log' ) ?: array() );
+        $today_file = basename( MSC_Logger::get_log_path() );
+        $selected   = isset( $_GET['msc_log_file'] ) ? basename( sanitize_file_name( wp_unslash( $_GET['msc_log_file'] ) ) ) : $today_file;
+
+        // Ensure the selected file actually exists in the log dir
+        $selected_path = $log_dir . '/' . $selected;
+        if ( ! is_file( $selected_path ) || strpos( $selected_path, $log_dir ) !== 0 ) {
+            $selected_path = null;
+        }
+
+        $logging_enabled = MSC_Logger::is_enabled();
+        ?>
+        <div class="wrap">
+            <h1>📋 Motorsport Club — Logs</h1>
+
+            <?php if ( ! $logging_enabled ) : ?>
+            <div class="notice notice-warning inline">
+                <p>Debug logging is currently <strong>disabled</strong>. <a href="<?php echo esc_url( admin_url( 'admin.php?page=msc-settings' ) ); ?>">Enable it in Settings</a> to start capturing log entries.</p>
+            </div>
+            <?php endif; ?>
+
+            <?php if ( empty( $log_files ) ) : ?>
+            <p style="color:#888">No log files found yet. Enable debug logging and trigger some activity to generate logs.</p>
+            <?php else : ?>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+                <form method="get" style="display:flex;align-items:center;gap:8px">
+                    <input type="hidden" name="page" value="msc-logs">
+                    <label for="msc_log_file" style="font-weight:600">Log file:</label>
+                    <select name="msc_log_file" id="msc_log_file" onchange="this.form.submit()" style="padding:5px 8px">
+                        <?php foreach ( $log_files as $f ) :
+                            $name = basename( $f );
+                            $date = str_replace( array( 'msc-debug-', '.log' ), '', $name );
+                            $size = size_format( filesize( $f ) );
+                        ?>
+                        <option value="<?php echo esc_attr( $name ); ?>" <?php selected( $selected, $name ); ?>>
+                            <?php echo esc_html( $date ); ?> (<?php echo esc_html( $size ); ?>)
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+
+                <?php if ( $selected_path ) : ?>
+                <form method="post" style="display:inline">
+                    <?php wp_nonce_field( 'msc_clear_log' ); ?>
+                    <input type="hidden" name="msc_clear_log" value="<?php echo esc_attr( $selected ); ?>">
+                    <input type="hidden" name="page" value="msc-logs">
+                    <button type="submit" class="button" onclick="return confirm('Clear this log file?')">Clear this log</button>
+                </form>
+                <?php endif; ?>
+
+                <a href="<?php echo esc_url( add_query_arg( array( 'msc_purge_logs' => 1, '_wpnonce' => wp_create_nonce( 'msc_purge_logs' ) ), admin_url( 'admin.php?page=msc-logs' ) ) ); ?>" class="button" onclick="return confirm('Delete all log files older than 7 days?')">Purge old logs</a>
+            </div>
+
+            <?php if ( $selected_path ) :
+                $content = file_get_contents( $selected_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+                $lines   = $content ? array_reverse( array_filter( explode( "\n", rtrim( $content ) ) ) ) : array();
+            ?>
+            <p style="color:#888;margin-bottom:8px">
+                <?php echo count( $lines ); ?> entries — newest first.
+                <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'msc-logs', 'msc_log_file' => $selected ), admin_url( 'admin.php' ) ) ); ?>">Refresh</a>
+            </p>
+
+            <?php if ( empty( $lines ) ) : ?>
+            <p style="color:#888">This log file is empty.</p>
+            <?php else : ?>
+            <div style="background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:12px;line-height:1.6;padding:16px;border-radius:4px;max-height:600px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">
+                <?php foreach ( $lines as $line ) :
+                    if ( strpos( $line, '[ERROR  ]' ) !== false ) {
+                        $colour = '#f48771';
+                    } elseif ( strpos( $line, '[WARNING]' ) !== false ) {
+                        $colour = '#dcdcaa';
+                    } else {
+                        $colour = '#d4d4d4';
+                    }
+                ?>
+                <span style="color:<?php echo $colour; ?>"><?php echo esc_html( $line ); ?></span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+
+            <?php endif; ?>
         </div>
         <?php
     }
