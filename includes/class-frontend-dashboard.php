@@ -741,7 +741,9 @@ class MSC_Frontend_Dashboard {
         $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
         $status_filter  = isset( $_GET['msc_filter_status'] ) && in_array( $_GET['msc_filter_status'], $valid_statuses, true )
             ? $_GET['msc_filter_status'] : '';
-        $class_filter   = isset( $_GET['msc_filter_class'] ) ? intval( $_GET['msc_filter_class'] ) : 0;
+        $class_filter   = isset( $_GET['msc_filter_class'] )
+            ? array_values( array_filter( array_map( 'intval', (array) $_GET['msc_filter_class'] ) ) )
+            : array();
 
         $conditions = array( '1=1' );
         $values     = array();
@@ -752,10 +754,11 @@ class MSC_Frontend_Dashboard {
         }
         if ( $event_filter ) { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
         if ( $status_filter ) { $conditions[] = 'r.status = %s'; $values[] = $status_filter; }
-        if ( $class_filter ) {
-            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id = %d) OR r.class_id = %d)";
-            $values[]     = $class_filter;
-            $values[]     = $class_filter;
+        if ( ! empty( $class_filter ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $class_filter ), '%d' ) );
+            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id IN ($placeholders)) OR r.class_id IN ($placeholders))";
+            foreach ( $class_filter as $cid ) { $values[] = $cid; }
+            foreach ( $class_filter as $cid ) { $values[] = $cid; }
         }
 
         $where = implode( ' AND ', $conditions );
@@ -800,10 +803,9 @@ class MSC_Frontend_Dashboard {
                 $all_classes = get_terms( array( 'taxonomy' => 'msc_vehicle_class', 'hide_empty' => false ) );
                 if ( ! empty( $all_classes ) && ! is_wp_error( $all_classes ) ) :
                 ?>
-                <select name="msc_filter_class" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px">
-                    <option value="">All Classes</option>
+                <select name="msc_filter_class[]" multiple style="padding:7px 10px;border:1px solid #ddd;border-radius:4px;min-height:36px">
                     <?php foreach ( $all_classes as $cls ) : ?>
-                    <option value="<?php echo $cls->term_id; ?>" <?php selected( $class_filter, $cls->term_id ); ?>><?php echo esc_html( $cls->name ); ?></option>
+                    <option value="<?php echo $cls->term_id; ?>" <?php echo in_array( (int) $cls->term_id, $class_filter, true ) ? 'selected' : ''; ?>><?php echo esc_html( $cls->name ); ?></option>
                     <?php endforeach; ?>
                 </select>
                 <?php endif; ?>
@@ -816,7 +818,7 @@ class MSC_Frontend_Dashboard {
             $csv_args = array( 'msc_export_regs' => 1, 'msc_export_nonce' => wp_create_nonce('msc_export_regs') );
             if ( $event_filter )  $csv_args['event_id']  = $event_filter;
             if ( $status_filter ) $csv_args['status']    = $status_filter;
-            if ( $class_filter )  $csv_args['class_id']  = $class_filter;
+            if ( ! empty( $class_filter ) ) $csv_args['class_id'] = $class_filter;
             ?>
             <a href="<?php echo esc_url( add_query_arg( $csv_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Export CSV</a>
 
@@ -863,9 +865,9 @@ class MSC_Frontend_Dashboard {
                     $sc       = $status_colors[ $r->status ] ?? '#333';
                     $sb       = $status_bg[ $r->status ]     ?? '#eee';
                     $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
-                    if ( $class_filter ) {
+                    if ( ! empty( $class_filter ) ) {
                         $cv_pairs = array_values( array_filter( $cv_pairs, function( $p ) use ( $class_filter ) {
-                            return isset( $p['class_id'] ) && (int) $p['class_id'] === $class_filter;
+                            return isset( $p['class_id'] ) && in_array( (int) $p['class_id'], $class_filter, true );
                         } ) );
                     }
                     $rs    = max( 1, count( $cv_pairs ) );
@@ -2495,7 +2497,9 @@ class MSC_Frontend_Dashboard {
         $event_filter   = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
         $valid_statuses = array( 'pending', 'confirmed', 'rejected', 'cancelled' );
         $status_filter  = isset( $_GET['status'] ) && in_array( $_GET['status'], $valid_statuses, true ) ? $_GET['status'] : '';
-        $class_filter   = isset( $_GET['class_id'] ) ? intval( $_GET['class_id'] ) : 0;
+        $class_filter   = isset( $_GET['class_id'] )
+            ? array_values( array_filter( array_map( 'intval', (array) $_GET['class_id'] ) ) )
+            : array();
         $class_rep      = self::is_class_rep();
 
         $conditions = array( '1=1' );
@@ -2506,10 +2510,11 @@ class MSC_Frontend_Dashboard {
         }
         if ( $event_filter )  { $conditions[] = 'r.event_id = %d'; $values[] = $event_filter; }
         if ( $status_filter ) { $conditions[] = 'r.status = %s';   $values[] = $status_filter; }
-        if ( $class_filter )  {
-            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id = %d) OR r.class_id = %d)";
-            $values[]     = $class_filter;
-            $values[]     = $class_filter;
+        if ( ! empty( $class_filter ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $class_filter ), '%d' ) );
+            $conditions[] = "(EXISTS (SELECT 1 FROM {$wpdb->prefix}msc_registration_classes rc WHERE rc.registration_id = r.id AND rc.class_id IN ($placeholders)) OR r.class_id IN ($placeholders))";
+            foreach ( $class_filter as $cid ) { $values[] = $cid; }
+            foreach ( $class_filter as $cid ) { $values[] = $cid; }
         }
 
         $where = implode( ' AND ', $conditions );
@@ -2542,9 +2547,9 @@ class MSC_Frontend_Dashboard {
             $sponsors = get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—';
             $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
             // When filtering by class, only output the matching class row(s)
-            if ( $class_filter ) {
+            if ( ! empty( $class_filter ) ) {
                 $cv_pairs = array_values( array_filter( $cv_pairs, function( $p ) use ( $class_filter ) {
-                    return isset( $p['class_id'] ) && (int) $p['class_id'] === $class_filter;
+                    return isset( $p['class_id'] ) && in_array( (int) $p['class_id'], $class_filter, true );
                 } ) );
             }
             if ( $cv_pairs ) {
