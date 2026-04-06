@@ -669,43 +669,58 @@ jQuery(function ($) {
                     }
                 });
 
-                $.ajax({
-                    url:         mscData.ajaxUrl,
-                    type:        'POST',
-                    data:        fd,
-                    processData: false,
-                    contentType: false,
-                    success: function (res) {
-                        window.removeEventListener('beforeunload', beforeUnloadHandler);
-                        $banner.remove();
-                        if (res.success) {
-                            var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
-                            $('#msc-reg-wrap').empty().append(
-                                $('<div>').addClass('msc-notice msc-notice-success msc-success-big').text(icon + ' ' + res.data.message)
-                            );
-                        } else {
-                            msc.showError(res.data.message || 'An error occurred. Please try again.');
+                var submitAttempt = 0;
+                var maxRetries    = 2;
+
+                function doSubmit() {
+                    submitAttempt++;
+                    $.ajax({
+                        url:         mscData.ajaxUrl,
+                        type:        'POST',
+                        data:        fd,
+                        processData: false,
+                        contentType: false,
+                        success: function (res) {
+                            window.removeEventListener('beforeunload', beforeUnloadHandler);
+                            $banner.remove();
+                            if (res.success) {
+                                var icon = res.data.status === 'confirmed' ? '🎉' : '⏳';
+                                $('#msc-reg-wrap').empty().append(
+                                    $('<div>').addClass('msc-notice msc-notice-success msc-success-big').text(icon + ' ' + res.data.message)
+                                );
+                            } else {
+                                msc.showError(res.data.message || 'An error occurred. Please try again.');
+                                btn.prop('disabled', false).text('Submit Registration');
+                            }
+                        },
+                        error: function (jqXHR) {
+                            var status = jqXHR.status || 0;
+                            if (status === 503 && submitAttempt < maxRetries) {
+                                // Server temporarily unavailable — wait 5s and retry silently
+                                $banner.find('span').text('Server busy, retrying\u2026');
+                                setTimeout(doSubmit, 5000);
+                                return;
+                            }
+                            window.removeEventListener('beforeunload', beforeUnloadHandler);
+                            $banner.remove();
+                            var msg = status === 503
+                                ? 'The server is currently busy. Your entry was not submitted \u2014 please wait a minute or two and try again.'
+                                : 'Network error (HTTP ' + status + (status === 413 ? ', file too large' : status === 500 ? ', server error' : status === 403 ? ', access denied' : '') + '). Please try again.';
+                            msc.showError(msg);
                             btn.prop('disabled', false).text('Submit Registration');
+                            // Report to server log
+                            $.post(mscData.ajaxUrl, {
+                                action:           'msc_log_client_error',
+                                nonce:            mscData.nonce,
+                                msc_action:       'msc_submit_registration',
+                                event_id:         $wrap.data('event-id') || 0,
+                                http_status:      status,
+                                response_snippet: (jqXHR.responseText || '').substring(0, 500)
+                            });
                         }
-                    },
-                    error: function (jqXHR) {
-                        window.removeEventListener('beforeunload', beforeUnloadHandler);
-                        $banner.remove();
-                        var status = jqXHR.status || 0;
-                        var hint   = status === 413 ? ' (file too large)' : status === 500 ? ' (server error)' : status === 403 ? ' (access denied)' : '';
-                        msc.showError('Network error (HTTP ' + status + ')' + hint + '. Please try again.');
-                        btn.prop('disabled', false).text('Submit Registration');
-                        // Report to server log
-                        $.post(mscData.ajaxUrl, {
-                            action:           'msc_log_client_error',
-                            nonce:            mscData.nonce,
-                            msc_action:       'msc_submit_registration',
-                            event_id:         $wrap.data('event-id') || 0,
-                            http_status:      status,
-                            response_snippet: (jqXHR.responseText || '').substring(0, 500)
-                        });
-                    }
-                });
+                    });
+                }
+                doSubmit();
             });
         },
 
