@@ -22,6 +22,50 @@ class MSC_Registration {
         ) );
     }
 
+    /**
+     * Upload a PoP file without generating attachment metadata (thumbnail/preview).
+     * media_handle_upload() calls wp_generate_attachment_metadata() which invokes
+     * GhostScript/ImageMagick on PDFs and takes 5-10 seconds. Since PoP files are
+     * only ever served for download, metadata generation is unnecessary.
+     *
+     * @param string $file_key  The $_FILES key.
+     * @return int|WP_Error     Attachment ID on success.
+     */
+    public static function upload_pop_file( $file_key ) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        add_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
+        $upload = wp_handle_upload( $_FILES[ $file_key ], array( 'test_form' => false ) );
+        remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
+
+        if ( isset( $upload['error'] ) ) {
+            return new WP_Error( 'upload_error', $upload['error'] );
+        }
+
+        $attachment_id = wp_insert_attachment( array(
+            'post_mime_type' => $upload['type'],
+            'post_title'     => sanitize_file_name( basename( $upload['file'] ) ),
+            'post_status'    => 'inherit',
+            'guid'           => $upload['url'],
+        ), $upload['file'], 0, true );
+
+        if ( is_wp_error( $attachment_id ) ) {
+            return $attachment_id;
+        }
+        if ( ! $attachment_id ) {
+            return new WP_Error( 'insert_failed', 'Failed to register uploaded file in the database.' );
+        }
+
+        // Save _wp_attached_file meta so get_attached_file() can locate the file.
+        // Intentionally skipping wp_generate_attachment_metadata() — PoP files are
+        // download-only and do not need thumbnail generation (GhostScript/ImageMagick).
+        update_attached_file( $attachment_id, $upload['file'] );
+
+        return $attachment_id;
+    }
+
     /** Serve a PoP file with access control via ?msc_pop_file={reg_id} */
     public static function maybe_serve_pop_file() {
         if ( ! isset( $_GET['msc_pop_file'] ) ) return;
@@ -385,10 +429,6 @@ class MSC_Registration {
                 'filename' => sanitize_text_field( $_FILES['pop_file']['name'] ),
                 'size'     => $_FILES['pop_file']['size'],
             ) );
-            require_once ABSPATH . 'wp-admin/includes/image.php';
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-            require_once ABSPATH . 'wp-admin/includes/media.php';
-
             $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
             $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
             $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
@@ -402,9 +442,7 @@ class MSC_Registration {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
-            add_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
-            $attachment_id = media_handle_upload( 'pop_file', 0 );
-            remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
+            $attachment_id = self::upload_pop_file( 'pop_file' );
             if ( is_wp_error( $attachment_id ) ) {
                 MSC_Logger::error( 'Registration', 'PoP upload failed: ' . $attachment_id->get_error_message(), array( 'event_id' => $event_id ) );
                 wp_send_json_error( array( 'message' => 'Failed to upload Proof of Payment: ' . $attachment_id->get_error_message() ) );
@@ -817,10 +855,6 @@ class MSC_Registration {
             if ( empty( $_FILES['pop_file'] ) || empty( $_FILES['pop_file']['name'] ) ) {
                 wp_send_json_error( array( 'message' => 'Please upload proof of payment for the additional R ' . number_format( $difference, 2 ) . ' owed.' ) );
             }
-            require_once ABSPATH . 'wp-admin/includes/image.php';
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-            require_once ABSPATH . 'wp-admin/includes/media.php';
-
             $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
             $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
             $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
@@ -831,9 +865,7 @@ class MSC_Registration {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
             }
 
-            add_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
-            $attachment_id = media_handle_upload( 'pop_file', 0 );
-            remove_filter( 'upload_dir', array( __CLASS__, 'pop_upload_dir' ) );
+            $attachment_id = self::upload_pop_file( 'pop_file' );
             if ( is_wp_error( $attachment_id ) ) {
                 wp_send_json_error( array( 'message' => 'Failed to upload proof of payment: ' . $attachment_id->get_error_message() ) );
             }
