@@ -1214,6 +1214,18 @@ jQuery(function ($) {
                 );
             });
 
+            // Calendar icon opens the hidden date picker
+            $('#pe_birthday_cal').on('click', function () {
+                $('#pe_birthday_picker').trigger('click');
+            });
+            $('#pe_birthday_picker').on('change', function () {
+                var iso = $(this).val(); // YYYY-MM-DD
+                if (iso && iso.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    var p = iso.split('-');
+                    $('#pe_birthday').val(p[2] + '/' + p[1] + '/' + p[0]);
+                }
+            });
+
             // Auto-format birthday as user types: insert slashes at DD/ and DD/MM/
             $('#pe_birthday').on('input', function () {
                 var digits = $(this).val().replace(/\D/g, '').substr(0, 8);

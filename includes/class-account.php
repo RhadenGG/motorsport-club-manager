@@ -486,7 +486,11 @@ class MSC_Account {
                                 $display_bday = $stored_bday;
                             }
                             ?>
-                            <input type="text" id="pe_birthday" value="<?php echo esc_attr( $display_bday ); ?>" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric">
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <input type="text" id="pe_birthday" value="<?php echo esc_attr( $display_bday ); ?>" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric" style="flex:1;">
+                                <input type="date" id="pe_birthday_picker" value="<?php echo esc_attr( $stored_bday ); ?>" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" tabindex="-1" aria-hidden="true">
+                                <button type="button" id="pe_birthday_cal" title="Pick from calendar" style="flex-shrink:0;background:none;border:1px solid #ccc;border-radius:4px;padding:6px 8px;cursor:pointer;line-height:1;">&#128197;</button>
+                            </div>
                         </div>
                         <div class="msc-field">
                             <label>Phone Number <span class="msc-required">*</span></label>
