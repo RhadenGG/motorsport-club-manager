@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.8.4 | **License:** GPLv2 or later
+**Current version:** 0.8.6 | **License:** GPLv2 or later
 
 ---
 
@@ -48,7 +48,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
 - **Proof of Payment (PoP):** PDF, PNG, or JPG upload (up to 5 MB) required when the entry fee is greater than zero. Banking details configured in Settings are shown alongside the upload field.
 - Upon confirmation, each entry is assigned a **sequential entry number** scoped to the event, displayed on the indemnity PDF and the member's entries history.
-- A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds (entry submission can take 5–10 seconds due to synchronous email dispatch).
+- A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds. On a temporary server error (HTTP 503), the form automatically retries once after 5 seconds with a "Server busy, retrying…" status update; if the retry also fails, a clear message explains the server is busy and the entry was not submitted.
 
 ### Entry Editing
 - Members can add or remove classes and update pit crew names on a pending or confirmed entry from their **My Account** dashboard.
