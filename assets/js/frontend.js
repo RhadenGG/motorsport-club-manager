@@ -1214,6 +1214,18 @@ jQuery(function ($) {
                 );
             });
 
+            // Auto-format birthday as user types: insert slashes at DD/ and DD/MM/
+            $('#pe_birthday').on('input', function () {
+                var digits = $(this).val().replace(/\D/g, '').substr(0, 8);
+                var out = digits;
+                if (digits.length > 4) {
+                    out = digits.substr(0, 2) + '/' + digits.substr(2, 2) + '/' + digits.substr(4);
+                } else if (digits.length > 2) {
+                    out = digits.substr(0, 2) + '/' + digits.substr(2);
+                }
+                $(this).val(out);
+            });
+
             $('#msc-save-profile').on('click', function (e) {
                 e.preventDefault();
 
@@ -1244,7 +1256,9 @@ jQuery(function ($) {
                 fd.append('last_name',    $('#pe_last_name').val());
                 fd.append('display_name', $('#pe_display_name').val());
                 fd.append('email',        $('#pe_email').val());
-                fd.append('msc_birthday', $('#pe_birthday').val());
+                var bdayVal = $('#pe_birthday').val();
+                var bdayMatch = bdayVal.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                fd.append('msc_birthday', bdayMatch ? bdayMatch[3] + '-' + bdayMatch[2] + '-' + bdayMatch[1] : bdayVal);
                 fd.append('phone',        $('#pe_phone').val());
                 fd.append('msc_msa_licence',        $('#pe_msa_licence').val());
                 fd.append('msc_medical_aid',        $('#pe_medical_aid').val());

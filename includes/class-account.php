@@ -477,7 +477,16 @@ class MSC_Account {
                         </div>
                         <div class="msc-field">
                             <label>Date of Birth <span class="msc-required">*</span></label>
-                            <input type="date" id="pe_birthday" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_birthday', true)); ?>">
+                            <?php
+                            $stored_bday  = get_user_meta( $user->ID, 'msc_birthday', true );
+                            $display_bday = '';
+                            if ( $stored_bday && preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $stored_bday, $bm ) ) {
+                                $display_bday = $bm[3] . '/' . $bm[2] . '/' . $bm[1];
+                            } elseif ( $stored_bday ) {
+                                $display_bday = $stored_bday;
+                            }
+                            ?>
+                            <input type="text" id="pe_birthday" value="<?php echo esc_attr( $display_bday ); ?>" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric">
                         </div>
                         <div class="msc-field">
                             <label>Phone Number <span class="msc-required">*</span></label>
@@ -634,9 +643,18 @@ class MSC_Account {
 
         wp_update_user($data);
 
+        // Birthday: convert DD/MM/YYYY → YYYY-MM-DD before saving
+        if ( isset( $_POST['msc_birthday'] ) ) {
+            $bday = sanitize_text_field( $_POST['msc_birthday'] );
+            if ( preg_match( '/^(\d{2})\/(\d{2})\/(\d{4})$/', $bday, $bm ) ) {
+                $bday = $bm[3] . '-' . $bm[2] . '-' . $bm[1];
+            }
+            update_user_meta( $user_id, 'msc_birthday', $bday );
+        }
+
         // Meta fields
         $meta_fields = array(
-            'phone', 'msc_birthday',
+            'phone',
             'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
             'msc_pit_crew_1', 'msc_pit_crew_2',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
