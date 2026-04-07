@@ -432,7 +432,7 @@ class MSC_Registration {
             $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
             $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
             $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
-            if ( ! in_array( $check['ext'], $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+            if ( ! in_array( strtolower( (string) $check['ext'] ), $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
                 MSC_Logger::warning( 'Registration', 'PoP rejected: invalid file type', array( 'ext' => $check['ext'], 'type' => $check['type'] ) );
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
             }
@@ -858,7 +858,7 @@ class MSC_Registration {
             $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
             $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
             $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
-            if ( ! in_array( $check['ext'], $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+            if ( ! in_array( strtolower( (string) $check['ext'] ), $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
                 wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
             }
             if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
