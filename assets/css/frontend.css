@@ -755,12 +755,28 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 
 /* ── Event Manager Dashboard ────────────────────────────────────── */
 #msc-event-dashboard { max-width:100%; }
-.msc-dash-table { width:100%; border-collapse:collapse; font-size:13px; }
-.msc-dash-table th { background:var(--msc-dark); color:#fff; padding:9px 12px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
-.msc-dash-table td { padding:9px 12px; border-bottom:1px solid var(--msc-border); vertical-align:middle; }
+.msc-dash-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
+.msc-dash-table th { background:var(--msc-dark); color:#fff; padding:7px 8px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; overflow:hidden; }
+.msc-dash-table td { padding:7px 8px; border-bottom:1px solid var(--msc-border); vertical-align:top; }
 .msc-dash-table tbody tr:hover { background:#f7f7f7; }
-.msc-dash-table tbody tr.msc-entry-subrow td { border-top:none; padding-top:2px; padding-bottom:6px; }
-.msc-status-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; letter-spacing:.3px; }
+.msc-dash-table tbody tr.msc-entry-subrow td { border-top:none; padding-top:2px; padding-bottom:4px; }
+/* Column width hints — browser distributes remaining space */
+.msc-dash-table .col-cb       { width:28px; }
+.msc-dash-table .col-entry    { width:52px; }
+.msc-dash-table .col-entrant  { width:110px; }
+.msc-dash-table .col-sponsors { width:100px; }
+.msc-dash-table .col-phone    { width:100px; }
+.msc-dash-table .col-pitcrew  { width:100px; }
+.msc-dash-table .col-event    { width:130px; }
+.msc-dash-table .col-class    { width:120px; }
+.msc-dash-table .col-vehicle  { width:140px; }
+.msc-dash-table .col-race     { width:52px; }
+.msc-dash-table .col-fee      { width:64px; }
+.msc-dash-table .col-date     { width:72px; }
+.msc-dash-table .col-status   { width:82px; }
+.msc-dash-table .col-docs     { width:130px; }
+.msc-dash-table .col-actions  { width:140px; }
+.msc-status-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; letter-spacing:.3px; }
 .msc-status-open   { background:#d1e7dd; color:#0a3622; }
 .msc-status-closed { background:#f8d7da; color:#842029; }
 .msc-sponsor-pill {
@@ -769,7 +785,7 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
     color:#444;
     font-size:11px;
     font-weight:600;
-    padding:2px 8px;
+    padding:2px 6px;
     border-radius:8px;
     margin:1px 2px 1px 0;
     white-space:nowrap;

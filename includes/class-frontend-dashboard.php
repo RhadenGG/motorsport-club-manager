@@ -904,21 +904,21 @@ class MSC_Frontend_Dashboard {
             <div style="overflow-x:auto">
             <table class="msc-dash-table">
                 <thead><tr>
-                    <?php if ( ! $class_rep ) : ?><th style="width:32px"><input type="checkbox" id="msc-select-all" title="Select all"></th><?php endif; ?>
-                    <th style="white-space:nowrap">Entry #</th>
-                    <th>Entrant</th>
-                    <th>Sponsors</th>
-                    <th>Phone</th>
-                    <th>Pit Crew</th>
-                    <th>Event</th>
-                    <th>Class</th>
-                    <th>Vehicle</th>
-                    <th style="white-space:nowrap">Race #</th>
-                    <th>Fee</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Docs</th>
-                    <?php if ( ! $class_rep ) : ?><th>Actions</th><?php endif; ?>
+                    <?php if ( ! $class_rep ) : ?><th class="col-cb"><input type="checkbox" id="msc-select-all" title="Select all"></th><?php endif; ?>
+                    <th class="col-entry">Entry #</th>
+                    <th class="col-entrant">Entrant</th>
+                    <th class="col-sponsors">Sponsors</th>
+                    <th class="col-phone">Phone</th>
+                    <th class="col-pitcrew">Pit Crew</th>
+                    <th class="col-event">Event</th>
+                    <th class="col-class">Class</th>
+                    <th class="col-vehicle">Vehicle</th>
+                    <th class="col-race">Race #</th>
+                    <th class="col-fee">Fee</th>
+                    <th class="col-date">Date</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-docs">Docs</th>
+                    <?php if ( ! $class_rep ) : ?><th class="col-actions">Actions</th><?php endif; ?>
                 </tr></thead>
                 <tbody>
                 <?php foreach ( $regs as $r ) :
@@ -936,10 +936,10 @@ class MSC_Frontend_Dashboard {
                     $conditions_display = MSC_Registration::get_conditions_for_display( $r->id );
                 ?>
                 <tr id="msc-reg-row-<?php echo $r->id; ?>">
-                    <?php if ( ! $class_rep ) : ?><td rowspan="<?php echo $rs ?>" style="vertical-align:top"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td><?php endif; ?>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->full_name ?: $r->user_name ); ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
+                    <?php if ( ! $class_rep ) : ?><td rowspan="<?php echo $rs ?>" class="col-cb"><input type="checkbox" class="msc-bulk-cb" value="<?php echo $r->id; ?>"></td><?php endif; ?>
+                    <td rowspan="<?php echo $rs ?>" class="col-entry" style="font-weight:600"><?php echo $r->entry_number ? '#' . (int) $r->entry_number : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-entrant"><?php echo esc_html( $r->full_name ?: $r->user_name ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-sponsors">
                         <?php
                         $sponsors_raw = get_user_meta( $r->user_id, 'msc_sponsors', true );
                         if ( $sponsors_raw ) {
@@ -952,8 +952,8 @@ class MSC_Frontend_Dashboard {
                         }
                         ?>
                     </td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ); ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
+                    <td rowspan="<?php echo $rs ?>" class="col-phone"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-pitcrew">
                         <?php
                         $pit1 = get_user_meta( $r->user_id, 'msc_pit_crew_1', true );
                         $pit2 = get_user_meta( $r->user_id, 'msc_pit_crew_2', true );
@@ -965,12 +965,12 @@ class MSC_Frontend_Dashboard {
                         }
                         ?>
                     </td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->event_name ); ?></td>
-                    <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
-                    <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
-                    <td style="white-space:nowrap;font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
-                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-event"><?php echo esc_html( $r->event_name ); ?></td>
+                    <td class="col-class"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
+                    <td class="col-vehicle"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
+                    <td class="col-race" style="font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-fee" style="white-space:nowrap"><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
+                    <td rowspan="<?php echo $rs ?>" class="col-date" style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
                         <span class="msc-status-badge" style="background:<?php echo esc_attr($sb);?>;color:<?php echo esc_attr($sc);?>">
                             <?php echo esc_html( ucfirst($r->status) ); ?>
@@ -1023,9 +1023,9 @@ class MSC_Frontend_Dashboard {
                 </tr>
                 <?php foreach ( $extra as $ep ) : ?>
                 <tr class="msc-entry-subrow">
-                    <td style="white-space:nowrap"><?php echo esc_html( $ep['class_name'] ); ?></td>
-                    <td style="white-space:nowrap"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
-                    <td style="white-space:nowrap;font-weight:600"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td class="col-class"><?php echo esc_html( $ep['class_name'] ); ?></td>
+                    <td class="col-vehicle"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
+                    <td class="col-race" style="font-weight:600"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if ( ! empty( $conditions_display ) ) : ?>
