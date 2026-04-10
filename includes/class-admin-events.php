@@ -495,6 +495,7 @@ class MSC_Admin_Events {
         <th>Entrant</th>
         <th>Sponsors</th>
         <th>Phone</th>
+        <th>Pit Crew</th>
         <th>Email</th>
         <th>Event</th>
         <th>Class</th>
@@ -511,7 +512,7 @@ class MSC_Admin_Events {
         </thead>
         <tbody>
         <?php if ( empty($regs) ) : ?>
-        <tr><td colspan="17">No registrations found.</td></tr>
+        <tr><td colspan="18">No registrations found.</td></tr>
         <?php else : foreach($regs as $r) :
         $status_colors = array('pending'=>'#856404','confirmed'=>'#0a3622','rejected'=>'#842029','cancelled'=>'#41464b');
         $status_bg     = array('pending'=>'#fff3cd','confirmed'=>'#d1e7dd','rejected'=>'#f8d7da','cancelled'=>'#e2e3e5');
@@ -528,6 +529,18 @@ class MSC_Admin_Events {
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->full_name ?: $r->user_name ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—' ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ) ?></td>
+        <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
+        <?php
+        $adm_pit1 = get_user_meta( $r->user_id, 'msc_pit_crew_1', true );
+        $adm_pit2 = get_user_meta( $r->user_id, 'msc_pit_crew_2', true );
+        if ( $adm_pit1 || $adm_pit2 ) {
+            if ( $adm_pit1 ) echo '<span style="display:block">' . esc_html( $adm_pit1 ) . '</span>';
+            if ( $adm_pit2 ) echo '<span style="display:block;color:#666">' . esc_html( $adm_pit2 ) . '</span>';
+        } else {
+            echo '<span style="color:#aaa">—</span>';
+        }
+        ?>
+        </td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->user_email) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->event_name) ?></td>
         <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>

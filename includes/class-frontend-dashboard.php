@@ -900,7 +900,7 @@ class MSC_Frontend_Dashboard {
                 <span id="msc-bulk-count" style="color:#888;font-size:13px"></span>
             </div>
             <?php endif; ?>
-            <?php $cond_colspan = $class_rep ? 12 : 14; ?>
+            <?php $cond_colspan = $class_rep ? 13 : 15; ?>
             <div style="overflow-x:auto">
             <table class="msc-dash-table">
                 <thead><tr>
@@ -909,6 +909,7 @@ class MSC_Frontend_Dashboard {
                     <th>Entrant</th>
                     <th>Sponsors</th>
                     <th>Phone</th>
+                    <th>Pit Crew</th>
                     <th>Event</th>
                     <th>Class</th>
                     <th>Vehicle</th>
@@ -952,6 +953,18 @@ class MSC_Frontend_Dashboard {
                         ?>
                     </td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ); ?></td>
+                    <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
+                        <?php
+                        $pit1 = get_user_meta( $r->user_id, 'msc_pit_crew_1', true );
+                        $pit2 = get_user_meta( $r->user_id, 'msc_pit_crew_2', true );
+                        if ( $pit1 || $pit2 ) {
+                            if ( $pit1 ) echo '<span style="display:block">' . esc_html( $pit1 ) . '</span>';
+                            if ( $pit2 ) echo '<span style="display:block;color:#666">' . esc_html( $pit2 ) . '</span>';
+                        } else {
+                            echo '<span style="color:#aaa">—</span>';
+                        }
+                        ?>
+                    </td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html( $r->event_name ); ?></td>
                     <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
                     <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
@@ -2601,11 +2614,12 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Phone', 'Sponsors', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Phone', 'Pit Crew', 'Sponsors', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
 
         $i = 1;
         foreach ( $regs as $r ) {
             $phone    = get_user_meta( $r->user_id, 'phone', true ) ?: '—';
+            $pit_crew = implode( ' / ', array_filter( array( get_user_meta( $r->user_id, 'msc_pit_crew_1', true ), get_user_meta( $r->user_id, 'msc_pit_crew_2', true ) ) ) ) ?: '—';
             $sponsors = get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—';
             $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
             // When filtering by class, only output the matching class row(s)
@@ -2622,6 +2636,7 @@ class MSC_Frontend_Dashboard {
                         $idx === 0 ? $entrant_name : '',
                         $idx === 0 ? $r->user_email : '',
                         $idx === 0 ? $phone : '',
+                        $idx === 0 ? $pit_crew : '',
                         $idx === 0 ? $sponsors : '',
                         $idx === 0 ? $r->event_name : '',
                         $p['class_name'],
@@ -2635,7 +2650,7 @@ class MSC_Frontend_Dashboard {
                     ) );
                 }
             } else {
-                fputcsv( $out, array( $i, $entrant_name, $r->user_email, $phone, $sponsors, $r->event_name, '—', '—', '—',
+                fputcsv( $out, array( $i, $entrant_name, $r->user_email, $phone, $pit_crew, $sponsors, $r->event_name, '—', '—', '—',
                     $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
                     $r->fee_paid ? 'Yes' : 'No',
                     trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
