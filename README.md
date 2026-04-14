@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.8.6 | **License:** GPLv2 or later
+**Current version:** 0.9.0 | **License:** GPLv2 or later
 
 ---
 
@@ -14,7 +14,8 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Rich event description displayed alongside the featured image on the public event page.
 - Manual or automatic entry approval per event.
 - Close or reopen events from the staff dashboard; closed events lock new entries and enable results entry.
-- Event cards show **"Enter Now"** for unentered visitors and **"View your entry"** for already-entered members.
+- Event cards show **"Enter Now"** for unentered visitors, **"ENTRY CLOSED"** when the registration window has passed (but the event is still upcoming), and **"View your entry"** for already-entered members.
+- Closed events remain visible on the events page after their date passes (they do not silently disappear).
 
 ### Vehicle Classes & Types
 - Fully dynamic vehicle class taxonomy (`msc_vehicle_class`) — create, rename, and delete classes from the admin UI under **Motorsport Club → Vehicle Classes** or the **Vehicle Classes tab** of the staff dashboard.
@@ -94,12 +95,13 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Results stored per registration with position, lap time, and status enum.
 - Per-class podium display (Top 3 finishers) on the public event page.
 - Manual driver entries (name + vehicle description) for walk-ins not in the system.
+- The entire results module can be disabled in **Settings** for clubs that use an external results system — the event open/closed lifecycle (used to lock entries) is unaffected.
 
 ### Admin (wp-admin)
 - **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, and indemnity PDF links.
 - **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
 - **Motorsport Club → Vehicle Classes:** taxonomy term management.
-- **Motorsport Club → Settings:** banking details, auth page URLs, SMTP configuration, and **debug logging** toggle.
+- **Motorsport Club → Settings:** banking details, auth page URLs, SMTP configuration, **Results Module** toggle (disable built-in results entry and display for clubs using an external results system), and **debug logging** toggle.
 - **Motorsport Club → Logs:** in-browser log viewer — select a daily log file, read colour-coded entries (INFO / WARNING / ERROR, newest first), clear a file, or purge logs older than 7 days. Only visible when logging is enabled.
 
 ### Roles & Capabilities
