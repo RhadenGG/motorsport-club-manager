@@ -46,7 +46,7 @@ class MSC_Shortcodes {
             }
             $content .= self::render_event_meta( $event_id );
             $content .= self::register_form( array( 'event_id' => $event_id ) );
-            if ( MSC_Results::is_closed( $event_id ) ) {
+            if ( get_option( 'msc_results_enabled', 1 ) && MSC_Results::is_closed( $event_id ) ) {
                 $content .= MSC_Results::get_results_html( $event_id );
             }
         }
@@ -82,7 +82,8 @@ class MSC_Shortcodes {
 
         // Show closed badge if event is closed
         if ( MSC_Results::is_closed( $event_id ) ) {
-            $items[] = array('🔴','Status','Event Closed — Results Available Below');
+            $status_label = get_option( 'msc_results_enabled', 1 ) ? 'Event Closed — Results Available Below' : 'Event Closed';
+            $items[] = array('🔴','Status', $status_label);
         }
 
         foreach($items as $i) {
@@ -164,12 +165,19 @@ class MSC_Shortcodes {
             'order'          => 'DESC',
         );
         if ( ! $atts['show_past'] ) {
-            $args['meta_query'] = array(array(
-                'key'     => '_msc_event_date',
-                'value'   => current_time('Y-m-d\TH:i'),
-                'compare' => '>=',
-                'type'    => 'DATETIME',
-            ));
+            $args['meta_query'] = array(
+                'relation' => 'OR',
+                array(
+                    'key'     => '_msc_event_date',
+                    'value'   => current_time('Y-m-d\TH:i'),
+                    'compare' => '>=',
+                    'type'    => 'DATETIME',
+                ),
+                array(
+                    'key'   => '_msc_event_status',
+                    'value' => 'closed',
+                ),
+            );
         }
         $events = get_posts($args);
         if (empty($events)) return '<p class="msc-no-events">No upcoming events at the moment. Check back soon!</p>';
@@ -188,6 +196,8 @@ class MSC_Shortcodes {
             $capacity  = get_post_meta($e->ID,'_msc_capacity',true);
             $full      = $capacity && $reg_count >= $capacity;
             $user_entered = $current_user_id && MSC_Registration::user_is_registered( $current_user_id, $e->ID );
+            $reg_close = get_post_meta($e->ID,'_msc_reg_close',true);
+            $reg_ended = ! $closed && $reg_close && strtotime($reg_close) < current_time('timestamp');
             ?>
             <div class="msc-event-card <?php echo $full ? 'msc-event-full' : ''; ?> <?php echo $closed ? 'msc-event-closed' : ''; ?>">
                 <?php if(has_post_thumbnail($e->ID)): ?>
@@ -197,7 +207,9 @@ class MSC_Shortcodes {
                 <?php endif ?>
                 <div class="msc-event-body">
                     <?php if($closed): ?>
-                        <span class="msc-badge msc-badge-closed">RESULTS AVAILABLE</span>
+                        <span class="msc-badge msc-badge-closed"><?php echo get_option('msc_results_enabled',1) ? 'RESULTS AVAILABLE' : 'CLOSED'; ?></span>
+                    <?php elseif($reg_ended): ?>
+                        <span class="msc-badge msc-badge-full">ENTRY CLOSED</span>
                     <?php elseif($full): ?>
                         <span class="msc-badge msc-badge-full">FULL</span>
                     <?php endif; ?>
@@ -210,7 +222,9 @@ class MSC_Shortcodes {
                     <div class="msc-event-footer">
                         <span class="msc-event-fee"><?php echo $price>0 ? esc_html('From R '.number_format($price,2)) : 'Free' ?></span>
                         <?php if($closed): ?>
-                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn">View Results</a>
+                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn"><?php echo get_option('msc_results_enabled',1) ? 'View Results' : 'View Event'; ?></a>
+                        <?php elseif($reg_ended): ?>
+                            <a href="<?php echo esc_url( get_permalink($e->ID) ) ?>" class="msc-btn msc-btn-disabled">View Event</a>
                         <?php elseif($user_entered): ?>
                             <a href="<?php echo esc_url( msc_get_account_url('registrations') ) ?>" class="msc-btn msc-btn-outline">View your entry</a>
                         <?php else: ?>
@@ -234,7 +248,10 @@ class MSC_Shortcodes {
 
         // If event is closed, don't show registration form
         if ( MSC_Results::is_closed( $event_id ) ) {
-            return '<div class="msc-notice msc-notice-info">🔴 This event has now closed. See the results below.</div>';
+            $closed_msg = get_option( 'msc_results_enabled', 1 )
+                ? '🔴 This event has now closed. See the results below.'
+                : '🔴 This event has now closed.';
+            return '<div class="msc-notice msc-notice-info">' . $closed_msg . '</div>';
         }
 
         $reg_open  = get_post_meta($event_id,'_msc_reg_open',true);

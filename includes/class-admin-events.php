@@ -721,6 +721,7 @@ class MSC_Admin_Events {
             }
             update_option( 'msc_dashboard_event_access_mode', $access_mode );
             
+            update_option( 'msc_results_enabled', isset( $_POST['msc_results_enabled'] ) ? 1 : 0 );
             update_option( 'msc_debug_logging', isset( $_POST['msc_debug_logging'] ) ? 1 : 0 );
             if ( get_option( 'msc_debug_logging' ) ) {
                 MSC_Logger::maybe_setup_dir();
@@ -747,7 +748,8 @@ class MSC_Admin_Events {
         $declarations = get_option('msc_custom_declarations', '');
         $from_name    = get_option('msc_email_from_name', '');
         $from_address = get_option('msc_email_from_address', '');
-        $access_mode  = get_option('msc_dashboard_event_access_mode', 'strict');
+        $access_mode     = get_option('msc_dashboard_event_access_mode', 'strict');
+        $results_enabled = get_option('msc_results_enabled', 1);
 
         $smtp_enabled = get_option('msc_smtp_enabled', 0);
         $smtp_host    = get_option('msc_smtp_host', '');
@@ -882,6 +884,20 @@ class MSC_Admin_Events {
                         <td>
                             <textarea name="msc_custom_declarations" id="msc_custom_declarations" rows="6" class="large-text" placeholder="I accept the Safe Guarding Policy..."><?php echo esc_textarea($declarations); ?></textarea>
                             <p class="description">Add additional mandatory checkboxes to the registration form. <strong>One per line.</strong> HTML (like links) is allowed. If empty, no extra checkboxes will be shown.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Results Module</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="msc_results_enabled" value="1" <?php checked( $results_enabled, 1 ); ?>>
+                                <strong>Enable built-in results entry &amp; display</strong>
+                            </label>
+                            <p class="description">
+                                When enabled, a Results meta box appears on each event and race results are shown on the public event page after the event is closed.
+                                Disable this if you manage results through a separate system.
+                                Closing events (to lock registrations) still works regardless of this setting.
+                            </p>
                         </td>
                     </tr>
                     <tr>

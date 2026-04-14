@@ -85,14 +85,17 @@ class MSC_Results {
             'side',
             'high'
         );
-        add_meta_box(
-            'msc_results_box',
-            '🏆 Event Results',
-            array( __CLASS__, 'render_results_box' ),
-            'msc_event',
-            'normal',
-            'default'
-        );
+
+        if ( get_option( 'msc_results_enabled', 1 ) ) {
+            add_meta_box(
+                'msc_results_box',
+                '🏆 Event Results',
+                array( __CLASS__, 'render_results_box' ),
+                'msc_event',
+                'normal',
+                'default'
+            );
+        }
     }
 
     public static function render_status_box( $post ) {
