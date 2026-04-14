@@ -591,7 +591,7 @@ class MSC_Results {
                 $term          = get_term( $cid, 'msc_vehicle_class' );
                 $class_name    = ( $term && ! is_wp_error( $term ) ) ? $term->name : 'Class #' . $cid;
 
-                $finishers = array_values( array_filter( $class_results, fn( $r ) => $r->status === 'Finished' && $r->position ) );
+                $finishers = array_values( array_filter( $class_results, function( $r ) { return $r->status === 'Finished' && $r->position; } ) );
                 $podium    = array_slice( $finishers, 0, 3 );
                 $medals    = array( '🥇', '🥈', '🥉' );
             ?>
