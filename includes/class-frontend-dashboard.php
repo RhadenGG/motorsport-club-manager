@@ -912,7 +912,7 @@ class MSC_Frontend_Dashboard {
                         'paid'       => 'Paid',
                         'emergency'  => 'Emergency Contact',
                         'status'     => 'Status',
-                        'registered' => 'Registered',
+                        'registered' => 'Entry Date',
                     ) as $col_key => $col_label ) : ?>
                     <label style="color:#444;white-space:nowrap;cursor:pointer">
                         <input type="checkbox" class="msc-csv-col" data-col="<?php echo esc_attr( $col_key ); ?>" checked>
@@ -2669,7 +2669,7 @@ class MSC_Frontend_Dashboard {
             'paid'       => 'Paid',
             'emergency'  => 'Emergency Contact',
             'status'     => 'Status',
-            'registered' => 'Registered',
+            'registered' => 'Entry Date',
         );
         $header = array();
         foreach ( $col_labels as $key => $label ) {
