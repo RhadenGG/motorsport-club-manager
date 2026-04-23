@@ -2792,10 +2792,9 @@ class MSC_Frontend_Dashboard {
         }
 
         $where = implode( ' AND ', $conditions );
-        $sql = "SELECT r.id, r.user_id, r.entry_number, r.status, r.pit_crew_1, r.pit_crew_2,
-                       p.post_title AS event_name,
+        $sql = "SELECT r.id, r.user_id, r.status, r.pit_crew_1, r.pit_crew_2,
                        NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
-                       u.display_name AS user_name, u.user_email
+                       u.display_name AS user_name
                 FROM $table r
                 LEFT JOIN {$wpdb->posts}    p     ON p.ID = r.event_id
                 LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
@@ -2815,23 +2814,16 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) );
-        fputcsv( $out, array( 'Pit Crew Member', 'Slot', 'Entry #', 'Entrant', 'Email', 'Event', 'Status' ) );
+        fputcsv( $out, array( 'Entrant', 'Pit Crew Member 1', 'Pit Crew Member 2', 'Status' ) );
 
         foreach ( $regs as $r ) {
-            $entrant  = $r->full_name ?: $r->user_name;
-            $entry_no = $r->entry_number ? '#' . $r->entry_number : '—';
-            $status   = ucfirst( $r->status );
-            $members  = array_filter( array(
-                $r->pit_crew_1 ? array( $r->pit_crew_1, '1' ) : null,
-                $r->pit_crew_2 ? array( $r->pit_crew_2, '2' ) : null,
+            $entrant = $r->full_name ?: $r->user_name;
+            fputcsv( $out, array(
+                $entrant,
+                $r->pit_crew_1 ?: '—',
+                $r->pit_crew_2 ?: '—',
+                ucfirst( $r->status ),
             ) );
-            if ( empty( $members ) ) {
-                fputcsv( $out, array( '—', '—', $entry_no, $entrant, $r->user_email, $r->event_name, $status ) );
-            } else {
-                foreach ( $members as $m ) {
-                    fputcsv( $out, array( $m[0], $m[1], $entry_no, $entrant, $r->user_email, $r->event_name, $status ) );
-                }
-            }
         }
 
         fclose( $out );
