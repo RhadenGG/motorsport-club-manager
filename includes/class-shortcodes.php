@@ -509,12 +509,12 @@ class MSC_Shortcodes {
                         <p class="msc-reg-section-label">Pit Crew</p>
                         <div class="msc-reg-grid-2">
                             <div class="msc-field">
-                                <label>Name #1</label>
-                                <input type="text" id="msc-pit-crew-1" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_1', true)); ?>" placeholder="Pit crew member name">
+                                <label>Name #1 <span class="msc-required">*</span></label>
+                                <input type="text" id="msc-pit-crew-1" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_1', true)); ?>" placeholder="Enter name, or 'None'">
                             </div>
                             <div class="msc-field">
-                                <label>Name #2</label>
-                                <input type="text" id="msc-pit-crew-2" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
+                                <label>Name #2 <span class="msc-required">*</span></label>
+                                <input type="text" id="msc-pit-crew-2" value="<?php echo esc_attr(get_user_meta($user_id, 'msc_pit_crew_2', true)); ?>" placeholder="Enter name, or 'None'">
                             </div>
                         </div>
                     </div>

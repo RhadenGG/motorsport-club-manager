@@ -414,6 +414,14 @@ class MSC_Account {
                                 <?php endforeach; ?>
                                 <span>💰 <?php echo $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free'; ?></span>
                                 <span><?php echo $r->indemnity_method === 'signed' ? '✅ Indemnity signed' : '📄 Bring on day'; ?></span>
+                                <?php
+                                $pc1 = ! empty( $r->pit_crew_1 ) ? $r->pit_crew_1 : null;
+                                $pc2 = ! empty( $r->pit_crew_2 ) ? $r->pit_crew_2 : null;
+                                if ( $pc1 || $pc2 ) :
+                                    $pc_label = implode( ', ', array_filter( array( $pc1, $pc2 ) ) );
+                                ?>
+                                <span>👥 Pit Crew: <?php echo esc_html( $pc_label ); ?></span>
+                                <?php endif; ?>
                             </div>
                             <?php $acct_conditions = MSC_Registration::get_conditions_for_display( $r->id );
                             if ( ! empty( $acct_conditions ) ) : ?>
@@ -519,14 +527,6 @@ class MSC_Account {
                         <div class="msc-field">
                             <label>Medical Aid Number <span class="msc-required">*</span></label>
                             <input type="text" id="pe_medical_aid_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_medical_aid_number', true)); ?>" placeholder="Member number">
-                        </div>
-                        <div class="msc-field">
-                            <label>Pit Crew Name #1</label>
-                            <input type="text" id="pe_pit_crew_1" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_pit_crew_1', true)); ?>" placeholder="Pit crew member name">
-                        </div>
-                        <div class="msc-field">
-                            <label>Pit Crew Name #2</label>
-                            <input type="text" id="pe_pit_crew_2" value="<?php echo esc_attr(get_user_meta($user->ID, 'msc_pit_crew_2', true)); ?>" placeholder="Pit crew member name">
                         </div>
                         <div class="msc-field">
                             <label>Sponsor(s) <span style="color:#999;font-size:12px;">(optional, max 33 characters)</span></label>
@@ -660,7 +660,6 @@ class MSC_Account {
         $meta_fields = array(
             'phone',
             'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number',
-            'msc_pit_crew_1', 'msc_pit_crew_2',
             'msc_address1', 'msc_city', 'msc_province', 'msc_postcode',
             'msc_emergency_name', 'msc_emergency_phone', 'msc_emergency_rel',
         );

@@ -297,6 +297,12 @@ class MSC_Registration {
         if ( ! $event_id || ! $em_name || ! $em_phone ) {
             wp_send_json_error( array( 'message' => 'Please complete all required emergency contact fields.' ) );
         }
+        if ( ! $pit_crew_1 ) {
+            wp_send_json_error( array( 'message' => 'Pit Crew Name #1 is required. Enter a name or "None".' ) );
+        }
+        if ( ! $pit_crew_2 ) {
+            wp_send_json_error( array( 'message' => 'Pit Crew Name #2 is required. Enter a name or "None".' ) );
+        }
         if ( $ind_method !== 'signed' || ! $ind_sig ) {
             wp_send_json_error( array( 'message' => 'Electronic signature is required to complete the indemnity.' ) );
         }
@@ -471,13 +477,15 @@ class MSC_Registration {
             'parent_sig'          => $parent_sig,
             'emergency_name'      => $em_name,
             'emergency_phone'     => $em_phone,
+            'pit_crew_1'          => $pit_crew_1,
+            'pit_crew_2'          => $pit_crew_2,
             'indemnity_sig'       => $ind_sig,
             'indemnity_date'      => ( $ind_method === 'signed' ) ? gmdate( 'Y-m-d H:i:s' ) : null,
             'notes'               => $notes,
             'pop_file_id'         => $pop_file_id,
             'class_id'            => null, // deprecated — classes stored in junction table
             'created_at'          => gmdate( 'Y-m-d H:i:s' ),
-        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ) );
+        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ) );
 
         if ( false === $inserted ) {
             MSC_Logger::error( 'Registration', 'DB insert failed', array( 'event_id' => $event_id, 'db_error' => $wpdb->last_error ) );
@@ -531,10 +539,8 @@ class MSC_Registration {
             }
         }
 
-        // Save motorsport details, pit crew, sponsors, and emergency relationship to user profile
+        // Save motorsport details, sponsors, and emergency relationship to user profile
         update_user_meta( $user_id, 'msc_msa_licence', $msa_licence );
-        if ( isset( $_POST['pit_crew_1'] ) )    update_user_meta( $user_id, 'msc_pit_crew_1',    $pit_crew_1 );
-        if ( isset( $_POST['pit_crew_2'] ) )    update_user_meta( $user_id, 'msc_pit_crew_2',    $pit_crew_2 );
         if ( isset( $_POST['sponsors'] ) )      update_user_meta( $user_id, 'msc_sponsors',      $sponsors );
         if ( isset( $_POST['emergency_rel'] ) ) update_user_meta( $user_id, 'msc_emergency_rel', $em_rel );
 
@@ -774,8 +780,8 @@ class MSC_Registration {
             'pricing'         => $pricing,
             'base_fee'        => $base_fee,
             'user_vehicles'   => $user_vehicles,
-            'pit_crew_1'      => get_user_meta( $user_id, 'msc_pit_crew_1', true ),
-            'pit_crew_2'      => get_user_meta( $user_id, 'msc_pit_crew_2', true ),
+            'pit_crew_1'      => $reg->pit_crew_1,
+            'pit_crew_2'      => $reg->pit_crew_2,
         ) );
     }
 
@@ -993,12 +999,21 @@ class MSC_Registration {
             );
         }
 
-        // Update pit crew if submitted
-        if ( isset( $_POST['msc_pit_crew_1'] ) ) {
-            update_user_meta( $user_id, 'msc_pit_crew_1', sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_1'] ) ) );
+        // Update pit crew on the registration record
+        $new_pit_crew_1 = isset( $_POST['msc_pit_crew_1'] ) ? sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_1'] ) ) : null;
+        $new_pit_crew_2 = isset( $_POST['msc_pit_crew_2'] ) ? sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_2'] ) ) : null;
+        if ( $new_pit_crew_1 !== null && ! $new_pit_crew_1 ) {
+            wp_send_json_error( array( 'message' => 'Pit Crew Name #1 is required. Enter a name or "None".' ) );
         }
-        if ( isset( $_POST['msc_pit_crew_2'] ) ) {
-            update_user_meta( $user_id, 'msc_pit_crew_2', sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_2'] ) ) );
+        if ( $new_pit_crew_2 !== null && ! $new_pit_crew_2 ) {
+            wp_send_json_error( array( 'message' => 'Pit Crew Name #2 is required. Enter a name or "None".' ) );
+        }
+        if ( $new_pit_crew_1 !== null || $new_pit_crew_2 !== null ) {
+            $pit_update = array();
+            $pit_fmts   = array();
+            if ( $new_pit_crew_1 !== null ) { $pit_update['pit_crew_1'] = $new_pit_crew_1; $pit_fmts[] = '%s'; }
+            if ( $new_pit_crew_2 !== null ) { $pit_update['pit_crew_2'] = $new_pit_crew_2; $pit_fmts[] = '%s'; }
+            $wpdb->update( "{$wpdb->prefix}msc_registrations", $pit_update, array( 'id' => $reg_id ), $pit_fmts, array( '%d' ) );
         }
 
         $msg = ( $reg->status === 'confirmed' )

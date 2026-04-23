@@ -531,8 +531,8 @@ class MSC_Admin_Events {
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top;white-space:nowrap"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ) ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
         <?php
-        $adm_pit1 = get_user_meta( $r->user_id, 'msc_pit_crew_1', true );
-        $adm_pit2 = get_user_meta( $r->user_id, 'msc_pit_crew_2', true );
+        $adm_pit1 = $r->pit_crew_1;
+        $adm_pit2 = $r->pit_crew_2;
         if ( $adm_pit1 || $adm_pit2 ) {
             if ( $adm_pit1 ) echo '<span style="display:block">' . esc_html( $adm_pit1 ) . '</span>';
             if ( $adm_pit2 ) echo '<span style="display:block;color:#666">' . esc_html( $adm_pit2 ) . '</span>';

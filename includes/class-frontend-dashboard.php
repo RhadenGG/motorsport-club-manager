@@ -34,6 +34,8 @@ class MSC_Frontend_Dashboard {
         // CSV export (fires on both frontend pages and wp-admin)
         add_action( 'template_redirect', array( __CLASS__, 'maybe_export_csv' ) );
         add_action( 'admin_init',        array( __CLASS__, 'maybe_export_csv' ) );
+        add_action( 'template_redirect', array( __CLASS__, 'maybe_export_pit_crew_csv' ) );
+        add_action( 'admin_init',        array( __CLASS__, 'maybe_export_pit_crew_csv' ) );
     }
 
     // ─── Access guard ─────────────────────────────────────────────────────────
@@ -763,7 +765,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
-                       r.pop_file_id, r.pop_file_id_2, r.indemnity_method, r.entry_number,
+                       r.pop_file_id, r.pop_file_id_2, r.indemnity_method, r.entry_number, r.pit_crew_1, r.pit_crew_2,
                        p.post_title AS event_name, v.post_title AS vehicle_name,
                        NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
                        u.display_name AS user_name
@@ -878,8 +880,13 @@ class MSC_Frontend_Dashboard {
             if ( $event_filter )  $csv_args['event_id']  = $event_filter;
             if ( $status_filter ) $csv_args['status']    = $status_filter;
             if ( ! empty( $class_filter ) ) $csv_args['class_id'] = $class_filter;
+            $pc_args = array( 'msc_export_pit_crew' => 1, 'msc_export_pit_crew_nonce' => wp_create_nonce('msc_export_pit_crew') );
+            if ( $event_filter ) $pc_args['event_id'] = $event_filter;
             ?>
             <a href="<?php echo esc_url( add_query_arg( $csv_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Export CSV</a>
+            <?php if ( $event_filter ) : ?>
+            <a href="<?php echo esc_url( add_query_arg( $pc_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Pit Crew Report</a>
+            <?php endif; ?>
 
             <div id="msc-reg-msg" class="msc-field-msg" style="margin-bottom:10px"></div>
 
@@ -955,8 +962,8 @@ class MSC_Frontend_Dashboard {
                     <td rowspan="<?php echo $rs ?>" class="col-phone"><?php echo esc_html( get_user_meta( $r->user_id, 'phone', true ) ?: '—' ); ?></td>
                     <td rowspan="<?php echo $rs ?>" class="col-pitcrew">
                         <?php
-                        $pit1 = get_user_meta( $r->user_id, 'msc_pit_crew_1', true );
-                        $pit2 = get_user_meta( $r->user_id, 'msc_pit_crew_2', true );
+                        $pit1 = $r->pit_crew_1;
+                        $pit2 = $r->pit_crew_2;
                         if ( $pit1 || $pit2 ) {
                             if ( $pit1 ) echo '<span style="display:block">' . esc_html( $pit1 ) . '</span>';
                             if ( $pit2 ) echo '<span style="display:block;color:#666">' . esc_html( $pit2 ) . '</span>';
@@ -2591,7 +2598,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.entry_fee, r.fee_paid, r.status, r.created_at, r.class_id,
-                       r.emergency_name, r.emergency_phone,
+                       r.emergency_name, r.emergency_phone, r.pit_crew_1, r.pit_crew_2,
                        p.post_title AS event_name, v.post_title AS vehicle_name,
                        NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
                        u.display_name AS user_name, u.user_email
@@ -2619,7 +2626,7 @@ class MSC_Frontend_Dashboard {
         $i = 1;
         foreach ( $regs as $r ) {
             $phone    = get_user_meta( $r->user_id, 'phone', true ) ?: '—';
-            $pit_crew = implode( ' / ', array_filter( array( get_user_meta( $r->user_id, 'msc_pit_crew_1', true ), get_user_meta( $r->user_id, 'msc_pit_crew_2', true ) ) ) ) ?: '—';
+            $pit_crew = implode( ' / ', array_filter( array( $r->pit_crew_1, $r->pit_crew_2 ) ) ) ?: '—';
             $sponsors = get_user_meta( $r->user_id, 'msc_sponsors', true ) ?: '—';
             $cv_pairs = MSC_Registration::get_class_vehicle_pairs( $r->id );
             // When filtering by class, only output the matching class row(s)
@@ -2660,6 +2667,76 @@ class MSC_Frontend_Dashboard {
             }
             $i++;
         }
+        fclose( $out );
+        exit;
+    }
+
+    // ─── Pit Crew CSV Export ──────────────────────────────────────────────────
+
+    public static function maybe_export_pit_crew_csv() {
+        if ( ! isset( $_GET['msc_export_pit_crew'] ) ) return;
+        if ( ! self::can_access() ) wp_die( 'Unauthorized.' );
+        if ( ! isset( $_GET['msc_export_pit_crew_nonce'] ) || ! wp_verify_nonce( $_GET['msc_export_pit_crew_nonce'], 'msc_export_pit_crew' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
+        if ( ! $event_id ) wp_die( 'Please select an event before downloading the Pit Crew Report.' );
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'msc_registrations';
+
+        $conditions = array( 'r.event_id = %d', "r.status NOT IN ('cancelled','rejected')" );
+        $values     = array( $event_id );
+
+        if ( ! current_user_can( 'manage_options' ) && ! self::is_shared_ops_mode() && ! self::is_class_rep() ) {
+            $conditions[] = 'p.post_author = %d';
+            $values[]     = get_current_user_id();
+        }
+
+        $where = implode( ' AND ', $conditions );
+        $sql = "SELECT r.id, r.user_id, r.entry_number, r.status, r.pit_crew_1, r.pit_crew_2,
+                       p.post_title AS event_name,
+                       NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
+                       u.display_name AS user_name, u.user_email
+                FROM $table r
+                LEFT JOIN {$wpdb->posts}    p     ON p.ID = r.event_id
+                LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
+                LEFT JOIN {$wpdb->usermeta} um_fn ON um_fn.user_id = u.ID AND um_fn.meta_key = 'first_name'
+                LEFT JOIN {$wpdb->usermeta} um_ln ON um_ln.user_id = u.ID AND um_ln.meta_key = 'last_name'
+                WHERE $where ORDER BY r.entry_number ASC, r.created_at ASC";
+
+        $regs = $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) );
+
+        $event_slug = sanitize_title( get_the_title( $event_id ) );
+        $filename   = 'pit-crew-' . $event_slug . '-' . date( 'Y-m-d' ) . '.csv';
+
+        header( 'Content-Type: text/csv; charset=UTF-8' );
+        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+
+        $out = fopen( 'php://output', 'w' );
+        fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) );
+        fputcsv( $out, array( 'Pit Crew Member', 'Slot', 'Entry #', 'Entrant', 'Email', 'Event', 'Status' ) );
+
+        foreach ( $regs as $r ) {
+            $entrant  = $r->full_name ?: $r->user_name;
+            $entry_no = $r->entry_number ? '#' . $r->entry_number : '—';
+            $status   = ucfirst( $r->status );
+            $members  = array_filter( array(
+                $r->pit_crew_1 ? array( $r->pit_crew_1, '1' ) : null,
+                $r->pit_crew_2 ? array( $r->pit_crew_2, '2' ) : null,
+            ) );
+            if ( empty( $members ) ) {
+                fputcsv( $out, array( '—', '—', $entry_no, $entrant, $r->user_email, $r->event_name, $status ) );
+            } else {
+                foreach ( $members as $m ) {
+                    fputcsv( $out, array( $m[0], $m[1], $entry_no, $entrant, $r->user_email, $r->event_name, $status ) );
+                }
+            }
+        }
+
         fclose( $out );
         exit;
     }

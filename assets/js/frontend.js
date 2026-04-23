@@ -517,7 +517,7 @@ jQuery(function ($) {
             });
 
             // Input listeners for validation
-            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration, #msc-indemnity-accept', function() {
+            $(document).on('input change', '#msc-msa-licence, #msc-emergency-name, #msc-emergency-phone, #msc-pit-crew-1, #msc-pit-crew-2, #msc-parent-name, #msc-sig-typed, #msc-parent-sig-typed, #msc-pop-file, .msc-custom-declaration, #msc-indemnity-accept', function() {
                 msc.checkRegValidity();
             });
 
@@ -762,6 +762,10 @@ jQuery(function ($) {
             // Emergency Contacts
             if (!$('#msc-emergency-name').val().trim()) isValid = false;
             if (!$('#msc-emergency-phone').val().trim()) isValid = false;
+
+            // Pit Crew
+            if (!$('#msc-pit-crew-1').val().trim()) isValid = false;
+            if (!$('#msc-pit-crew-2').val().trim()) isValid = false;
 
             // Minor Check
             if (isMinor && !$('#msc-parent-name').val().trim()) isValid = false;
@@ -1283,8 +1287,6 @@ jQuery(function ($) {
                 fd.append('msc_emergency_name',  $('#pe_emergency_name').val());
                 fd.append('msc_emergency_phone', $('#pe_emergency_phone').val());
                 fd.append('msc_emergency_rel',   $('#pe_emergency_rel').val());
-                fd.append('msc_pit_crew_1', $('#pe_pit_crew_1').val());
-                fd.append('msc_pit_crew_2', $('#pe_pit_crew_2').val());
                 fd.append('msc_sponsors',   $('#pe_sponsors').val().substring(0, 33));
                 
                 if ($('#pe_password').val()) {
@@ -1517,10 +1519,10 @@ jQuery(function ($) {
             + '<div style="margin-bottom:16px">'
             + '  <p class="msc-reg-section-label" style="margin-bottom:8px">Pit Crew</p>'
             + '  <div class="msc-reg-grid-2">'
-            + '    <div class="msc-field"><label>Name #1</label>'
-            + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Pit crew member name"></div>'
-            + '    <div class="msc-field"><label>Name #2</label>'
-            + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Pit crew member name"></div>'
+            + '    <div class="msc-field"><label>Name #1 <span class="msc-required">*</span></label>'
+            + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Enter name, or \'None\'"></div>'
+            + '    <div class="msc-field"><label>Name #2 <span class="msc-required">*</span></label>'
+            + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Enter name, or \'None\'"></div>'
             + '  </div>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'

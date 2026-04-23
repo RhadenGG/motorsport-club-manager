@@ -291,25 +291,13 @@ class MSC_Security {
                     </select>
                 </td>
             </tr>
-            <tr>
-                <th><label for="msc_pit_crew_1">Pit Crew Name #1</label></th>
-                <td>
-                    <input type="text" name="msc_pit_crew_1" id="msc_pit_crew_1" value="<?php echo esc_attr( get_user_meta( $user->ID, 'msc_pit_crew_1', true ) ); ?>" class="regular-text" />
-                </td>
-            </tr>
-            <tr>
-                <th><label for="msc_pit_crew_2">Pit Crew Name #2</label></th>
-                <td>
-                    <input type="text" name="msc_pit_crew_2" id="msc_pit_crew_2" value="<?php echo esc_attr( get_user_meta( $user->ID, 'msc_pit_crew_2', true ) ); ?>" class="regular-text" />
-                </td>
-            </tr>
         </table>
         <?php
     }
 
     public static function save_birthdate_field( $user_id ) {
         if ( ! current_user_can( 'edit_user', $user_id ) ) return false;
-        $text_fields = array( 'msc_birthday', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number', 'msc_pit_crew_1', 'msc_pit_crew_2' );
+        $text_fields = array( 'msc_birthday', 'msc_msa_licence', 'msc_medical_aid', 'msc_medical_aid_number' );
         foreach ( $text_fields as $key ) {
             if ( isset( $_POST[ $key ] ) ) {
                 update_user_meta( $user_id, $key, sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );

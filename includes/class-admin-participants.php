@@ -78,8 +78,6 @@ class MSC_Admin_Participants {
             $em_name      = $get('msc_emergency_name');
             $em_phone     = $get('msc_emergency_phone');
             $em_rel       = $get('msc_emergency_rel');
-            $pit_crew_1   = $get('msc_pit_crew_1');
-            $pit_crew_2   = $get('msc_pit_crew_2');
 
             $reg_count = (int) $wpdb->get_var( $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE user_id = %d AND status NOT IN ('cancelled','rejected')",
@@ -135,8 +133,6 @@ class MSC_Admin_Participants {
                     <?php self::detail_row( 'MSA Licence',    $msa_licence ?: '—' ); ?>
                     <?php self::detail_row( 'Medical Aid',    $medical_aid ?: '—' ); ?>
                     <?php self::detail_row( 'Medical Aid #',  $medical_no ?: '—' ); ?>
-                    <?php self::detail_row( 'Pit Crew #1',    $pit_crew_1 ?: '—' ); ?>
-                    <?php self::detail_row( 'Pit Crew #2',    $pit_crew_2 ?: '—' ); ?>
                 </div>
 
                 <!-- Emergency Contact -->
@@ -273,8 +269,6 @@ class MSC_Admin_Participants {
                 $em_name    = $get('msc_emergency_name');
                 $em_phone   = $get('msc_emergency_phone');
                 $em_rel     = $get('msc_emergency_rel');
-                $pit1       = $get('msc_pit_crew_1');
-                $pit2       = $get('msc_pit_crew_2');
                 $reg_count  = (int) $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$wpdb->prefix}msc_registrations WHERE user_id=%d AND status NOT IN ('cancelled','rejected')",
                     $user->ID
@@ -324,8 +318,6 @@ class MSC_Admin_Participants {
                             <?php self::fe_row('MSA Licence',   $msa ?: '—'); ?>
                             <?php self::fe_row('Medical Aid',   $med_aid ?: '—'); ?>
                             <?php self::fe_row('Medical Aid #', $med_no ?: '—'); ?>
-                            <?php self::fe_row('Pit Crew #1',   $pit1 ?: '—'); ?>
-                            <?php self::fe_row('Pit Crew #2',   $pit2 ?: '—'); ?>
                         </div>
 
                         <div>
