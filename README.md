@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.0 | **License:** GPLv2 or later
+**Current version:** 0.9.2 | **License:** GPLv2 or later
 
 ---
 
@@ -45,7 +45,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Electronic indemnity signing — drawn signature via `signature_pad` or typed name.
 - An **"I accept"** checkbox below the indemnity text is required before the Submit button enables; acceptance is also enforced server-side.
 - Automatic minor detection: if the member's date of birth indicates they are under 18, mandatory parent/guardian name and signature fields appear.
-- Emergency contact, pit crew, and sponsor fields pre-filled from the member's saved profile; any changes made during entry are saved back to the profile.
+- Emergency contact and sponsor fields pre-filled from the member's saved profile; pit crew fields pre-filled from profile as a convenience default (pit crew is stored per-entry, not saved back to the profile).
 - **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
 - **Proof of Payment (PoP):** PDF, PNG, or JPG upload (up to 5 MB) required when the entry fee is greater than zero. Banking details configured in Settings are shown alongside the upload field.
 - Upon confirmation, each entry is assigned a **sequential entry number** scoped to the event, displayed on the indemnity PDF and the member's entries history.
@@ -85,7 +85,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Staff Dashboard
 - Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators, `msc_event_creator`, and `msc_class_rep` roles (class reps see the Entries tab only, in read-only mode).
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; CSV export (one row per class/vehicle pair, includes Full Name, Phone and Sponsors columns, Race # aligned with its vehicle). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
+- **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; **CSV export** with a column picker (checkboxes below the Export button) to select exactly which of the 16 columns to include — preferences saved in `localStorage`; **Vehicle Year** exports as its own column separate from the vehicle name; **Pit Crew Report** button (shown when an event is selected) generates a separate CSV listing each pit crew member alongside their entrant and entry details. Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.

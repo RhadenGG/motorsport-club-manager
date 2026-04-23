@@ -882,11 +882,45 @@ class MSC_Frontend_Dashboard {
             if ( ! empty( $class_filter ) ) $csv_args['class_id'] = $class_filter;
             $pc_args = array( 'msc_export_pit_crew' => 1, 'msc_export_pit_crew_nonce' => wp_create_nonce('msc_export_pit_crew') );
             if ( $event_filter ) $pc_args['event_id'] = $event_filter;
+            $csv_base_url = esc_url( add_query_arg( $csv_args, get_permalink() ) );
             ?>
-            <a href="<?php echo esc_url( add_query_arg( $csv_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Export CSV</a>
-            <?php if ( $event_filter ) : ?>
-            <a href="<?php echo esc_url( add_query_arg( $pc_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline" style="margin-bottom:12px;display:inline-block">Pit Crew Report</a>
-            <?php endif; ?>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+                <a href="<?php echo $csv_base_url; ?>" id="msc-export-csv-btn" data-base-href="<?php echo $csv_base_url; ?>" class="msc-btn msc-btn-sm msc-btn-outline">Export CSV</a>
+                <?php if ( $event_filter ) : ?>
+                <a href="<?php echo esc_url( add_query_arg( $pc_args, get_permalink() ) ); ?>" class="msc-btn msc-btn-sm msc-btn-outline">Pit Crew Report</a>
+                <?php endif; ?>
+            </div>
+            <div id="msc-csv-col-picker" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <span style="font-weight:600;color:#444">Columns to export:</span>
+                    <span><a href="#" id="msc-csv-col-all" style="color:#2271b1;text-decoration:none">All</a>&nbsp;·&nbsp;<a href="#" id="msc-csv-col-none" style="color:#2271b1;text-decoration:none">None</a></span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px 18px">
+                    <?php foreach ( array(
+                        'num'        => '#',
+                        'entrant'    => 'Entrant',
+                        'email'      => 'Email',
+                        'phone'      => 'Phone',
+                        'pit_crew'   => 'Pit Crew',
+                        'sponsors'   => 'Sponsors',
+                        'event'      => 'Event',
+                        'class'      => 'Class',
+                        'vehicle'    => 'Vehicle',
+                        'veh_year'   => 'Vehicle Year',
+                        'race_num'   => 'Race #',
+                        'entry_fee'  => 'Entry Fee',
+                        'paid'       => 'Paid',
+                        'emergency'  => 'Emergency Contact',
+                        'status'     => 'Status',
+                        'registered' => 'Registered',
+                    ) as $col_key => $col_label ) : ?>
+                    <label style="color:#444;white-space:nowrap;cursor:pointer">
+                        <input type="checkbox" class="msc-csv-col" data-col="<?php echo esc_attr( $col_key ); ?>" checked>
+                        <?php echo esc_html( $col_label ); ?>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
 
             <div id="msc-reg-msg" class="msc-field-msg" style="margin-bottom:10px"></div>
 
@@ -2611,6 +2645,46 @@ class MSC_Frontend_Dashboard {
                 WHERE $where ORDER BY r.created_at DESC";
         $regs = $values ? $wpdb->get_results( $wpdb->prepare( $sql, ...$values ) ) : $wpdb->get_results( $sql );
 
+        // Column selection — all keys; 'veh_year' is a real standalone column (Year)
+        $all_col_keys = array( 'num', 'entrant', 'email', 'phone', 'pit_crew', 'sponsors', 'event', 'class', 'vehicle', 'veh_year', 'race_num', 'entry_fee', 'paid', 'emergency', 'status', 'registered' );
+        $req_cols     = isset( $_GET['cols'] ) && is_array( $_GET['cols'] )
+            ? array_values( array_intersect( array_map( 'sanitize_key', (array) $_GET['cols'] ), $all_col_keys ) )
+            : $all_col_keys;
+        $active       = array_flip( $req_cols );
+
+        // Header labels — veh_year exports as its own "Year" column; vehicle always omits the year prefix
+        $col_labels = array(
+            'num'        => '#',
+            'entrant'    => 'Entrant',
+            'email'      => 'Email',
+            'phone'      => 'Phone',
+            'pit_crew'   => 'Pit Crew',
+            'sponsors'   => 'Sponsors',
+            'event'      => 'Event',
+            'class'      => 'Class',
+            'vehicle'    => 'Vehicle',
+            'veh_year'   => 'Year',
+            'race_num'   => 'Race #',
+            'entry_fee'  => 'Entry Fee',
+            'paid'       => 'Paid',
+            'emergency'  => 'Emergency Contact',
+            'status'     => 'Status',
+            'registered' => 'Registered',
+        );
+        $header = array();
+        foreach ( $col_labels as $key => $label ) {
+            if ( isset( $active[ $key ] ) ) $header[] = $label;
+        }
+
+        // Helper: filter a full row map down to only the active columns
+        $build_row = function( $row_map ) use ( $req_cols ) {
+            $row = array();
+            foreach ( $req_cols as $key ) {
+                if ( array_key_exists( $key, $row_map ) ) $row[] = $row_map[ $key ];
+            }
+            return $row;
+        };
+
         $event_slug = $event_filter ? sanitize_title( get_the_title( $event_filter ) ) : 'all-events';
         $filename   = 'registrations-' . $event_slug . '-' . date( 'Y-m-d' ) . '.csv';
 
@@ -2621,7 +2695,7 @@ class MSC_Frontend_Dashboard {
 
         $out = fopen( 'php://output', 'w' );
         fprintf( $out, chr(0xEF) . chr(0xBB) . chr(0xBF) ); // UTF-8 BOM for Excel compatibility
-        fputcsv( $out, array( '#', 'Entrant', 'Email', 'Phone', 'Pit Crew', 'Sponsors', 'Event', 'Class', 'Vehicle', 'Race #', 'Entry Fee', 'Paid', 'Emergency Contact', 'Status', 'Registered' ) );
+        fputcsv( $out, $header );
 
         $i = 1;
         foreach ( $regs as $r ) {
@@ -2636,34 +2710,57 @@ class MSC_Frontend_Dashboard {
                 } ) );
             }
             $entrant_name = $r->full_name ?: $r->user_name;
-            if ( $cv_pairs ) {
+            // Only loop per-pair when at least one per-pair column is being exported;
+            // otherwise a single registration-level row is all we need.
+            $has_per_pair = isset( $active['class'] ) || isset( $active['vehicle'] ) || isset( $active['veh_year'] ) || isset( $active['race_num'] );
+            if ( $cv_pairs && $has_per_pair ) {
                 foreach ( $cv_pairs as $idx => $p ) {
-                    fputcsv( $out, array(
-                        $idx === 0 ? $i : '',
-                        $idx === 0 ? $entrant_name : '',
-                        $idx === 0 ? $r->user_email : '',
-                        $idx === 0 ? $phone : '',
-                        $idx === 0 ? $pit_crew : '',
-                        $idx === 0 ? $sponsors : '',
-                        $idx === 0 ? $r->event_name : '',
-                        $p['class_name'],
-                        $p['vehicle_name'],
-                        $p['comp_number'] ?: '—',
-                        $idx === 0 ? ( $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free' ) : '',
-                        $idx === 0 ? ( $r->fee_paid ? 'Yes' : 'No' ) : '',
-                        $idx === 0 ? ( trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—' ) : '',
-                        $idx === 0 ? ucfirst( $r->status ) : '',
-                        $idx === 0 ? date( 'd M Y', strtotime( $r->created_at ) ) : '',
-                    ) );
+                    $raw_veh  = $p['vehicle_name'];
+                    $veh_year = '';
+                    // Only split year into its own value when the Year column is active;
+                    // otherwise keep the full "Year Make Model" string in the Vehicle column.
+                    if ( isset( $active['veh_year'] ) && preg_match( '/^(\d{4})\s+(.+)$/', $raw_veh, $m ) ) {
+                        $veh_year = $m[1];
+                        $raw_veh  = $m[2];
+                    }
+                    fputcsv( $out, $build_row( array(
+                        'num'        => $idx === 0 ? $i : '',
+                        'entrant'    => $idx === 0 ? $entrant_name : '',
+                        'email'      => $idx === 0 ? $r->user_email : '',
+                        'phone'      => $idx === 0 ? $phone : '',
+                        'pit_crew'   => $idx === 0 ? $pit_crew : '',
+                        'sponsors'   => $idx === 0 ? $sponsors : '',
+                        'event'      => $idx === 0 ? $r->event_name : '',
+                        'class'      => $p['class_name'],
+                        'vehicle'    => $raw_veh,
+                        'veh_year'   => $veh_year,
+                        'race_num'   => $p['comp_number'] ?: '—',
+                        'entry_fee'  => $idx === 0 ? ( $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free' ) : '',
+                        'paid'       => $idx === 0 ? ( $r->fee_paid ? 'Yes' : 'No' ) : '',
+                        'emergency'  => $idx === 0 ? ( trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—' ) : '',
+                        'status'     => $idx === 0 ? ucfirst( $r->status ) : '',
+                        'registered' => $idx === 0 ? date( 'd M Y', strtotime( $r->created_at ) ) : '',
+                    ) ) );
                 }
             } else {
-                fputcsv( $out, array( $i, $entrant_name, $r->user_email, $phone, $pit_crew, $sponsors, $r->event_name, '—', '—', '—',
-                    $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
-                    $r->fee_paid ? 'Yes' : 'No',
-                    trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
-                    ucfirst( $r->status ),
-                    date( 'd M Y', strtotime( $r->created_at ) ),
-                ) );
+                fputcsv( $out, $build_row( array(
+                    'num'        => $i,
+                    'entrant'    => $entrant_name,
+                    'email'      => $r->user_email,
+                    'phone'      => $phone,
+                    'pit_crew'   => $pit_crew,
+                    'sponsors'   => $sponsors,
+                    'event'      => $r->event_name,
+                    'class'      => '—',
+                    'vehicle'    => '—',
+                    'veh_year'   => '',
+                    'race_num'   => '—',
+                    'entry_fee'  => $r->entry_fee > 0 ? 'R ' . number_format( $r->entry_fee, 2 ) : 'Free',
+                    'paid'       => $r->fee_paid ? 'Yes' : 'No',
+                    'emergency'  => trim( $r->emergency_name . ' ' . $r->emergency_phone ) ?: '—',
+                    'status'     => ucfirst( $r->status ),
+                    'registered' => date( 'd M Y', strtotime( $r->created_at ) ),
+                ) ) );
             }
             $i++;
         }

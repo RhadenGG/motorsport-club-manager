@@ -1647,6 +1647,78 @@ jQuery(function ($) {
 
     msc.init();
 
+    // ── CSV column picker ────────────────────────────────────────────────────
+    (function () {
+        var $btn        = $('#msc-export-csv-btn');
+        var $cols       = $('.msc-csv-col');
+        var STORAGE_KEY = 'msc_export_cols';
+
+        if (!$btn.length || !$cols.length) return;
+
+        var baseHref = $btn.data('base-href');
+
+        function updateHref() {
+            var checked = [];
+            $cols.each(function () {
+                if ($(this).prop('checked')) checked.push($(this).data('col'));
+            });
+            if (checked.length === 0) {
+                // Nothing selected — disable the button so an empty export can't be triggered
+                $btn.attr('href', '#').css({ opacity: '0.4', pointerEvents: 'none', cursor: 'default' });
+                return;
+            }
+            $btn.css({ opacity: '', pointerEvents: '', cursor: '' });
+            if (checked.length === $cols.length) {
+                $btn.attr('href', baseHref);
+            } else {
+                var params = checked.map(function (k) { return 'cols%5B%5D=' + encodeURIComponent(k); }).join('&');
+                $btn.attr('href', baseHref + (baseHref.indexOf('?') !== -1 ? '&' : '?') + params);
+            }
+        }
+
+        function savePrefs() {
+            var state = {};
+            $cols.each(function () {
+                state[$(this).data('col')] = $(this).prop('checked') ? 1 : 0;
+            });
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+        }
+
+        // Restore saved preferences
+        (function () {
+            var saved = null;
+            try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) {}
+            if (saved && typeof saved === 'object') {
+                $cols.each(function () {
+                    var key = $(this).data('col');
+                    if (Object.prototype.hasOwnProperty.call(saved, key)) {
+                        $(this).prop('checked', !!saved[key]);
+                    }
+                });
+            }
+            updateHref();
+        }());
+
+        $cols.on('change', function () {
+            savePrefs();
+            updateHref();
+        });
+
+        $('#msc-csv-col-all').on('click', function (e) {
+            e.preventDefault();
+            $cols.prop('checked', true);
+            savePrefs();
+            updateHref();
+        });
+
+        $('#msc-csv-col-none').on('click', function (e) {
+            e.preventDefault();
+            $cols.prop('checked', false);
+            savePrefs();
+            updateHref();
+        });
+    }());
+
     // Lightbox for event featured image
     $(document).on('click', '.msc-lightbox-trigger', function (e) {
         e.preventDefault();
