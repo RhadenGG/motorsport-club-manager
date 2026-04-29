@@ -297,12 +297,6 @@ class MSC_Registration {
         if ( ! $event_id || ! $em_name || ! $em_phone ) {
             wp_send_json_error( array( 'message' => 'Please complete all required emergency contact fields.' ) );
         }
-        if ( ! $pit_crew_1 ) {
-            wp_send_json_error( array( 'message' => 'Pit Crew Name #1 is required. Enter a name or "None".' ) );
-        }
-        if ( ! $pit_crew_2 ) {
-            wp_send_json_error( array( 'message' => 'Pit Crew Name #2 is required. Enter a name or "None".' ) );
-        }
         if ( $ind_method !== 'signed' || ! $ind_sig ) {
             wp_send_json_error( array( 'message' => 'Electronic signature is required to complete the indemnity.' ) );
         }
@@ -1002,12 +996,6 @@ class MSC_Registration {
         // Update pit crew on the registration record
         $new_pit_crew_1 = isset( $_POST['msc_pit_crew_1'] ) ? sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_1'] ) ) : null;
         $new_pit_crew_2 = isset( $_POST['msc_pit_crew_2'] ) ? sanitize_text_field( wp_unslash( $_POST['msc_pit_crew_2'] ) ) : null;
-        if ( $new_pit_crew_1 !== null && ! $new_pit_crew_1 ) {
-            wp_send_json_error( array( 'message' => 'Pit Crew Name #1 is required. Enter a name or "None".' ) );
-        }
-        if ( $new_pit_crew_2 !== null && ! $new_pit_crew_2 ) {
-            wp_send_json_error( array( 'message' => 'Pit Crew Name #2 is required. Enter a name or "None".' ) );
-        }
         if ( $new_pit_crew_1 !== null || $new_pit_crew_2 !== null ) {
             $pit_update = array();
             $pit_fmts   = array();

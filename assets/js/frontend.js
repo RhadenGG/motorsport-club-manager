@@ -763,10 +763,6 @@ jQuery(function ($) {
             if (!$('#msc-emergency-name').val().trim()) isValid = false;
             if (!$('#msc-emergency-phone').val().trim()) isValid = false;
 
-            // Pit Crew
-            if (!$('#msc-pit-crew-1').val().trim()) isValid = false;
-            if (!$('#msc-pit-crew-2').val().trim()) isValid = false;
-
             // Minor Check
             if (isMinor && !$('#msc-parent-name').val().trim()) isValid = false;
 
@@ -1519,10 +1515,10 @@ jQuery(function ($) {
             + '<div style="margin-bottom:16px">'
             + '  <p class="msc-reg-section-label" style="margin-bottom:8px">Pit Crew</p>'
             + '  <div class="msc-reg-grid-2">'
-            + '    <div class="msc-field"><label>Name #1 <span class="msc-required">*</span></label>'
-            + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Enter name, or \'None\'"></div>'
-            + '    <div class="msc-field"><label>Name #2 <span class="msc-required">*</span></label>'
-            + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Enter name, or \'None\'"></div>'
+            + '    <div class="msc-field"><label>Name #1</label>'
+            + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Optional"></div>'
+            + '    <div class="msc-field"><label>Name #2</label>'
+            + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Optional"></div>'
             + '  </div>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'
