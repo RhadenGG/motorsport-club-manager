@@ -45,14 +45,14 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Electronic indemnity signing — drawn signature via `signature_pad` or typed name.
 - An **"I accept"** checkbox below the indemnity text is required before the Submit button enables; acceptance is also enforced server-side.
 - Automatic minor detection: if the member's date of birth indicates they are under 18, mandatory parent/guardian name and signature fields appear.
-- Emergency contact and sponsor fields pre-filled from the member's saved profile; pit crew fields pre-filled from profile as a convenience default (pit crew is stored per-entry, not saved back to the profile).
+- Emergency contact and sponsor fields pre-filled from the member's saved profile; pit crew fields (optional — one, both, or neither) pre-filled from profile as a convenience default (pit crew is stored per-entry, not saved back to the profile).
 - **Sponsors:** optional free-text field (max 33 characters) for the entrant to list their sponsors. Appears on the entry form, the member profile, and the indemnity PDF.
 - **Proof of Payment (PoP):** PDF, PNG, or JPG upload (up to 5 MB) required when the entry fee is greater than zero. Banking details configured in Settings are shown alongside the upload field.
 - Upon confirmation, each entry is assigned a **sequential entry number** scoped to the event, displayed on the indemnity PDF and the member's entries history.
 - A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds. On a temporary server error (HTTP 503), the form automatically retries once after 5 seconds with a "Server busy, retrying…" status update; if the retry also fails, a clear message explains the server is busy and the entry was not submitted.
 
 ### Entry Editing
-- Members can add or remove classes and update pit crew names on a pending or confirmed entry from their **My Account** dashboard.
+- Members can add or remove classes and update pit crew names (optional) on a pending or confirmed entry from their **My Account** dashboard.
 - Editing is locked once the event is closed — the Edit and Cancel buttons are hidden in the UI, and the server rejects any direct POST attempts.
 - Rules enforced:
   - No downgrade below the original paid amount.
@@ -71,7 +71,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - **My Account** (`[msc_my_account]`) — member dashboard with:
   - **Garage:** add, edit, and delete vehicles with make, model, year, race number, class, and photo.
   - **My Entries:** history of all entries with status badges, entered class names, and view links for indemnity PDFs and PoPs.
-  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (MSA licence, medical aid), emergency contact, pit crew names, and sponsors.
+  - **Profile:** edit personal details (first/last name, phone, address, gender, date of birth), motorsport info (MSA licence, medical aid), emergency contact, pit crew defaults (optional), and sponsors.
   - **Profile photo:** upload, preview, and remove a custom photo.
   - **Logout button** at the bottom of the dashboard for easy sign-out.
 - Role display on the profile card (Subscriber → Guest, msc_event_creator → Event Creator, msc_class_rep → Class Rep, Administrator → Admin).
