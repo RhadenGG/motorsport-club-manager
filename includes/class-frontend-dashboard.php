@@ -89,6 +89,20 @@ class MSC_Frontend_Dashboard {
         return ( $post && $post->post_type === 'msc_event' && (int) $post->post_author === get_current_user_id() );
     }
 
+    /**
+     * Whether the current user may directly edit individual registrations for an event.
+     * Stricter than can_manage_event(): requires the msc_event_creator role, not just
+     * any capability that grants dashboard access (e.g. msc_view_participants).
+     */
+    private static function can_edit_entries( $event_id ) {
+        if ( current_user_can( 'manage_options' ) ) return true;
+        $user = wp_get_current_user();
+        if ( ! in_array( 'msc_event_creator', (array) $user->roles, true ) ) return false;
+        if ( self::is_shared_ops_mode() ) return true;
+        $post = get_post( absint( $event_id ) );
+        return $post && $post->post_type === 'msc_event' && (int) $post->post_author === get_current_user_id();
+    }
+
     // ─── Main renderer ────────────────────────────────────────────────────────
 
     public static function render() {
@@ -765,7 +779,7 @@ class MSC_Frontend_Dashboard {
 
         $where = implode( ' AND ', $conditions );
         $sql = "SELECT r.id, r.user_id, r.event_id, r.status, r.entry_fee, r.fee_paid, r.created_at, r.class_id,
-                       r.pop_file_id, r.pop_file_id_2, r.indemnity_method, r.entry_number, r.pit_crew_1, r.pit_crew_2,
+                       r.pop_file_id, r.pop_file_id_2, r.pop_requested, r.indemnity_method, r.entry_number, r.pit_crew_1, r.pit_crew_2,
                        p.post_title AS event_name, v.post_title AS vehicle_name,
                        NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
                        u.display_name AS user_name
@@ -1058,6 +1072,16 @@ class MSC_Frontend_Dashboard {
                             <?php echo $r->fee_paid ? '✓ Paid' : 'Mark Paid'; ?>
                         </button>
                         <?php endif; ?>
+                        <?php if ( ! $class_rep && self::can_edit_entries( $r->event_id ) && in_array( $r->status, array( 'pending', 'confirmed' ), true ) && ! MSC_Results::is_closed( $r->event_id ) ) : ?>
+                        <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-admin-edit-entry"
+                                data-id="<?php echo $r->id; ?>">Edit</button>
+                        <?php endif; ?>
+                        <?php if ( ! $class_rep && self::can_edit_entries( $r->event_id ) && ! empty( $r->pop_requested ) ) :
+                            $fe_pop_link = add_query_arg( 'msc_pop_reg', $r->id, msc_get_account_url( 'registrations' ) ); ?>
+                        <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-copy-pop-link"
+                                data-url="<?php echo esc_attr( $fe_pop_link ); ?>"
+                                title="Copy PoP upload link to send to entrant">📋 PoP Link</button>
+                        <?php endif; ?>
                         </div>
                     </td>
                     <?php endif; ?>
@@ -1095,6 +1119,8 @@ class MSC_Frontend_Dashboard {
             </div>
             <?php endif; ?>
         </div>
+
+        <div id="msc-admin-entry-edit-wrap" style="margin-top:16px"></div>
 
         <script>
         (function($){
@@ -1251,6 +1277,7 @@ class MSC_Frontend_Dashboard {
                 $row.toggle(!open);
                 $(this).text(open ? 'Conditions ▾' : 'Conditions ▴');
             });
+
         })(jQuery);
         </script>
         <?php

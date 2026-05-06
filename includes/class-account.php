@@ -445,8 +445,23 @@ class MSC_Account {
                             <a href="<?php echo esc_url( add_query_arg( 'msc_indemnity_pdf', $r->id, home_url() ) ); ?>" target="_blank" class="msc-btn msc-btn-sm msc-btn-outline">📄 PDF</a>
                             <?php if ( in_array( $r->status, array( 'pending', 'confirmed' ) ) && ! MSC_Results::is_closed( $r->event_id ) ) : ?>
                             <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-edit-entry" data-id="<?php echo $r->id; ?>">Edit Entry</button>
+                            <?php if ( ! empty( $r->pop_requested ) ) : ?>
+                            <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-upload-pop"
+                                    data-id="<?php echo $r->id; ?>"
+                                    id="msc-upload-pop-btn-<?php echo $r->id; ?>">Upload PoP</button>
+                            <?php endif; ?>
                             <a href="#" class="msc-cancel-reg msc-danger-link" data-id="<?php echo $r->id; ?>">Cancel</a>
                             <?php endif; ?>
+                        </div>
+                        <div class="msc-pop-upload-panel" id="msc-pop-panel-<?php echo $r->id; ?>" style="display:none;margin-top:10px;padding:12px;background:#f8f9fa;border:1px solid #dde0e5;border-radius:6px">
+                            <p style="font-size:13px;font-weight:600;margin:0 0 8px">Upload Proof of Payment</p>
+                            <input type="file" class="msc-pop-file-input" data-id="<?php echo $r->id; ?>" accept="application/pdf,image/png,image/jpeg" style="display:block;margin-bottom:8px">
+                            <p style="font-size:12px;color:#888;margin:0 0 8px">PDF, PNG or JPG, max 5MB.</p>
+                            <div style="display:flex;gap:8px">
+                                <button type="button" class="msc-btn msc-btn-sm msc-pop-upload-submit" data-id="<?php echo $r->id; ?>">Upload</button>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline msc-pop-upload-cancel" data-id="<?php echo $r->id; ?>">Cancel</button>
+                            </div>
+                            <p class="msc-pop-upload-msg" data-id="<?php echo $r->id; ?>" style="display:none;font-size:13px;margin:8px 0 0"></p>
                         </div>
                     </div>
                     <?php endforeach; ?>

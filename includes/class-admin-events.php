@@ -80,6 +80,18 @@ class MSC_Admin_Events {
         if ( in_array($hook, array('post.php','post-new.php')) ) {
             wp_enqueue_media();
         }
+        if ( isset( $_GET['page'] ) && $_GET['page'] === 'msc-registrations' ) {
+            wp_enqueue_style( 'msc-frontend', MSC_URL . 'assets/css/frontend.css', array(), MSC_VERSION );
+            wp_enqueue_script( 'msc-frontend', MSC_URL . 'assets/js/frontend.js', array( 'jquery' ), MSC_VERSION, true );
+            wp_localize_script( 'msc-frontend', 'mscData', array(
+                'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+                'nonce'     => wp_create_nonce( 'msc_nonce' ),
+                'loginUrl'  => '',
+                'loggedIn'  => true,
+                'popRegId'  => 0,
+                'isAdmin'   => true,
+            ) );
+        }
     }
 
     public static function dashboard_page() {
@@ -600,6 +612,13 @@ class MSC_Admin_Events {
         🗑 Delete
         </button>
         </form>
+        <?php if ( in_array( $r->status, array('pending','confirmed'), true ) && ! MSC_Results::is_closed( $r->event_id ) ) : ?>
+        <button type="button" class="button button-small msc-admin-edit-entry" data-id="<?php echo $r->id; ?>" style="margin-top:4px">Edit</button>
+        <?php endif; ?>
+        <?php if ( ! empty( $r->pop_requested ) ) :
+            $adm_pop_link = add_query_arg( 'msc_pop_reg', $r->id, msc_get_account_url( 'registrations' ) ); ?>
+        <button type="button" class="button button-small msc-copy-pop-link" data-url="<?php echo esc_attr( $adm_pop_link ); ?>" style="margin-top:4px" title="Copy PoP upload link for entrant">📋 PoP Link</button>
+        <?php endif; ?>
         </td>
         </tr>
         <?php foreach ( $extra as $ep ) : ?>
@@ -612,6 +631,8 @@ class MSC_Admin_Events {
         <?php endforeach; endif; ?>
         </tbody>
         </table>
+
+        <div id="msc-admin-entry-edit-wrap" style="margin-top:16px"></div>
 
         <?php if ( $total_pages > 1 ) :
             $base_url = add_query_arg( array( 'page' => 'msc-registrations' ), admin_url( 'admin.php' ) );

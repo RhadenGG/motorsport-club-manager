@@ -3,7 +3,7 @@
  * Plugin Name: Motorsport Club Manager
  * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
- * Version:     0.9.2
+ * Version:     0.9.3
  * Author:      Trevor Botha
  * Author URI:  https://trevorbotha.net
  * Text Domain: motorsport-club
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '0.9.2' );
+define( 'MSC_VERSION',  '0.9.3' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
@@ -67,13 +67,15 @@ function msc_init() {
 add_action( 'init', array( 'MSC_Activator', 'setup_roles' ), 1 );
 add_action( 'init', 'msc_run_migration', 20 );
 function msc_run_migration() {
-    // Migration and rewrite flush are admin lifecycle concerns; avoid running on public traffic.
-    if ( ! is_admin() ) return;
-
-    if ( get_option('msc_db_version') !== MSC_VERSION ) {
+    if ( get_option( 'msc_db_version' ) !== MSC_VERSION ) {
         MSC_Activator::activate();
+        update_option( 'msc_db_version', MSC_VERSION );
+    }
+    // Rewrite flush is tracked separately so a frontend hit running the DB migration
+    // above does not prevent the flush from running on the next admin request.
+    if ( is_admin() && get_option( 'msc_rewrite_version' ) !== MSC_VERSION ) {
         flush_rewrite_rules();
-        update_option('msc_db_version', MSC_VERSION);
+        update_option( 'msc_rewrite_version', MSC_VERSION );
     }
 }
 

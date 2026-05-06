@@ -10,6 +10,7 @@ class MSC_Registration {
         add_action( 'wp_ajax_msc_cancel_registration',        array( __CLASS__, 'ajax_cancel' ) );
         add_action( 'wp_ajax_msc_get_entry_edit_data',        array( __CLASS__, 'ajax_get_entry_edit_data' ) );
         add_action( 'wp_ajax_msc_update_entry_classes',       array( __CLASS__, 'ajax_update_entry_classes' ) );
+        add_action( 'wp_ajax_msc_upload_pop',                 array( __CLASS__, 'ajax_upload_pop' ) );
         add_action( 'template_redirect',                      array( __CLASS__, 'maybe_serve_pop_file' ) );
     }
 
@@ -675,6 +676,16 @@ class MSC_Registration {
     }
 
     /** Return data needed to render the entry edit form */
+    private static function current_user_can_manage_entry( $reg ) {
+        if ( current_user_can( 'manage_options' ) ) return true;
+        $user = wp_get_current_user();
+        if ( ! in_array( 'msc_event_creator', (array) $user->roles, true ) ) return false;
+        if ( get_option( 'msc_dashboard_event_access_mode', 'strict' ) === 'shared' ) return true;
+        $event = get_post( $reg->event_id );
+        return $event && $event->post_type === 'msc_event'
+            && (int) $event->post_author === get_current_user_id();
+    }
+
     public static function ajax_get_entry_edit_data() {
         check_ajax_referer( 'msc_nonce', 'nonce' );
         if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
@@ -687,7 +698,18 @@ class MSC_Registration {
             "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d AND user_id = %d",
             $reg_id, $user_id
         ) );
-        if ( ! $reg || ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
+        $is_admin_edit = false;
+        if ( ! $reg ) {
+            $reg = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+                $reg_id
+            ) );
+            if ( ! $reg || ! self::current_user_can_manage_entry( $reg ) ) {
+                wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
+            }
+            $is_admin_edit = true;
+        }
+        if ( ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
             wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
         }
 
@@ -712,8 +734,9 @@ class MSC_Registration {
             );
         }
 
-        // User's vehicles for this event
-        $vehicles_raw  = MSC_Admin_Garage::get_user_vehicles_for_event( $user_id, $reg->event_id );
+        // User's vehicles for this event — use entrant's ID when admin is editing
+        $entrant_id    = $is_admin_edit ? (int) $reg->user_id : $user_id;
+        $vehicles_raw  = MSC_Admin_Garage::get_user_vehicles_for_event( $entrant_id, $reg->event_id );
         $user_vehicles = array();
         foreach ( $vehicles_raw as $v ) {
             $make   = get_post_meta( $v->ID, '_msc_make',       true );
@@ -776,6 +799,10 @@ class MSC_Registration {
             'user_vehicles'   => $user_vehicles,
             'pit_crew_1'      => $reg->pit_crew_1,
             'pit_crew_2'      => $reg->pit_crew_2,
+            'is_admin_edit'   => $is_admin_edit,
+            'pop_link'        => $is_admin_edit
+                ? add_query_arg( 'msc_pop_reg', $reg->id, msc_get_account_url( 'registrations' ) )
+                : '',
         ) );
     }
 
@@ -808,7 +835,18 @@ class MSC_Registration {
             "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d AND user_id = %d",
             $reg_id, $user_id
         ) );
-        if ( ! $reg || ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
+        $is_admin_edit = false;
+        if ( ! $reg ) {
+            $reg = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+                $reg_id
+            ) );
+            if ( ! $reg || ! self::current_user_can_manage_entry( $reg ) ) {
+                wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
+            }
+            $is_admin_edit = true;
+        }
+        if ( ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
             wp_send_json_error( array( 'message' => 'Entry not found or cannot be edited.' ) );
         }
 
@@ -849,39 +887,79 @@ class MSC_Registration {
             wp_send_json_error( array( 'message' => 'You cannot reduce your entry below the amount already paid.' ) );
         }
 
-        // Require PoP for any additional amount owed
+        // PoP handling — required for entrants, optional for admins
         $new_pop_file_id = null;
+        $pop_requested   = false;
+
         if ( $difference > 0.005 ) {
-            if ( empty( $_FILES['pop_file'] ) || empty( $_FILES['pop_file']['name'] ) ) {
+            $has_pop_file    = ! empty( $_FILES['pop_file'] ) && ! empty( $_FILES['pop_file']['name'] );
+            $requesting_pop  = ! empty( $_POST['request_pop'] );
+
+            if ( ! $is_admin_edit && ! $has_pop_file ) {
                 wp_send_json_error( array( 'message' => 'Please upload proof of payment for the additional R ' . number_format( $difference, 2 ) . ' owed.' ) );
             }
-            $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
-            $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
-            $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
-            if ( ! in_array( strtolower( (string) $check['ext'] ), $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
-                wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
-            }
-            if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
-                wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
+            if ( $is_admin_edit && ! $has_pop_file && ! $requesting_pop ) {
+                wp_send_json_error( array( 'message' => 'The entry fee increased by R ' . number_format( $difference, 2 ) . '. Please upload proof of payment or check "Request PoP from entrant".' ) );
             }
 
-            $attachment_id = self::upload_pop_file( 'pop_file' );
-            if ( is_wp_error( $attachment_id ) ) {
-                wp_send_json_error( array( 'message' => 'Failed to upload proof of payment: ' . $attachment_id->get_error_message() ) );
+            if ( $has_pop_file ) {
+                $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+                $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
+                $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
+                if ( ! in_array( strtolower( (string) $check['ext'] ), $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+                    wp_send_json_error( array( 'message' => 'Proof of Payment must be a PDF, PNG, or JPG file.' ) );
+                }
+                if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
+                    wp_send_json_error( array( 'message' => 'Proof of Payment must be smaller than 5MB.' ) );
+                }
+                $attachment_id = self::upload_pop_file( 'pop_file' );
+                if ( is_wp_error( $attachment_id ) ) {
+                    wp_send_json_error( array( 'message' => 'Failed to upload proof of payment: ' . $attachment_id->get_error_message() ) );
+                }
+                $new_pop_file_id = $attachment_id;
             }
-            $new_pop_file_id = $attachment_id;
+        }
+        if ( $is_admin_edit && $difference > 0.005 && ! empty( $_POST['request_pop'] ) ) {
+            $pop_requested = true;
         }
 
-        // Persist updated fee, PoP, and reset to pending if previously confirmed
+        // Persist updated fee, PoP, and status
         $update_data    = array( 'entry_fee' => $new_total );
         $update_formats = array( '%f' );
-        if ( $reg->status === 'confirmed' ) {
-            $update_data['status'] = 'pending';
-            $update_formats[]      = '%s';
+        if ( $is_admin_edit ) {
+            if ( $new_pop_file_id !== null ) {
+                // A PoP file was uploaded — always clears any pending request
+                $update_data['pop_requested'] = 0;
+                $update_formats[]             = '%d';
+            } elseif ( $pop_requested ) {
+                $update_data['pop_requested'] = 1;
+                $update_formats[]             = '%d';
+            } elseif ( $difference <= 0.005 && $reg->pop_requested ) {
+                // Fee is no longer above the original — any outstanding request is now moot
+                $update_data['pop_requested'] = 0;
+                $update_formats[]             = '%d';
+            }
+            // Fee increase: revert confirmed entries to pending and clear paid flag if no new PoP
+            if ( $difference > 0.005 ) {
+                if ( $reg->status === 'confirmed' ) {
+                    $update_data['status'] = 'pending';
+                    $update_formats[]      = '%s';
+                }
+                if ( $new_pop_file_id === null && $reg->fee_paid ) {
+                    $update_data['fee_paid'] = 0;
+                    $update_formats[]        = '%d';
+                }
+            }
+        } else {
+            if ( $reg->status === 'confirmed' ) {
+                $update_data['status'] = 'pending';
+                $update_formats[]      = '%s';
+            }
         }
         if ( $new_pop_file_id !== null ) {
-            $update_data['pop_file_id_2'] = $new_pop_file_id;
-            $update_formats[]             = '%d';
+            $pop_slot                  = empty( $reg->pop_file_id ) ? 'pop_file_id' : 'pop_file_id_2';
+            $update_data[ $pop_slot ]  = $new_pop_file_id;
+            $update_formats[]          = '%d';
         }
         $wpdb->update(
             "{$wpdb->prefix}msc_registrations",
@@ -1004,10 +1082,94 @@ class MSC_Registration {
             $wpdb->update( "{$wpdb->prefix}msc_registrations", $pit_update, array( 'id' => $reg_id ), $pit_fmts, array( '%d' ) );
         }
 
-        $msg = ( $reg->status === 'confirmed' )
-            ? 'Your entry has been updated and resubmitted for approval.'
-            : 'Your entry has been updated successfully.';
-        wp_send_json_success( array( 'message' => $msg ) );
+        if ( $is_admin_edit ) {
+            // Actual persisted state (accounts for file-upload clearing a simultaneous checkbox).
+            $saved_pop_requested = isset( $update_data['pop_requested'] ) ? (int) $update_data['pop_requested'] : (int) $reg->pop_requested;
+            // Only signal "new request" when THIS save set pop_requested to 1 — not when a
+            // pre-existing request happens to still be outstanding from a previous edit.
+            $newly_requested = isset( $update_data['pop_requested'] ) && (int) $update_data['pop_requested'] === 1;
+            $pop_link = $newly_requested
+                ? add_query_arg( 'msc_pop_reg', $reg_id, msc_get_account_url( 'registrations' ) )
+                : '';
+            wp_send_json_success( array(
+                'message'       => 'Entry updated successfully.',
+                'pop_link'      => $pop_link,
+                'pop_requested' => $saved_pop_requested,
+            ) );
+        } else {
+            $msg = ( $reg->status === 'confirmed' )
+                ? 'Your entry has been updated and resubmitted for approval.'
+                : 'Your entry has been updated successfully.';
+            wp_send_json_success( array( 'message' => $msg ) );
+        }
+    }
+
+    /** Upload a PoP file for an existing registration (entrant or admin). */
+    public static function ajax_upload_pop() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+
+        $reg_id  = absint( $_POST['reg_id'] ?? 0 );
+        $user_id = get_current_user_id();
+        if ( ! $reg_id ) wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+
+        global $wpdb;
+
+        $reg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d AND user_id = %d",
+            $reg_id, $user_id
+        ) );
+        $is_own_entry = ( $reg !== null );
+        if ( ! $reg ) {
+            $reg = $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+                $reg_id
+            ) );
+            if ( ! $reg || ! self::current_user_can_manage_entry( $reg ) ) {
+                wp_send_json_error( array( 'message' => 'Entry not found.' ) );
+            }
+        }
+
+        // Entrants may only upload when an admin has explicitly requested it
+        if ( $is_own_entry && ! $reg->pop_requested ) {
+            wp_send_json_error( array( 'message' => 'No proof of payment upload is pending for this entry.' ) );
+        }
+
+        if ( ! in_array( $reg->status, array( 'pending', 'confirmed' ), true ) ) {
+            wp_send_json_error( array( 'message' => 'Entry cannot be modified.' ) );
+        }
+        if ( MSC_Results::is_closed( $reg->event_id ) ) {
+            wp_send_json_error( array( 'message' => 'This event is closed.' ) );
+        }
+
+        if ( empty( $_FILES['pop_file'] ) || empty( $_FILES['pop_file']['name'] ) ) {
+            wp_send_json_error( array( 'message' => 'No file provided.' ) );
+        }
+        $check         = wp_check_filetype_and_ext( $_FILES['pop_file']['tmp_name'], $_FILES['pop_file']['name'] );
+        $allowed_exts  = array( 'pdf', 'png', 'jpg', 'jpeg' );
+        $allowed_types = array( 'application/pdf', 'image/png', 'image/jpeg' );
+        if ( ! in_array( strtolower( (string) $check['ext'] ), $allowed_exts, true ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+            wp_send_json_error( array( 'message' => 'File must be a PDF, PNG, or JPG.' ) );
+        }
+        if ( $_FILES['pop_file']['size'] > 5 * 1024 * 1024 ) {
+            wp_send_json_error( array( 'message' => 'File must be under 5MB.' ) );
+        }
+
+        $attachment_id = self::upload_pop_file( 'pop_file' );
+        if ( is_wp_error( $attachment_id ) ) {
+            wp_send_json_error( array( 'message' => 'Upload failed: ' . $attachment_id->get_error_message() ) );
+        }
+
+        $slot = empty( $reg->pop_file_id ) ? 'pop_file_id' : 'pop_file_id_2';
+        $wpdb->update(
+            "{$wpdb->prefix}msc_registrations",
+            array( $slot => $attachment_id, 'pop_requested' => 0 ),
+            array( 'id'  => $reg_id ),
+            array( '%d', '%d' ),
+            array( '%d' )
+        );
+
+        wp_send_json_success( array( 'message' => 'Proof of payment uploaded successfully.' ) );
     }
 
     /**

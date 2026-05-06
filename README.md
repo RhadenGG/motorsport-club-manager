@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.2 | **License:** GPLv2 or later
+**Current version:** 0.9.3 | **License:** GPLv2 or later
 
 ---
 
@@ -53,13 +53,19 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 
 ### Entry Editing
 - Members can add or remove classes and update pit crew names (optional) on a pending or confirmed entry from their **My Account** dashboard.
+- **Admins and event creators** can edit any entrant's entry directly from the **Entries tab** of the staff dashboard or the **wp-admin Entries** table — an **Edit** button appears on each eligible row.
+  - The edit panel loads the entrant's own vehicles (not the admin's garage).
+  - A **Proof of Payment** field is shown but optional — admins can save a fee increase without uploading a file if they instead check **"Request PoP from entrant"**.
+  - When PoP is requested, the entrant's **My Account → My Entries** card shows an **Upload PoP** button for that entry.
+  - After saving with a PoP request, a **Copy PoP Link** button appears in the edit panel (and in the Entries tab row) — clicking it copies a direct deep-link to the entrant's upload panel that can be pasted into an email or chat.
+  - If the admin subsequently edits the same entry and the fee is no longer above the original, any outstanding PoP request is cleared automatically.
 - Editing is locked once the event is closed — the Edit and Cancel buttons are hidden in the UI, and the server rejects any direct POST attempts.
 - Rules enforced:
   - No downgrade below the original paid amount.
   - Same or lower total (within rounding) saves immediately.
-  - Higher total requires a top-up PoP upload for the difference only.
+  - Higher total: members must upload PoP; admins must either upload PoP or check "Request PoP from entrant".
 - The top-up PoP is stored as a separate **PoP 2** file (served via `?msc_pop_file={id}&pop=2`) and shown as a distinct button alongside the original PoP in both the staff dashboard and wp-admin entries table, so organisers can review both payments before confirming an entry.
-- If a **confirmed** entry is edited, it is automatically reset to **pending** and must be re-approved by the organiser.
+- If a **confirmed** entry is edited and the fee increases, it is automatically reset to **pending** and must be re-approved by the organiser. Non-fee edits (pit crew, same-cost class changes) on confirmed entries also reset to pending.
 - Vehicle assignments per class are preserved across edits; only newly added classes fall back to the primary vehicle.
 
 ### Document Security
@@ -85,7 +91,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Staff Dashboard
 - Unified frontend staff tool via `[msc_event_dashboard]` — accessible to administrators, `msc_event_creator`, and `msc_class_rep` roles (class reps see the Entries tab only, in read-only mode).
 - **Events tab:** list all events, create new events (inline form with all meta fields), close/reopen events, and navigate to the entries or results for a specific event.
-- **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; **CSV export** with a column picker (checkboxes below the Export button) to select exactly which of the 16 columns to include — preferences saved in `localStorage`; **Vehicle Year** exports as its own column separate from the vehicle name; **Pit Crew Report** button (shown when an event is selected) generates a separate CSV with one row per entrant: Entrant, Pit Crew Member 1, Pit Crew Member 2, Status (event name is in the filename). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
+- **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); **Edit** button (admins and event creators only) — opens an inline panel to change classes, vehicles, pit crew, and fee with optional PoP upload or entrant PoP request; **📋 PoP Link** copy button appears on rows with an outstanding PoP request; bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; **CSV export** with a column picker (checkboxes below the Export button) to select exactly which of the 16 columns to include — preferences saved in `localStorage`; **Vehicle Year** exports as its own column separate from the vehicle name; **Pit Crew Report** button (shown when an event is selected) generates a separate CSV with one row per entrant: Entrant, Pit Crew Member 1, Pit Crew Member 2, Status (event name is in the filename). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
 - **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
@@ -98,7 +104,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - The entire results module can be disabled in **Settings** for clubs that use an external results system — the event open/closed lifecycle (used to lock entries) is unaffected.
 
 ### Admin (wp-admin)
-- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, and indemnity PDF links.
+- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, indemnity PDF links, **Edit** button (opens the same inline edit panel as the frontend dashboard), and **📋 PoP Link** copy button when a PoP upload has been requested from the entrant.
 - **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
 - **Motorsport Club → Vehicle Classes:** taxonomy term management.
 - **Motorsport Club → Settings:** banking details, auth page URLs, SMTP configuration, **Results Module** toggle (disable built-in results entry and display for clubs using an external results system), and **debug logging** toggle.
@@ -175,13 +181,13 @@ The custom `msc_view_participants` capability gates participant data and indemni
 ### Database Tables
 | Table | Purpose |
 |---|---|
-| `{prefix}msc_registrations` | Entry records — status, fee, indemnity data, original PoP attachment ID (`pop_file_id`), top-up PoP ID (`pop_file_id_2`) |
+| `{prefix}msc_registrations` | Entry records — status, fee, indemnity data, original PoP attachment ID (`pop_file_id`), top-up PoP ID (`pop_file_id_2`), PoP-request flag (`pop_requested`) |
 | `{prefix}msc_registration_classes` | Per-entry class rows with fee, vehicle, primary flag, and conditions answers (JSON) |
 | `{prefix}msc_event_results` | Race results per entry (position, lap time, status) |
 | `{prefix}msc_pricing_sets` | Named pricing schedules |
 | `{prefix}msc_pricing_set_classes` | Per-class fee config within a pricing set |
 
-Migrations run automatically on every WordPress `init` when the stored `msc_db_version` option differs from `MSC_VERSION`. New columns are added via explicit `ALTER TABLE` with `DESCRIBE` existence checks.
+Migrations run automatically on every WordPress `init` when the stored `msc_db_version` option differs from `MSC_VERSION`. DB migrations run on any request type (frontend or admin) to avoid missing columns on a freshly updated site; rewrite rule flushes are tracked separately via `msc_rewrite_version` and only execute on the next admin request. New columns are added via explicit `ALTER TABLE` with `DESCRIBE` existence checks.
 
 ### Class Map
 | File | Class | Responsibility |

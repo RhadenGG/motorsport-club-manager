@@ -1029,12 +1029,112 @@ jQuery(function ($) {
                         alert(res.data.message || 'Could not load entry data.');
                         return;
                     }
-                    renderEntryEditPanel(card, res.data);
+                    renderEntryEditPanel(card, res.data, false);
                 });
             });
 
+            // Admin edit entry (dashboard and wp-admin)
+            $(document).on('click', '.msc-admin-edit-entry', function() {
+                var btn   = $(this);
+                var regId = btn.data('id');
+                var wrap  = $('#msc-admin-entry-edit-wrap');
+
+                $('.msc-entry-edit-panel').remove();
+                btn.prop('disabled', true).text('Loading…');
+
+                $.post(mscData.ajaxUrl, {
+                    action: 'msc_get_entry_edit_data',
+                    nonce:  mscData.nonce,
+                    reg_id: regId
+                }, function(res) {
+                    btn.prop('disabled', false).text('Edit');
+                    if (!res.success) { alert(res.data.message || 'Could not load entry data.'); return; }
+                    if (wrap.length) {
+                        wrap.empty().show();
+                        renderEntryEditPanel(wrap, res.data, true);
+                        $('html,body').animate({scrollTop: wrap.offset().top - 80}, 300);
+                    }
+                });
+            });
+
+            // Copy PoP link to clipboard
+            $(document).on('click', '.msc-copy-pop-link', function() {
+                var url = $(this).data('url');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function() {
+                        alert('PoP upload link copied to clipboard.');
+                    });
+                } else {
+                    window.prompt('Copy this link and send it to the entrant:', url);
+                }
+            });
+
+            // Upload PoP panel toggle
+            $(document).on('click', '.msc-upload-pop', function() {
+                var id    = $(this).data('id');
+                var panel = $('#msc-pop-panel-' + id);
+                panel.slideToggle(200);
+            });
+            $(document).on('click', '.msc-pop-upload-cancel', function() {
+                var id = $(this).data('id');
+                $('#msc-pop-panel-' + id).slideUp(200);
+            });
+            $(document).on('click', '.msc-pop-upload-submit', function() {
+                var id   = $(this).data('id');
+                var file = $('.msc-pop-file-input[data-id="' + id + '"]')[0].files[0];
+                var msg  = $('.msc-pop-upload-msg[data-id="' + id + '"]');
+                if (!file) { msg.text('Please select a file.').css('color','red').show(); return; }
+                var fd = new FormData();
+                fd.append('action',   'msc_upload_pop');
+                fd.append('nonce',    mscData.nonce);
+                fd.append('reg_id',   id);
+                fd.append('pop_file', file);
+                var btn = $(this);
+                btn.prop('disabled', true).text('Uploading…');
+                msg.hide();
+                $.ajax({
+                    url: mscData.ajaxUrl, type: 'POST', data: fd,
+                    processData: false, contentType: false,
+                    success: function(res) {
+                        btn.prop('disabled', false).text('Upload');
+                        if (res.success) {
+                            msg.text('Uploaded successfully.').css('color','green').show();
+                            $('#msc-upload-pop-btn-' + id).hide();
+                            setTimeout(function() { location.reload(); }, 1200);
+                        } else {
+                            msg.text(res.data.message || 'Upload failed.').css('color','red').show();
+                        }
+                    },
+                    error: function() {
+                        btn.prop('disabled', false).text('Upload');
+                        msg.text('Network error.').css('color','red').show();
+                    }
+                });
+            });
+
+            // Deep-link: auto-open PoP upload panel if ?msc_pop_reg is set
+            if (mscData.popRegId) {
+                var $popCard = $('#msc-pop-panel-' + mscData.popRegId);
+                if ($popCard.length) {
+                    $popCard.show();
+                    $('html,body').animate({scrollTop: $popCard.offset().top - 100}, 400);
+                }
+            }
+
             $(document).on('click', '#msc-edit-cancel-btn', function() {
                 $('.msc-entry-edit-panel').remove();
+                $('#msc-admin-entry-edit-wrap').empty();
+            });
+
+            $(document).on('click', '#msc-edit-copy-pop-link', function() {
+                var url = $('#msc-edit-pop-link-input').val();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function() {
+                        alert('PoP upload link copied to clipboard.');
+                    });
+                } else {
+                    window.prompt('Copy this link and send it to the entrant:', url);
+                }
             });
 
             $(document).on('click', '#msc-edit-save-btn', function() {
@@ -1055,6 +1155,7 @@ jQuery(function ($) {
                     additionalIds.push(parseInt($(this).val()));
                 });
 
+                var isAdminEdit = !!panel.data('is_admin_edit');
                 var newFee = calcEntryFee(baseFee, pricing, primaryId, additionalIds);
                 var diff   = Math.round((newFee - originalFee) * 100) / 100;
 
@@ -1062,7 +1163,7 @@ jQuery(function ($) {
                     $('#msc-edit-msg').text('You cannot reduce your entry below the amount already paid.').css('color','red').show();
                     return;
                 }
-                if (diff > 0.005 && !($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files.length)) {
+                if (!isAdminEdit && diff > 0.005 && !($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files.length)) {
                     $('#msc-edit-msg').text('Please upload proof of payment for the additional R ' + diff.toFixed(2) + ' owed.').css('color','red').show();
                     return;
                 }
@@ -1106,6 +1207,9 @@ jQuery(function ($) {
                 if ($('#msc-edit-pop-file')[0].files && $('#msc-edit-pop-file')[0].files[0]) {
                     fd.append('pop_file', $('#msc-edit-pop-file')[0].files[0]);
                 }
+                if ($('#msc-edit-request-pop').is(':checked')) {
+                    fd.append('request_pop', '1');
+                }
                 fd.append('msc_pit_crew_1', $('#msc-edit-pit-crew-1').val());
                 fd.append('msc_pit_crew_2', $('#msc-edit-pit-crew-2').val());
                 // Condition answers for newly-added classes
@@ -1135,7 +1239,13 @@ jQuery(function ($) {
                     success: function(res) {
                         if (res.success) {
                             $('#msc-edit-msg').text(res.data.message).css('color','green').show();
-                            setTimeout(function() { location.reload(); }, 1200);
+                            if (res.data.pop_link) {
+                                $('#msc-edit-pop-link-input').val(res.data.pop_link);
+                                $('#msc-edit-pop-link-wrap').show();
+                                btn.prop('disabled', true);
+                            } else {
+                                setTimeout(function() { location.reload(); }, 1200);
+                            }
                         } else {
                             btn.prop('disabled', false).text('Save Changes');
                             $('#msc-edit-msg').text(res.data.message || 'Error saving.').css('color','red').show();
@@ -1356,8 +1466,11 @@ jQuery(function ($) {
         var newFee = calcEntryFee(baseFee, pricing, primaryId, additionalIds);
         var diff   = Math.round((newFee - originalFee) * 100) / 100;
 
+        var isAdminMode = !!panel.data('is_admin_edit');
         var diffHtml = diff > 0.005
-            ? '<span style="color:#d63638;font-weight:600">+ R ' + diff.toFixed(2) + ' owed — upload proof of payment below</span>'
+            ? '<span style="color:#d63638;font-weight:600">+ R ' + diff.toFixed(2) + ' owed'
+              + (isAdminMode ? ' — upload PoP below or request from entrant' : ' — upload proof of payment below')
+              + '</span>'
             : '<span style="color:#27ae60;font-weight:600">No additional payment required</span>';
 
         var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
@@ -1383,7 +1496,9 @@ jQuery(function ($) {
         }
     }
 
-    function renderEntryEditPanel(card, data) {
+    window.mscRenderEntryEditPanel = renderEntryEditPanel;
+
+    function renderEntryEditPanel(container, data, useWrap) {
         var reg         = data.reg;
         var classes     = data.event_classes;
         var pricing     = data.pricing;
@@ -1485,9 +1600,21 @@ jQuery(function ($) {
 
         var primaryVehicle = currentVehicleMap[currentPrimary] || (vehicles.length ? vehicles[0].id : 0);
 
+        var isAdminEdit = !!data.is_admin_edit;
         var panel = $('<div class="msc-entry-edit-panel" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:8px;padding:20px;margin-top:10px"></div>');
         var pitCrew1 = data.pit_crew_1 || '';
         var pitCrew2 = data.pit_crew_2 || '';
+        var popLabel = isAdminEdit
+            ? 'Proof of Payment <span style="font-weight:normal;color:#888">(optional — or request from entrant below)</span>'
+            : 'Proof of Payment for amount owed <span style="color:#d63638">*</span>';
+        var requestPopRow = isAdminEdit
+            ? '<div id="msc-edit-request-pop-wrap" style="margin-bottom:16px">'
+              + '  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+              + '    <input type="checkbox" id="msc-edit-request-pop"> Request PoP from entrant'
+              + '  </label>'
+              + '  <p style="font-size:12px;color:#888;margin:4px 0 0">Check this to send the entrant a link to upload proof of payment.</p>'
+              + '</div>'
+            : '';
 
         panel.html(
             '<h4 style="margin:0 0 16px">Edit Entry: ' + $('<span>').text(reg.event_name).html() + '</h4>'
@@ -1508,10 +1635,11 @@ jQuery(function ($) {
             + '<div id="msc-edit-conditions-wrap"></div>'
             + '<div id="msc-edit-fee-summary" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px;margin-bottom:16px"></div>'
             + '<div id="msc-edit-pop-wrap" style="display:none;margin-bottom:16px">'
-            + '  <label style="font-weight:600">Proof of Payment for amount owed <span style="color:#d63638">*</span></label>'
+            + '  <label style="font-weight:600">' + popLabel + '</label>'
             + '  <input type="file" id="msc-edit-pop-file" accept="application/pdf,image/png,image/jpeg" style="display:block;margin-top:6px">'
             + '  <p style="font-size:12px;color:#888;margin:4px 0 0">PDF, PNG or JPG, max 5MB.</p>'
             + '</div>'
+            + requestPopRow
             + '<div style="margin-bottom:16px">'
             + '  <p class="msc-reg-section-label" style="margin-bottom:8px">Pit Crew</p>'
             + '  <div class="msc-reg-grid-2">'
@@ -1522,15 +1650,23 @@ jQuery(function ($) {
             + '  </div>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'
+            + '<div id="msc-edit-pop-link-wrap" style="display:none;margin-bottom:10px;padding:10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px">'
+            + '  <p style="margin:0 0 6px;font-size:13px;font-weight:600">PoP requested from entrant. Copy and send this link:</p>'
+            + '  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            + '    <input type="text" id="msc-edit-pop-link-input" readonly style="flex:1;font-size:12px;padding:4px 6px;border:1px solid #ccc;border-radius:4px">'
+            + '    <button type="button" id="msc-edit-copy-pop-link" class="msc-btn msc-btn-sm msc-btn-outline">Copy</button>'
+            + '  </div>'
+            + '</div>'
             + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
             + '  <button type="button" id="msc-edit-save-btn" class="msc-btn" data-reg="' + reg.id + '">Save Changes</button>'
             + '  <button type="button" id="msc-edit-cancel-btn" class="msc-btn msc-btn-outline">Cancel</button>'
             + '</div>'
         );
 
-        panel.data('pricing',      pricing);
-        panel.data('base_fee',     baseFee);
-        panel.data('original_fee', originalFee);
+        panel.data('pricing',       pricing);
+        panel.data('base_fee',      baseFee);
+        panel.data('original_fee',  originalFee);
+        panel.data('is_admin_edit', isAdminEdit);
 
         var currentClassIds = [];
         for (var ci = 0; ci < data.current_classes.length; ci++) {
@@ -1584,7 +1720,11 @@ jQuery(function ($) {
             });
         }
 
-        card.after(panel);
+        if (useWrap) {
+            container.html('').append(panel);
+        } else {
+            container.after(panel);
+        }
         updateEditFeeSummary();
         renderEditConditions();
 

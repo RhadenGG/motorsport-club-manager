@@ -21,6 +21,8 @@ class MSC_Shortcodes {
             'nonce'    => wp_create_nonce('msc_nonce'),
             'loginUrl' => MSC_Auth::login_url(),
             'loggedIn' => is_user_logged_in(),
+            'popRegId' => isset( $_GET['msc_pop_reg'] ) ? absint( $_GET['msc_pop_reg'] ) : 0,
+            'isAdmin'  => false,
         ) );
     }
 
