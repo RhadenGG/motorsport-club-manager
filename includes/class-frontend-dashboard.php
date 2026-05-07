@@ -2744,9 +2744,9 @@ class MSC_Frontend_Dashboard {
                 foreach ( $cv_pairs as $idx => $p ) {
                     $raw_veh  = $p['vehicle_name'];
                     $veh_year = '';
-                    // Only split year into its own value when the Year column is active;
-                    // otherwise keep the full "Year Make Model" string in the Vehicle column.
-                    if ( isset( $active['veh_year'] ) && preg_match( '/^(\d{4})\s+(.+)$/', $raw_veh, $m ) ) {
+                    // Always strip the year prefix from the vehicle name so it never appears in the
+                    // Vehicle column; build_row discards veh_year when that column is not active.
+                    if ( preg_match( '/^(\d{4})\s+(.+)$/', $raw_veh, $m ) ) {
                         $veh_year = $m[1];
                         $raw_veh  = $m[2];
                     }
