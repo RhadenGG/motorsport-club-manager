@@ -127,8 +127,9 @@ class MSC_Admin_Events {
     }
 
     public static function add_meta_boxes() {
-        add_meta_box( 'msc_event_details', 'Event Details', array( __CLASS__, 'meta_box_details' ), 'msc_event', 'normal', 'high' );
-        add_meta_box( 'msc_event_classes', 'Allowed Vehicle Classes', array( __CLASS__, 'meta_box_classes' ), 'msc_event', 'side', 'default' );
+        add_meta_box( 'msc_event_details',       'Event Details',         array( __CLASS__, 'meta_box_details' ),       'msc_event', 'normal', 'high' );
+        add_meta_box( 'msc_event_notifications', 'Entry Notifications',   array( __CLASS__, 'meta_box_notifications' ), 'msc_event', 'normal', 'default' );
+        add_meta_box( 'msc_event_classes',       'Allowed Vehicle Classes', array( __CLASS__, 'meta_box_classes' ),     'msc_event', 'side',   'default' );
     }
 
     public static function meta_box_details( $post ) {
@@ -180,6 +181,59 @@ class MSC_Admin_Events {
         <td colspan="3">
         <textarea name="msc_indemnity_text" id="msc_indemnity_text" rows="6" class="large-text" placeholder="Leave blank to use site-wide default. Site-wide default can be set in Motorsport Club &gt; Settings."><?php echo esc_textarea($d['indemnity_text']); ?></textarea>
         <p class="description">Overrides the global default indemnity text for this event only. Leave blank to use the site-wide default.</p>
+        </td>
+        </tr>
+        </table>
+        <?php
+    }
+
+    public static function meta_box_notifications( $post ) {
+        $notify_author   = get_post_meta( $post->ID, '_msc_notify_author', true );
+        $notify_admins   = get_post_meta( $post->ID, '_msc_notify_admins', true );
+        $notify_creators = get_post_meta( $post->ID, '_msc_notify_event_creators', true );
+        $notify_reps     = get_post_meta( $post->ID, '_msc_notify_class_reps', true );
+        $extra_emails    = get_post_meta( $post->ID, '_msc_notify_extra_emails', true );
+
+        // Default all on when meta has never been saved for this event.
+        if ( $notify_author   === '' ) $notify_author   = '1';
+        if ( $notify_admins   === '' ) $notify_admins   = '1';
+        if ( $notify_creators === '' ) $notify_creators = '1';
+        if ( $notify_reps     === '' ) $notify_reps     = '1';
+
+        $author = get_userdata( $post->post_author );
+        $author_label = $author ? esc_html( $author->display_name . ' (' . $author->user_email . ')' ) : 'Event Author';
+        ?>
+        <p class="description" style="margin-top:0">Choose who receives an email when a new entry is submitted for this event.</p>
+        <table class="form-table">
+        <tr>
+        <th style="width:160px">Notify</th>
+        <td>
+            <label style="display:block;margin-bottom:6px">
+                <input type="checkbox" name="msc_notify_author" value="1" <?php checked( $notify_author, '1' ); ?>>
+                <strong>Event Author</strong>
+                <span class="description"> — <?php echo $author_label; ?></span>
+            </label>
+            <label style="display:block;margin-bottom:6px">
+                <input type="checkbox" name="msc_notify_admins" value="1" <?php checked( $notify_admins, '1' ); ?>>
+                <strong>Site Administrators</strong>
+            </label>
+            <label style="display:block;margin-bottom:6px">
+                <input type="checkbox" name="msc_notify_event_creators" value="1" <?php checked( $notify_creators, '1' ); ?>>
+                <strong>Event Creators</strong>
+            </label>
+            <label style="display:block">
+                <input type="checkbox" name="msc_notify_class_reps" value="1" <?php checked( $notify_reps, '1' ); ?>>
+                <strong>Class Representatives</strong>
+                <span class="description"> — each rep is emailed only for entries in their assigned class</span>
+            </label>
+        </td>
+        </tr>
+        <tr>
+        <th><label for="msc_notify_extra_emails">Additional recipients</label></th>
+        <td>
+            <textarea name="msc_notify_extra_emails" id="msc_notify_extra_emails" rows="3" class="large-text"
+                placeholder="<?php esc_attr_e( "one@example.com\ntwo@example.com" ); ?>"><?php echo esc_textarea( $extra_emails ); ?></textarea>
+            <p class="description">One email address per line. Always notified regardless of the checkboxes above.</p>
         </td>
         </tr>
         </table>
@@ -293,6 +347,13 @@ class MSC_Admin_Events {
         } else {
             delete_post_meta( $post_id, '_msc_pricing_set_id' );
         }
+
+        // Notification settings — checkboxes: absent from POST when unchecked.
+        update_post_meta( $post_id, '_msc_notify_author',          isset( $_POST['msc_notify_author'] )          ? '1' : '0' );
+        update_post_meta( $post_id, '_msc_notify_admins',          isset( $_POST['msc_notify_admins'] )          ? '1' : '0' );
+        update_post_meta( $post_id, '_msc_notify_event_creators',  isset( $_POST['msc_notify_event_creators'] )  ? '1' : '0' );
+        update_post_meta( $post_id, '_msc_notify_class_reps',      isset( $_POST['msc_notify_class_reps'] )      ? '1' : '0' );
+        update_post_meta( $post_id, '_msc_notify_extra_emails',    sanitize_textarea_field( wp_unslash( $_POST['msc_notify_extra_emails'] ?? '' ) ) );
     }
 
     public static function columns( $cols ) {

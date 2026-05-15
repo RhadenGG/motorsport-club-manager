@@ -400,6 +400,61 @@ class MSC_Indemnity {
     }
 
     /**
+     * Send a plain "new entry received" notification to admin recipients for entries
+     * where the driver brings a physical indemnity copy (no PDF to attach).
+     * Uses the same per-event recipient list as send_indemnity_to_admins().
+     * Returns array( 'sent' => string[], 'failed' => string[] ).
+     */
+    public static function send_entry_notification_to_admins( $reg_id, array $exclude = array() ) {
+        global $wpdb;
+        $reg = $wpdb->get_row( $wpdb->prepare(
+            "SELECT r.*, u.display_name as user_name, u.user_email, p.post_title as event_name, p.post_author as event_author
+             FROM {$wpdb->prefix}msc_registrations r
+             LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
+             LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
+             WHERE r.id = %d", $reg_id
+        ) );
+        if ( ! $reg ) return array( 'sent' => array(), 'failed' => array() );
+
+        $user_name   = esc_html( $reg->user_name );
+        $event_name  = esc_html( $reg->event_name );
+        $headers     = MSC_Emails::get_headers();
+        $subject     = 'New Entry: ' . $reg->event_name . ' - ' . $reg->user_name;
+
+        // Attach PoP file(s) when present, same as mail_to_admins() for signed entries.
+        $attachments = array();
+        foreach ( array( 'pop_file_id', 'pop_file_id_2' ) as $col ) {
+            if ( ! empty( $reg->$col ) ) {
+                $path = get_attached_file( (int) $reg->$col );
+                if ( $path && file_exists( $path ) ) {
+                    $attachments[] = $path;
+                }
+            }
+        }
+        $pop_note = ! empty( $attachments ) ? ' Proof of payment is attached.' : '';
+
+        $message = "
+            <p>A new event entry has been received.</p>
+            <p><strong>Participant:</strong> {$user_name}<br>
+            <strong>Event:</strong> {$event_name}<br>
+            <strong>Indemnity:</strong> Physical copy — will be provided on the day.{$pop_note}</p>
+            <p><a href='" . esc_url( admin_url( 'admin.php?page=msc-registrations' ) ) . "'>View in admin dashboard &rarr;</a></p>";
+
+        $recipients = self::get_admin_recipients( (int) $reg->event_id );
+        $sent   = array();
+        $failed = array();
+        foreach ( $recipients as $recipient ) {
+            if ( in_array( $recipient, $exclude, true ) ) continue;
+            if ( MSC_Emails::send_mail( $recipient, $subject, MSC_Emails::wrap( 'New Entry', $message ), $headers, $attachments ) ) {
+                $sent[] = $recipient;
+            } else {
+                $failed[] = $recipient;
+            }
+        }
+        return array( 'sent' => $sent, 'failed' => $failed );
+    }
+
+    /**
      * Send the indemnity PDF + PoP to admins/event-creator only.
      * $exclude — email addresses that have already received this notification;
      *            they are skipped so retries never duplicate a successful delivery.
@@ -456,6 +511,63 @@ class MSC_Indemnity {
     }
 
     /**
+     * Build the list of admin/staff recipients for a given event based on its
+     * per-event notification settings (_msc_notify_admins, _msc_notify_event_creators,
+     * _msc_notify_extra_emails). All three default to on when not yet explicitly saved.
+     */
+    private static function get_admin_recipients( $event_id ) {
+        $notify_author   = get_post_meta( $event_id, '_msc_notify_author', true );
+        $notify_admins   = get_post_meta( $event_id, '_msc_notify_admins', true );
+        $notify_creators = get_post_meta( $event_id, '_msc_notify_event_creators', true );
+        $extra_raw       = get_post_meta( $event_id, '_msc_notify_extra_emails', true );
+
+        if ( $notify_author   === '' ) $notify_author   = '1';
+        if ( $notify_admins   === '' ) $notify_admins   = '1';
+        if ( $notify_creators === '' ) $notify_creators = '1';
+
+        $recipients = array();
+
+        if ( $notify_author === '1' ) {
+            $event = get_post( $event_id );
+            if ( $event ) {
+                $author = get_userdata( $event->post_author );
+                if ( $author && $author->user_email ) {
+                    $recipients[] = $author->user_email;
+                }
+            }
+        }
+
+        if ( $notify_admins === '1' ) {
+            // Always include the configured site admin email (Settings → General) — this
+            // may be a shared operational inbox not attached to any user account.
+            $site_admin_email = get_option( 'admin_email' );
+            if ( $site_admin_email ) {
+                $recipients[] = $site_admin_email;
+            }
+            foreach ( get_users( array( 'role' => 'administrator', 'fields' => array( 'user_email' ) ) ) as $u ) {
+                $recipients[] = $u->user_email;
+            }
+        }
+
+        if ( $notify_creators === '1' ) {
+            foreach ( get_users( array( 'role' => 'msc_event_creator', 'fields' => array( 'user_email' ) ) ) as $u ) {
+                $recipients[] = $u->user_email;
+            }
+        }
+
+        if ( ! empty( $extra_raw ) ) {
+            foreach ( preg_split( '/[\r\n]+/', $extra_raw ) as $line ) {
+                $email = sanitize_email( trim( $line ) );
+                if ( is_email( $email ) ) {
+                    $recipients[] = $email;
+                }
+            }
+        }
+
+        return array_values( array_unique( array_filter( $recipients ) ) );
+    }
+
+    /**
      * Send admin indemnity notification to each applicable recipient.
      * $exclude — addresses already notified on a previous attempt; skipped here.
      * Returns array( 'sent' => string[], 'failed' => string[] ) so the caller can
@@ -483,12 +595,7 @@ class MSC_Indemnity {
             <p><a href='" . esc_url( admin_url( 'admin.php?page=msc-registrations' ) ) . "'>View in admin dashboard &rarr;</a></p>";
         $subject = 'New Entry: ' . $reg->event_name . ' - ' . $reg->user_name;
 
-        $admin_email  = get_option( 'admin_email' );
-        $recipients   = array( $admin_email );
-        $event_author = get_user_by( 'id', $reg->event_author );
-        if ( $event_author && $event_author->user_email && $event_author->user_email !== $admin_email ) {
-            $recipients[] = $event_author->user_email;
-        }
+        $recipients = self::get_admin_recipients( (int) $reg->event_id );
 
         $sent   = array();
         $failed = array();

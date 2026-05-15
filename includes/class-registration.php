@@ -631,14 +631,18 @@ class MSC_Registration {
         $sub_status          = $reg->submission_status ?: $reg->status;
         $needs_confirmed     = ( $reg->status === 'confirmed' );
         $needs_indemnity     = ( $reg->indemnity_method === 'signed' );
-        $class_rep_email_map = self::get_class_rep_email_map( $reg_id );
-        $needs_class_reps    = ! empty( $class_rep_email_map );
+        $class_rep_email_map  = self::get_class_rep_email_map( $reg_id );
+        $class_reps_enabled   = get_post_meta( (int) $reg->event_id, '_msc_notify_class_reps', true ) !== '0';
+        $needs_class_reps     = ! empty( $class_rep_email_map ) && $class_reps_enabled;
 
         // Skip if every applicable notification is already done.
+        // notif_admin is always required: admins are notified for every entry type.
+        // For signed indemnity the email includes the PDF; for physical copy it is a
+        // plain entry summary. notif_indemnity (participant PDF) is signed-only.
         $any_pending = ! $reg->notif_received
             || ( $needs_confirmed && ! $reg->notif_confirmed )
             || ( $needs_indemnity && ! $reg->notif_indemnity )
-            || ( $needs_indemnity && ! $reg->notif_admin )
+            || ! $reg->notif_admin
             || ( $needs_class_reps && ! $reg->notif_class_reps );
 
         if ( ! $any_pending ) {
@@ -710,11 +714,11 @@ class MSC_Registration {
             }
         }
 
-        // ── Indemnity PDF + PoP to admins/event-creator ───────────────
-        // notif_admin_sent (JSON array) records which addresses already received
-        // the email so partial failures can be retried without duplicating
-        // deliveries to the recipients that already succeeded.
-        if ( $needs_indemnity && ! $reg->notif_admin ) {
+        // ── Admin entry notification ───────────────────────────────────
+        // Sent for every entry type. For signed indemnity the email includes the
+        // signed PDF + PoP. For physical-copy entries a plain summary is sent.
+        // notif_admin_sent (JSON array) tracks per-recipient delivery for retry dedup.
+        if ( ! $reg->notif_admin ) {
             try {
                 $already_sent = array();
                 if ( ! empty( $reg->notif_admin_sent ) ) {
@@ -724,7 +728,9 @@ class MSC_Registration {
                     }
                 }
 
-                $result = MSC_Indemnity::send_indemnity_to_admins( $reg_id, $already_sent );
+                $result = $needs_indemnity
+                    ? MSC_Indemnity::send_indemnity_to_admins( $reg_id, $already_sent )
+                    : MSC_Indemnity::send_entry_notification_to_admins( $reg_id, $already_sent );
 
                 if ( ! empty( $result['sent'] ) ) {
                     $all_sent_now = array_values( array_unique( array_merge( $already_sent, $result['sent'] ) ) );
@@ -741,7 +747,7 @@ class MSC_Registration {
                 if ( empty( $result['failed'] ) ) {
                     $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_admin' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
                     $reg->notif_admin = 1;
-                    MSC_Logger::info( 'Notifications', 'notif_admin sent', array( 'reg_id' => $reg_id ) );
+                    MSC_Logger::info( 'Notifications', 'notif_admin sent', array( 'reg_id' => $reg_id, 'method' => $reg->indemnity_method ) );
                 } else {
                     MSC_Logger::warning( 'Notifications', 'notif_admin partial failure', array( 'reg_id' => $reg_id, 'failed' => $result['failed'] ) );
                 }
@@ -801,7 +807,7 @@ class MSC_Registration {
         $all_done = $reg->notif_received
             && ( ! $needs_confirmed || $reg->notif_confirmed )
             && ( ! $needs_indemnity || $reg->notif_indemnity )
-            && ( ! $needs_indemnity || $reg->notif_admin )
+            && $reg->notif_admin
             && ( ! $needs_class_reps || $reg->notif_class_reps );
 
         if ( $all_done ) {
@@ -817,7 +823,8 @@ class MSC_Registration {
      * 1. Submission-time notifications not yet complete (notifications_sent=0).
      * 2. Entries confirmed after submission whose confirmation email failed
      *    (status=confirmed, notif_confirmed=0) — notifications_sent may already be 1.
-     * Both are capped at 48 hours to avoid endlessly retrying truly stuck rows.
+     * Branch 1 is capped at 48 hours. Branch 2 has no age cap — manual approvals
+     * can happen long after submission and transient mail failures must stay recoverable.
      */
     public static function retry_pending_notifications() {
         global $wpdb;
@@ -830,10 +837,39 @@ class MSC_Registration {
                      AND created_at <= DATE_SUB( UTC_TIMESTAMP(), INTERVAL 2 MINUTE )
                      AND created_at >= DATE_SUB( UTC_TIMESTAMP(), INTERVAL 48 HOUR ) )
                    OR
-                   -- Confirmation email not yet sent for a confirmed entry.
-                   -- No age cap: entries on manual-approval events can be confirmed
-                   -- days or weeks after submission.
-                   ( status = 'confirmed' AND notif_confirmed = 0 )
+                   -- Notifications still pending for a confirmed entry (after the first
+                   -- branch's 48-hour window has closed).  Two sub-cases share the same
+                   -- eligibility guards and are OR-ed inside the outer AND:
+                   --
+                   --  a) notif_confirmed=0 — confirmation email not yet sent.
+                   --     Original purpose: manual-approval flow sent confirmation OK but
+                   --     retry is needed when it failed transiently.
+                   --
+                   --  b) notif_admin=0 AND notifications_sent=0 — admin notification still
+                   --     pending on an otherwise-incomplete batch (e.g. entry was stuck when
+                   --     admin confirmed it; mark_notification_sent set notif_confirmed=1 but
+                   --     the admin notification has never fired).
+                   --     notifications_sent=0 guard: old pre-feature physical-copy rows
+                   --     already have notifications_sent=1, so they are excluded here and
+                   --     will not receive a retroactive admin notification.
+                   --
+                   -- Eligibility filter (applies to both sub-cases):
+                   --  • submission_status='pending' — manual-approval entry; retryable at any
+                   --    age because an admin may have just approved it long after submission.
+                   --  • created_at within 30 days — all other entries (auto-approved, or
+                   --    anything else); bounded so stale transient failures are abandoned.
+                   --    notif_received=1 is NOT used as an independent pass here: it carries
+                   --    no age information and would allow indefinite retries of old confirmed
+                   --    entries whose confirmation or admin-notification step failed once.
+                   ( status = 'confirmed'
+                     AND (
+                       notif_confirmed = 0
+                       OR ( notif_admin = 0 AND notifications_sent = 0 )
+                     )
+                     AND (
+                       submission_status = 'pending'
+                       OR created_at >= DATE_SUB( UTC_TIMESTAMP(), INTERVAL 30 DAY )
+                     ) )
                )
              ORDER BY created_at ASC
              LIMIT 10"

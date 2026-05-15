@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.5 | **License:** GPLv2 or later
+**Current version:** 0.9.6 | **License:** GPLv2 or later
 
 ---
 
@@ -14,6 +14,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Rich event description displayed alongside the featured image on the public event page.
 - Manual or automatic entry approval per event.
 - Close or reopen events from the staff dashboard; closed events lock new entries and enable results entry.
+- **Per-event notification recipients** — an **Entry Notifications** meta box on each event controls who receives staff emails on new submissions: Event Author, Site Administrators, Event Creators, Class Representatives (per-class only), and any freeform additional addresses. All four groups default to enabled; changes take effect immediately without requiring a plugin update.
 - Event cards show **"Enter Now"** for unentered visitors, **"ENTRY CLOSED"** when the registration window has passed (but the event is still upcoming), and **"View your entry"** for already-entered members.
 - Closed events remain visible on the events page after their date passes (they do not silently disappear).
 
@@ -124,17 +125,20 @@ The custom `msc_view_participants` capability gates participant data and indemni
 ### Email Notifications
 | Trigger | Recipients | Attachments |
 |---|---|---|
-| Entry submitted | Entrant | — |
-| Entry submitted | Class rep(s) assigned to the entered class(es) | — |
+| Entry submitted | Entrant ("entry received") | — |
+| Entry submitted | Class rep(s) for the entered class(es) | — |
+| Entry submitted | Configured staff recipients (per-event) | PoP (if paid, physical-copy indemnity) |
 | Indemnity signed | Entrant | Signed indemnity PDF |
-| Indemnity signed | Admin + event creator (deduplicated) | Signed indemnity PDF + PoP |
+| Indemnity signed | Configured staff recipients (per-event) | Signed indemnity PDF + PoP |
 | Entry confirmed | Entrant | — |
 | Entry rejected | Entrant | — |
 | Entry cancelled | Entrant | — |
 
+**Staff recipients** are configured per event via the **Entry Notifications** meta box: Event Author, Site Administrators (including the WP administration email), Event Creators, Class Representatives (per-class only), and any freeform additional addresses. All groups default to enabled for new and existing events.
+
 Notification delivery is **asynchronous** — emails are dispatched via WP-Cron immediately after the registration HTTP response is returned to the browser, so slow SMTP or PDF generation never causes a submission failure. On installations with `DISABLE_WP_CRON` set, delivery falls back to synchronous sending within the same request.
 
-A background retry job runs every 5 minutes and re-attempts any notifications that failed (SMTP error, exception during PDF generation, etc.). Each notification type is tracked independently so a retry only contacts recipients that have not yet received that specific email — preventing duplicates when a single failed recipient causes a partial delivery. The retry window for submission-time notifications is 48 hours; confirmation email retries have no age cap, since entries on manual-approval events can be confirmed days or weeks after submission.
+A background retry job runs every 5 minutes and re-attempts any notifications that failed (SMTP error, exception during PDF generation, etc.). Each notification type is tracked independently so a retry only contacts recipients that have not yet received that specific email — preventing duplicates when a single failed recipient causes a partial delivery. The retry window for submission-time notifications is 48 hours. For confirmed entries, manual-approval retries (entries submitted as pending then later approved) have no age cap; auto-approved entry retries are bounded to 30 days.
 
 ---
 
