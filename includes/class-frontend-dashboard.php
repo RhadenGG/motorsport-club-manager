@@ -22,6 +22,7 @@ class MSC_Frontend_Dashboard {
         add_action( 'wp_ajax_msc_fe_rename_class',       array( __CLASS__, 'ajax_rename_class' ) );
         add_action( 'wp_ajax_msc_fe_delete_class',       array( __CLASS__, 'ajax_delete_class' ) );
         add_action( 'wp_ajax_msc_fe_save_class_conds',   array( __CLASS__, 'ajax_save_class_conditions' ) );
+        add_action( 'wp_ajax_msc_fe_save_class_reps',    array( __CLASS__, 'ajax_save_class_reps' ) );
 
         // AJAX: Registrations
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
@@ -2148,6 +2149,7 @@ class MSC_Frontend_Dashboard {
 
     private static function tab_vehicle_classes() {
         $classes_by_type = MSC_Taxonomies::get_classes_by_type();
+        $class_rep_users = get_users( array( 'role' => 'msc_class_rep' ) );
         $nonce           = wp_create_nonce( 'msc_nonce' );
         $ajax_url        = admin_url( 'admin-ajax.php' );
         ?>
@@ -2186,17 +2188,22 @@ class MSC_Frontend_Dashboard {
                 <p style="color:#888;margin:0">No <?php echo esc_html($type); ?> classes yet.</p>
                 <?php else : ?>
                 <table class="msc-dash-table" style="width:100%">
-                    <thead><tr><th>Class Name</th><th style="width:160px">Actions</th></tr></thead>
+                    <thead><tr><th>Class Name</th><th style="width:220px">Actions</th></tr></thead>
                     <tbody>
                     <?php foreach ( $classes as $term_id => $name ) :
-                        $existing_conds = get_term_meta( $term_id, 'msc_class_conditions', true ) ?: '[]';
-                        $has_conds      = $existing_conds !== '[]' && $existing_conds !== '';
+                        $existing_conds  = get_term_meta( $term_id, 'msc_class_conditions', true ) ?: '[]';
+                        $has_conds       = $existing_conds !== '[]' && $existing_conds !== '';
+                        $assigned_rep_ids = MSC_Taxonomies::get_class_rep_user_ids( $term_id );
+                        $has_reps        = ! empty( $assigned_rep_ids );
                     ?>
                     <tr data-term-id="<?php echo esc_attr($term_id); ?>">
                         <td>
                             <span class="vc-name-display"><?php echo esc_html($name); ?></span>
                             <?php if ( $has_conds ) : ?>
                             <span class="vc-cond-indicator" style="font-size:11px;color:#2271b1;margin-left:6px" title="Has conditions">&#9679; Conditions set</span>
+                            <?php endif; ?>
+                            <?php if ( $has_reps ) : ?>
+                            <span class="vc-reps-indicator" style="font-size:11px;color:#27ae60;margin-left:6px" title="Has class reps">&#9679; <?php echo count( $assigned_rep_ids ); ?> rep<?php echo count( $assigned_rep_ids ) !== 1 ? 's' : ''; ?></span>
                             <?php endif; ?>
                             <input type="text" class="vc-name-input" value="<?php echo esc_attr($name); ?>"
                                    style="display:none;width:100%;box-sizing:border-box">
@@ -2208,6 +2215,7 @@ class MSC_Frontend_Dashboard {
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cancel-btn" style="display:none">Cancel</button>
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cond-btn"
                                         data-existing="<?php echo esc_attr( $existing_conds ); ?>">Conditions</button>
+                                <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-reps-btn">Reps</button>
                                 <button type="button" class="msc-btn msc-btn-sm msc-btn-danger vc-delete-btn">Delete</button>
                             </div>
                         </td>
@@ -2227,6 +2235,37 @@ class MSC_Frontend_Dashboard {
                                     <button type="button" class="msc-btn msc-btn-sm vc-cond-save-btn">Save Conditions</button>
                                     <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-cond-close-btn">Cancel</button>
                                     <span class="vc-cond-msg" style="font-size:12px"></span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="vc-reps-row" style="display:none">
+                        <td colspan="2" style="padding:14px 16px;background:#f0faf4;border-top:none">
+                            <div class="vc-reps-builder" style="max-width:680px">
+                                <p style="margin:0 0 10px;font-weight:700;font-size:13px;color:var(--msc-dark)">
+                                    Class Reps for <em class="vc-reps-classname"><?php echo esc_html($name); ?></em>
+                                </p>
+                                <p style="margin:0 0 12px;font-size:12px;color:#666">
+                                    Selected reps receive an email notification when someone submits an entry for this class.
+                                </p>
+                                <?php if ( empty( $class_rep_users ) ) : ?>
+                                <p style="color:#888;margin:0 0 12px">No users with the Class Rep role found. Assign the role to a user first.</p>
+                                <?php else : ?>
+                                <div class="vc-reps-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+                                    <?php foreach ( $class_rep_users as $rep ) : ?>
+                                    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+                                        <input type="checkbox" class="vc-rep-cb" value="<?php echo esc_attr( $rep->ID ); ?>"
+                                               <?php checked( in_array( (int) $rep->ID, $assigned_rep_ids, true ) ); ?>>
+                                        <span><?php echo esc_html( $rep->display_name ); ?></span>
+                                        <span style="color:#888;font-size:12px">&lt;<?php echo esc_html( $rep->user_email ); ?>&gt;</span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endif; ?>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <button type="button" class="msc-btn msc-btn-sm vc-reps-save-btn"<?php echo empty( $class_rep_users ) ? ' disabled' : ''; ?>>Save Reps</button>
+                                    <button type="button" class="msc-btn msc-btn-sm msc-btn-outline vc-reps-close-btn">Cancel</button>
+                                    <span class="vc-reps-msg" style="font-size:12px"></span>
                                 </div>
                             </div>
                         </td>
@@ -2316,6 +2355,67 @@ class MSC_Frontend_Dashboard {
                 return data;
             }
 
+            // ── Class reps: open panel ─────────────────────────────────────
+            $(document).on('click', '.vc-reps-btn', function() {
+                var $btn   = $(this);
+                var $row   = $btn.closest('tr');
+                var $panel = $row.next('.vc-cond-row').next('.vc-reps-row');
+                var isOpen = $panel.is(':visible');
+
+                $('.vc-cond-row:visible, .vc-reps-row:visible').hide();
+                if (isOpen) return;
+                $panel.show();
+                $panel[0].scrollIntoView({behavior:'smooth', block:'nearest'});
+            });
+
+            // ── Class reps: close panel ─────────────────────────────────────
+            $(document).on('click', '.vc-reps-close-btn', function() {
+                $(this).closest('.vc-reps-row').hide();
+            });
+
+            // ── Class reps: save ────────────────────────────────────────────
+            $(document).on('click', '.vc-reps-save-btn', function() {
+                var $btn      = $(this);
+                var $panel    = $btn.closest('.vc-reps-row');
+                var $classRow = $panel.prev('.vc-cond-row').prev('tr');
+                var termId    = $classRow.data('term-id');
+                var $msg      = $panel.find('.vc-reps-msg');
+                var userIds   = [];
+                $panel.find('.vc-rep-cb:checked').each(function() { userIds.push($(this).val()); });
+
+                $btn.prop('disabled', true).text('Saving…');
+                $.post(ajaxUrl, {
+                    action:   'msc_fe_save_class_reps',
+                    nonce:    nonce,
+                    term_id:  termId,
+                    user_ids: userIds
+                }, function(res) {
+                    $btn.prop('disabled', false).text('Save Reps');
+                    if (res.success) {
+                        $msg.css('color','green').text('Saved!');
+                        // Update indicator dot on class row
+                        var $ind = $classRow.find('.vc-reps-indicator');
+                        if (userIds.length) {
+                            var label = userIds.length + ' rep' + (userIds.length !== 1 ? 's' : '');
+                            if ($ind.length) {
+                                $ind.text('● ' + label);
+                            } else {
+                                $classRow.find('.vc-name-display').after(
+                                    $('<span>').addClass('vc-reps-indicator')
+                                        .css({fontSize:'11px',color:'#27ae60',marginLeft:'6px'})
+                                        .attr('title','Has class reps').text('● ' + label)
+                                );
+                            }
+                        } else {
+                            $ind.remove();
+                        }
+                        setTimeout(function(){ $msg.text(''); }, 2500);
+                    } else {
+                        $msg.css('color','red').text(res.data.message || 'Error saving.');
+                    }
+                });
+            });
+
             // ── Conditions: open panel ─────────────────────────────────────
             $(document).on('click', '.vc-cond-btn', function() {
                 var $btn    = $(this);
@@ -2324,7 +2424,7 @@ class MSC_Frontend_Dashboard {
                 var isOpen  = $panel.is(':visible');
 
                 // Close all other open panels first
-                $('.vc-cond-row:visible').hide();
+                $('.vc-cond-row:visible, .vc-reps-row:visible').hide();
 
                 if (isOpen) return; // toggle off
 
@@ -2433,7 +2533,7 @@ class MSC_Frontend_Dashboard {
                 var row = $(this).closest('tr');
                 row.find('.vc-name-display').hide();
                 row.find('.vc-name-input').show().focus();
-                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').hide();
+                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn, .vc-reps-btn').hide();
                 row.find('.vc-save-btn, .vc-cancel-btn').show();
             });
 
@@ -2443,7 +2543,7 @@ class MSC_Frontend_Dashboard {
                 var original = row.find('.vc-name-display').text().trim();
                 row.find('.vc-name-input').val(original).hide();
                 row.find('.vc-name-display').show();
-                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').show();
+                row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn, .vc-reps-btn').show();
                 row.find('.vc-save-btn, .vc-cancel-btn').hide();
             });
 
@@ -2460,9 +2560,11 @@ class MSC_Frontend_Dashboard {
                     if (res.success) {
                         row.find('.vc-name-display').text(newName).show();
                         row.find('.vc-name-input').hide();
-                        row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn').show();
+                        row.find('.vc-rename-btn, .vc-delete-btn, .vc-cond-btn, .vc-reps-btn').show();
                         row.find('.vc-save-btn, .vc-cancel-btn').hide();
-                        row.next('.vc-cond-row').find('.vc-cond-classname').text(newName);
+                        var $condRow = row.next('.vc-cond-row');
+                        $condRow.find('.vc-cond-classname').text(newName);
+                        $condRow.next('.vc-reps-row').find('.vc-reps-classname').text(newName);
                         vcMsg('Class renamed.', true);
                     } else {
                         vcMsg(res.data.message || 'Error.', false);
@@ -2481,7 +2583,8 @@ class MSC_Frontend_Dashboard {
                 $.post(ajaxUrl, { action: 'msc_fe_delete_class', nonce: nonce, term_id: termId }, function(res){
                     if (res.success) {
                         var $condRow = row.next('.vc-cond-row');
-                        row.add($condRow).fadeOut(300, function(){ $(this).remove(); });
+                        var $repsRow = $condRow.next('.vc-reps-row');
+                        row.add($condRow).add($repsRow).fadeOut(300, function(){ $(this).remove(); });
                         vcMsg('Class deleted.', true);
                     } else {
                         btn.prop('disabled', false).text('Delete');
@@ -2607,6 +2710,34 @@ class MSC_Frontend_Dashboard {
         }
 
         wp_send_json_success( array( 'message' => 'Conditions saved.', 'count' => count( $clean ) ) );
+    }
+
+    // ─── AJAX: Save Class Reps ────────────────────────────────────────────────
+
+    public static function ajax_save_class_reps() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        $term_id = absint( $_POST['term_id'] ?? 0 );
+        if ( ! $term_id ) wp_send_json_error( array( 'message' => 'Invalid class.' ) );
+
+        $term = get_term( $term_id, 'msc_vehicle_class' );
+        if ( ! $term || is_wp_error( $term ) ) wp_send_json_error( array( 'message' => 'Class not found.' ) );
+
+        $valid_rep_ids = array_map( 'intval', get_users( array( 'role' => 'msc_class_rep', 'fields' => 'ID' ) ) );
+        $raw_ids       = isset( $_POST['user_ids'] ) && is_array( $_POST['user_ids'] ) ? (array) $_POST['user_ids'] : array();
+        $clean_ids     = array_values( array_filter( array_intersect(
+            array_map( 'absint', $raw_ids ),
+            $valid_rep_ids
+        ) ) );
+
+        if ( ! empty( $clean_ids ) ) {
+            update_term_meta( $term_id, 'msc_class_rep_users', $clean_ids );
+        } else {
+            delete_term_meta( $term_id, 'msc_class_rep_users' );
+        }
+
+        wp_send_json_success( array( 'message' => 'Class reps saved.', 'count' => count( $clean_ids ) ) );
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────────

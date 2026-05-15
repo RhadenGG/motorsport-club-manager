@@ -204,6 +204,60 @@ class MSC_Emails {
         self::send_mail( $reg->user_email, "Entry Not Accepted - {$reg->event_name}", self::wrap( 'Entry Not Accepted', $body ), $headers );
     }
 
+    /**
+     * Notify a class rep that a new entry was submitted for their class(es).
+     *
+     * @param int    $reg_id    Registration ID.
+     * @param string $to_email  Recipient email address.
+     * @param string $rep_name  Recipient display name.
+     * @param array  $entries   Per-class entries: [['class' => string, 'vehicle' => string], ...]
+     *                          Each entry uses the vehicle assigned to that specific class, not the
+     *                          registration's primary vehicle, so multi-vehicle registrations are accurate.
+     */
+    public static function send_class_rep_notification( $reg_id, $to_email, $rep_name, $entries ) {
+        $reg = self::get_reg( $reg_id );
+        if ( ! $reg ) return false;
+
+        $entrant_name = esc_html( $reg->user_name );
+        $event_name   = esc_html( $reg->event_name );
+        $rep_name_esc = esc_html( $rep_name );
+        $event_dt     = get_post_meta( $reg->event_id, '_msc_event_date', true );
+        $date_str     = $event_dt ? date_i18n( get_option( 'date_format' ) . ' @ ' . get_option( 'time_format' ), strtotime( $event_dt ) ) : 'TBC';
+        $fee_str      = $reg->entry_fee > 0 ? 'R ' . number_format( (float) $reg->entry_fee, 2 ) : 'Free';
+        $site_name    = get_bloginfo( 'name' );
+
+        // Summary of class names for the intro line and subject
+        $class_list = implode( ', ', array_map( function( $e ) { return esc_html( $e['class'] ); }, $entries ) );
+
+        // Per-class rows: each shows the vehicle entered in that class
+        $entry_rows = '';
+        foreach ( $entries as $entry ) {
+            $entry_rows .= "<tr>"
+                . "<td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>" . esc_html( $entry['class'] ) . "</td>"
+                . "<td style='padding:10px;border:1px solid #f1f1f1'>" . esc_html( $entry['vehicle'] ) . "</td>"
+                . "</tr>";
+        }
+
+        $body = "
+        <p>Hi {$rep_name_esc},</p>
+        <p>A new entry has been submitted for <strong>{$event_name}</strong> in your class(es): <strong>{$class_list}</strong>.</p>
+        <table style='width:100%;border-collapse:collapse;margin:20px 0;background:#fdfdfd'>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888;width:120px'>Entrant</td><td style='padding:10px;border:1px solid #f1f1f1;font-weight:bold'>{$entrant_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Event</td><td style='padding:10px;border:1px solid #f1f1f1'>{$event_name}</td></tr>
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Date</td><td style='padding:10px;border:1px solid #f1f1f1'>{$date_str}</td></tr>
+            {$entry_rows}
+            <tr><td style='padding:10px;border:1px solid #f1f1f1;color:#888'>Entry Fee</td><td style='padding:10px;border:1px solid #f1f1f1'>{$fee_str}</td></tr>
+        </table>
+        <p>Regards,<br>" . esc_html( $site_name ) . "</p>";
+
+        return self::send_mail(
+            $to_email,
+            "New Entry in Your Class - {$reg->event_name}",
+            self::wrap( 'New Class Entry', $body ),
+            self::get_headers()
+        );
+    }
+
     public static function send_cancellation_by_admin( $reg_id ) {
         $reg = self::get_reg( $reg_id );
         if ( ! $reg || ! $reg->user_email ) return;

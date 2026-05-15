@@ -615,9 +615,9 @@ class MSC_Registration {
             MSC_Logger::info( 'Notifications', 'Entry is ' . $reg->status . ' — suppressing pending notifications', array( 'reg_id' => $reg_id ) );
             $wpdb->update(
                 "{$wpdb->prefix}msc_registrations",
-                array( 'notifications_sent' => 1, 'notif_received' => 1, 'notif_confirmed' => 1, 'notif_indemnity' => 1, 'notif_admin' => 1 ),
+                array( 'notifications_sent' => 1, 'notif_received' => 1, 'notif_confirmed' => 1, 'notif_indemnity' => 1, 'notif_admin' => 1, 'notif_class_reps' => 1 ),
                 array( 'id' => $reg_id ),
-                array( '%d', '%d', '%d', '%d', '%d' ),
+                array( '%d', '%d', '%d', '%d', '%d', '%d' ),
                 array( '%d' )
             );
             return;
@@ -628,15 +628,18 @@ class MSC_Registration {
         // - manually approved entries: the approval path calls send_confirmation() directly
         //   and writes notif_confirmed=1 on success; if that fails, this cron retries it
         // submission_status is kept only to render the correct message in the "received" email.
-        $sub_status      = $reg->submission_status ?: $reg->status;
-        $needs_confirmed = ( $reg->status === 'confirmed' );
-        $needs_indemnity = ( $reg->indemnity_method === 'signed' );
+        $sub_status          = $reg->submission_status ?: $reg->status;
+        $needs_confirmed     = ( $reg->status === 'confirmed' );
+        $needs_indemnity     = ( $reg->indemnity_method === 'signed' );
+        $class_rep_email_map = self::get_class_rep_email_map( $reg_id );
+        $needs_class_reps    = ! empty( $class_rep_email_map );
 
         // Skip if every applicable notification is already done.
         $any_pending = ! $reg->notif_received
             || ( $needs_confirmed && ! $reg->notif_confirmed )
             || ( $needs_indemnity && ! $reg->notif_indemnity )
-            || ( $needs_indemnity && ! $reg->notif_admin );
+            || ( $needs_indemnity && ! $reg->notif_admin )
+            || ( $needs_class_reps && ! $reg->notif_class_reps );
 
         if ( ! $any_pending ) {
             if ( ! $reg->notifications_sent ) {
@@ -747,11 +750,59 @@ class MSC_Registration {
             }
         }
 
+        // ── Class rep entry notification ──────────────────────────────
+        // One email per assigned class rep per unique email address; mirrors the
+        // notif_admin_sent per-recipient dedup pattern for partial-failure retry.
+        if ( $needs_class_reps && ! $reg->notif_class_reps ) {
+            $already_notified = array();
+            if ( ! empty( $reg->notif_class_reps_sent ) ) {
+                $decoded = json_decode( $reg->notif_class_reps_sent, true );
+                if ( is_array( $decoded ) ) $already_notified = $decoded;
+            }
+
+            $newly_sent = array();
+            $cr_failed  = array();
+            foreach ( $class_rep_email_map as $email => $info ) {
+                if ( in_array( $email, $already_notified, true ) ) continue;
+                try {
+                    $sent = MSC_Emails::send_class_rep_notification( $reg_id, $email, $info['name'], $info['entries'] );
+                } catch ( \Throwable $e ) {
+                    $sent = false;
+                    MSC_Logger::error( 'Notifications', 'send_class_rep_notification threw: ' . $e->getMessage(), array( 'reg_id' => $reg_id, 'email' => $email ) );
+                }
+                if ( $sent ) {
+                    $newly_sent[] = $email;
+                } else {
+                    $cr_failed[] = $email;
+                    MSC_Logger::warning( 'Notifications', 'notif_class_reps failed for recipient', array( 'reg_id' => $reg_id, 'email' => $email ) );
+                }
+            }
+
+            if ( ! empty( $newly_sent ) ) {
+                $all_sent_now = array_values( array_unique( array_merge( $already_notified, $newly_sent ) ) );
+                $wpdb->update(
+                    "{$wpdb->prefix}msc_registrations",
+                    array( 'notif_class_reps_sent' => wp_json_encode( $all_sent_now ) ),
+                    array( 'id' => $reg_id ),
+                    array( '%s' ),
+                    array( '%d' )
+                );
+                $reg->notif_class_reps_sent = wp_json_encode( $all_sent_now );
+            }
+
+            if ( empty( $cr_failed ) ) {
+                $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_class_reps' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                $reg->notif_class_reps = 1;
+                MSC_Logger::info( 'Notifications', 'notif_class_reps sent', array( 'reg_id' => $reg_id, 'count' => count( $newly_sent ) ) );
+            }
+        }
+
         // ── Mark complete when every applicable notification has succeeded ─
         $all_done = $reg->notif_received
             && ( ! $needs_confirmed || $reg->notif_confirmed )
             && ( ! $needs_indemnity || $reg->notif_indemnity )
-            && ( ! $needs_indemnity || $reg->notif_admin );
+            && ( ! $needs_indemnity || $reg->notif_admin )
+            && ( ! $needs_class_reps || $reg->notif_class_reps );
 
         if ( $all_done ) {
             $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notifications_sent' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
@@ -795,13 +846,81 @@ class MSC_Registration {
     }
 
     /**
+     * Build a map of email => ['name', 'classes'] for all class reps assigned to the
+     * vehicle classes entered by this registration. Used by send_registration_notifications().
+     * Keyed by email to naturally deduplicate reps assigned to multiple classes.
+     */
+    /**
+     * Build a map of email => ['name', 'entries'] for all class reps assigned to the
+     * vehicle classes entered by this registration. Used by send_registration_notifications().
+     * Keyed by email to naturally deduplicate reps assigned to multiple classes.
+     *
+     * Each entry in 'entries' is ['class' => string, 'vehicle' => string] so the email
+     * can show the vehicle that belongs to each specific class rather than the primary
+     * vehicle on the registration record.
+     */
+    private static function get_class_rep_email_map( $reg_id ) {
+        global $wpdb;
+        $class_rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT class_id, vehicle_id FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d",
+            $reg_id
+        ) );
+        if ( empty( $class_rows ) ) return array();
+
+        // Build class_id => [name, vehicle_label] from the junction rows
+        $class_meta = array();
+        foreach ( $class_rows as $row ) {
+            $cid  = (int) $row->class_id;
+            $term = get_term( $cid, 'msc_vehicle_class' );
+            $class_meta[ $cid ] = array(
+                'name'    => ( $term && ! is_wp_error( $term ) ) ? $term->name : '—',
+                'vehicle' => self::format_vehicle_label( (int) $row->vehicle_id ),
+            );
+        }
+
+        // uid => ['email', 'name', 'entries' => [['class', 'vehicle'], ...]]
+        $uid_map = array();
+        foreach ( $class_rows as $row ) {
+            $cid     = (int) $row->class_id;
+            $rep_ids = MSC_Taxonomies::get_class_rep_user_ids( $cid );
+            foreach ( $rep_ids as $uid ) {
+                if ( ! isset( $uid_map[ $uid ] ) ) {
+                    $user = get_userdata( $uid );
+                    if ( ! $user || ! $user->user_email ) continue;
+                    $uid_map[ $uid ] = array(
+                        'email'   => $user->user_email,
+                        'name'    => $user->display_name,
+                        'entries' => array(),
+                    );
+                }
+                $uid_map[ $uid ]['entries'][] = array(
+                    'class'   => $class_meta[ $cid ]['name'],
+                    'vehicle' => $class_meta[ $cid ]['vehicle'],
+                );
+            }
+        }
+
+        // Key by email; merge entries from duplicate UID→email mappings
+        $result = array();
+        foreach ( $uid_map as $info ) {
+            $email = $info['email'];
+            if ( ! isset( $result[ $email ] ) ) {
+                $result[ $email ] = array( 'name' => $info['name'], 'entries' => array() );
+            }
+            $result[ $email ]['entries'] = array_merge( $result[ $email ]['entries'], $info['entries'] );
+        }
+
+        return $result;
+    }
+
+    /**
      * Mark a single per-notification flag as sent.
      * Called by external paths (e.g. the manual approval handler) that send
      * notifications directly so the retry cron does not re-send them.
      */
     public static function mark_notification_sent( $reg_id, $col ) {
         global $wpdb;
-        $allowed = array( 'notif_received', 'notif_confirmed', 'notif_indemnity', 'notif_admin' );
+        $allowed = array( 'notif_received', 'notif_confirmed', 'notif_indemnity', 'notif_admin', 'notif_class_reps' );
         if ( ! in_array( $col, $allowed, true ) ) return;
         $wpdb->update(
             "{$wpdb->prefix}msc_registrations",

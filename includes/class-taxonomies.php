@@ -38,6 +38,7 @@ class MSC_Taxonomies {
     // ── Term meta UI ──────────────────────────────────────────────────────
 
     public static function add_term_fields() {
+        $class_rep_users = get_users( array( 'role' => 'msc_class_rep' ) );
         ?>
         <div class="form-field">
             <label for="msc_vehicle_type">Vehicle Type</label>
@@ -46,6 +47,21 @@ class MSC_Taxonomies {
                 <option value="Motorcycle">Motorcycle</option>
             </select>
             <p class="description">Which vehicle type does this class belong to?</p>
+        </div>
+        <div class="form-field">
+            <label>Class Reps</label>
+            <?php if ( empty( $class_rep_users ) ) : ?>
+            <p class="description">No users with the Class Rep role found. Assign the Class Rep role to a user first.</p>
+            <?php else : ?>
+            <?php foreach ( $class_rep_users as $rep ) : ?>
+            <label style="display:block;margin-bottom:4px">
+                <input type="checkbox" name="msc_class_rep_users[]" value="<?php echo esc_attr( $rep->ID ); ?>">
+                <?php echo esc_html( $rep->display_name ); ?>
+                <span style="color:#666">&lt;<?php echo esc_html( $rep->user_email ); ?>&gt;</span>
+            </label>
+            <?php endforeach; ?>
+            <?php endif; ?>
+            <p class="description">Selected class reps receive an email notification when someone submits an entry for this class.</p>
         </div>
         <div class="form-field">
             <label>Class Conditions</label>
@@ -61,8 +77,11 @@ class MSC_Taxonomies {
     }
 
     public static function edit_term_fields( $term ) {
-        $type           = get_term_meta( $term->term_id, 'msc_vehicle_type', true ) ?: 'Car';
-        $existing_conds = get_term_meta( $term->term_id, 'msc_class_conditions', true ) ?: '[]';
+        $type            = get_term_meta( $term->term_id, 'msc_vehicle_type', true ) ?: 'Car';
+        $existing_conds  = get_term_meta( $term->term_id, 'msc_class_conditions', true ) ?: '[]';
+        $class_rep_users = get_users( array( 'role' => 'msc_class_rep' ) );
+        $assigned_ids    = get_term_meta( $term->term_id, 'msc_class_rep_users', true );
+        $assigned_ids    = is_array( $assigned_ids ) ? array_map( 'intval', $assigned_ids ) : array();
         ?>
         <tr class="form-field">
             <th scope="row"><label for="msc_vehicle_type">Vehicle Type</label></th>
@@ -72,6 +91,24 @@ class MSC_Taxonomies {
                     <option value="Motorcycle"  <?php selected( $type, 'Motorcycle' ); ?>>Motorcycle</option>
                 </select>
                 <p class="description">Which vehicle type does this class belong to?</p>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th scope="row"><label>Class Reps</label></th>
+            <td>
+                <?php if ( empty( $class_rep_users ) ) : ?>
+                <p class="description">No users with the Class Rep role found. Assign the Class Rep role to a user first.</p>
+                <?php else : ?>
+                <?php foreach ( $class_rep_users as $rep ) : ?>
+                <label style="display:block;margin-bottom:4px">
+                    <input type="checkbox" name="msc_class_rep_users[]" value="<?php echo esc_attr( $rep->ID ); ?>"
+                           <?php checked( in_array( (int) $rep->ID, $assigned_ids, true ) ); ?>>
+                    <?php echo esc_html( $rep->display_name ); ?>
+                    <span style="color:#666">&lt;<?php echo esc_html( $rep->user_email ); ?>&gt;</span>
+                </label>
+                <?php endforeach; ?>
+                <?php endif; ?>
+                <p class="description">Selected class reps receive an email notification when someone submits an entry for this class.</p>
             </td>
         </tr>
         <tr class="form-field">
@@ -95,6 +132,28 @@ class MSC_Taxonomies {
             $type    = sanitize_text_field( wp_unslash( $_POST['msc_vehicle_type'] ) );
             if ( in_array( $type, $allowed, true ) ) {
                 update_term_meta( $term_id, 'msc_vehicle_type', $type );
+            }
+        }
+
+        // Class rep assignments — only touch when our custom form was actually rendered.
+        // msc_vehicle_type is a reliable indicator: it is always submitted by our add/edit
+        // forms but absent from Quick Edit, bulk updates, and programmatic term saves, which
+        // would otherwise silently clear all assigned reps without the user's intent.
+        if ( isset( $_POST['msc_vehicle_type'] ) ) {
+            $valid_rep_ids = array_map( 'intval', get_users( array( 'role' => 'msc_class_rep', 'fields' => 'ID' ) ) );
+            if ( isset( $_POST['msc_class_rep_users'] ) && is_array( $_POST['msc_class_rep_users'] ) ) {
+                $clean_ids = array_values( array_filter( array_intersect(
+                    array_map( 'absint', $_POST['msc_class_rep_users'] ),
+                    $valid_rep_ids
+                ) ) );
+                if ( ! empty( $clean_ids ) ) {
+                    update_term_meta( $term_id, 'msc_class_rep_users', $clean_ids );
+                } else {
+                    delete_term_meta( $term_id, 'msc_class_rep_users' );
+                }
+            } else {
+                // Our form was rendered but no checkboxes were checked — clear all reps.
+                delete_term_meta( $term_id, 'msc_class_rep_users' );
             }
         }
 
@@ -264,6 +323,7 @@ class MSC_Taxonomies {
             $new[ $k ] = $v;
             if ( $k === 'name' ) {
                 $new['vehicle_type'] = 'Vehicle Type';
+                $new['class_reps']   = 'Class Reps';
             }
         }
         return $new;
@@ -273,6 +333,16 @@ class MSC_Taxonomies {
         if ( $column === 'vehicle_type' ) {
             $type = get_term_meta( $term_id, 'msc_vehicle_type', true );
             return $type ? esc_html( $type ) : '—';
+        }
+        if ( $column === 'class_reps' ) {
+            $rep_ids = get_term_meta( $term_id, 'msc_class_rep_users', true );
+            if ( ! is_array( $rep_ids ) || empty( $rep_ids ) ) return '—';
+            $names = array();
+            foreach ( $rep_ids as $uid ) {
+                $user = get_userdata( (int) $uid );
+                if ( $user ) $names[] = esc_html( $user->display_name );
+            }
+            return $names ? implode( ', ', $names ) : '—';
         }
         return $content;
     }
@@ -300,6 +370,12 @@ class MSC_Taxonomies {
     /** Return supported vehicle types (derived from term meta) */
     public static function get_vehicle_types() {
         return array( 'Car', 'Motorcycle' );
+    }
+
+    /** Return user IDs of class reps assigned to a given vehicle class term */
+    public static function get_class_rep_user_ids( $term_id ) {
+        $ids = get_term_meta( (int) $term_id, 'msc_class_rep_users', true );
+        return is_array( $ids ) ? array_map( 'intval', $ids ) : array();
     }
 
     /** Return classes grouped by vehicle type: array( 'Car' => [...], 'Motorcycle' => [...] ) */

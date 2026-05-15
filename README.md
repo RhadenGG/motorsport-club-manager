@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.4 | **License:** GPLv2 or later
+**Current version:** 0.9.5 | **License:** GPLv2 or later
 
 ---
 
@@ -21,6 +21,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Fully dynamic vehicle class taxonomy (`msc_vehicle_class`) — create, rename, and delete classes from the admin UI under **Motorsport Club → Vehicle Classes** or the **Vehicle Classes tab** of the staff dashboard.
 - Each class carries a **Vehicle Type** meta value (Car or Motorcycle), used to filter compatible classes and vehicles per member.
 - Classes are grouped by vehicle type in all entry form dropdowns.
+- **Class Rep assignment** — one or more users with the `msc_class_rep` role can be assigned to each class via the wp-admin Vehicle Classes term edit screen or the **Vehicle Classes tab** of the staff dashboard ("Reps" button per class). When someone submits an entry for that class, the assigned rep(s) receive an automatic email notification listing the entrant's name, the class(es) relevant to that rep, and the vehicle entered in each of those classes.
 - **Per-class entry conditions** — optional declarations attached to a class (managed in wp-admin or the staff dashboard Vehicle Classes tab):
   - **Confirm** — a single checkbox the entrant must tick (e.g., "I accept the supplementary regulations for this class").
   - **Select One** — a radio group; the entrant must choose exactly one option (e.g., tyre specification).
@@ -94,7 +95,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - **Entries tab:** filter by event, status, and/or one or more classes (checkbox dropdown — no Ctrl+click required); each entry shows all class/vehicle pairs as separate rows with dedicated **Class**, **Vehicle**, and **Race #** columns; entrant's **Full Name** (first + last) shown as primary identifier; **Phone** and **Sponsors** (displayed as pills) visible per entrant; update individual entry status (pending → confirmed / rejected / cancelled) via inline AJAX selects; **Mark Paid** toggle button per entry (AJAX, no reload); **Edit** button (admins and event creators only) — opens an inline panel to change classes, vehicles, pit crew, and fee with optional PoP upload or entrant PoP request; **📋 PoP Link** copy button appears on rows with an outstanding PoP request; bulk status updates with a select-all checkbox; rejection and cancellation emails dispatched automatically; **CSV export** with a column picker (checkboxes below the Export button) to select exactly which of the 16 columns to include — preferences saved in `localStorage`; **Vehicle Year** exports as its own column separate from the vehicle name; **Pit Crew Report** button (shown when an event is selected) generates a separate CSV with one row per entrant: Entrant, Pit Crew Member 1, Pit Crew Member 2, Status (event name is in the filename). Class reps see all events' entries but have no status controls, bulk bar, or Actions column.
 - **Results tab:** select a closed event and enter results per class — position, lap time, and status (Finished / DNF / DNS / DSQ) for both registered entrants and manually added walk-in drivers.
 - **Participants tab:** searchable CRM table of all members; **First Name / Last Name** shown as primary identifier (username as secondary); expandable rows show personal details, motorsport credentials, and emergency contact information.
-- **Vehicle Classes tab:** create and manage vehicle class taxonomy terms and their vehicle type assignments.
+- **Vehicle Classes tab:** create and manage vehicle class taxonomy terms, vehicle type assignments, entry conditions, and class rep assignments. A rep count indicator appears on each class row when reps are assigned.
 - **Pricing tab:** create and manage Pricing Sets and configure per-class fees.
 
 ### Race Results
@@ -124,6 +125,7 @@ The custom `msc_view_participants` capability gates participant data and indemni
 | Trigger | Recipients | Attachments |
 |---|---|---|
 | Entry submitted | Entrant | — |
+| Entry submitted | Class rep(s) assigned to the entered class(es) | — |
 | Indemnity signed | Entrant | Signed indemnity PDF |
 | Indemnity signed | Admin + event creator (deduplicated) | Signed indemnity PDF + PoP |
 | Entry confirmed | Entrant | — |

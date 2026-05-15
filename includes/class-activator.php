@@ -93,6 +93,16 @@ class MSC_Activator {
         if ( ! in_array( 'notif_admin_sent', $reg_cols, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN notif_admin_sent text DEFAULT NULL" );
         }
+        if ( ! in_array( 'notif_class_reps', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN notif_class_reps tinyint(1) NOT NULL DEFAULT 0" );
+            // Every row in the table at this point predates v0.9.5, so mark all of them done.
+            // Filtering by notifications_sent=1 would leave in-flight retry rows (notifications_sent=0)
+            // at 0, causing the retry cron to send retroactive class-rep emails for pre-feature entries.
+            $wpdb->query( "UPDATE {$wpdb->prefix}msc_registrations SET notif_class_reps = 1" );
+        }
+        if ( ! in_array( 'notif_class_reps_sent', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN notif_class_reps_sent text DEFAULT NULL" );
+        }
         // Back-fill per-notification flags for rows that went through the old sync path.
         // notif_confirmed is set only for already-confirmed rows; pending rows keep it at 0
         // so the retry cron can service them if their manual-approval confirmation later fails.
