@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.3 | **License:** GPLv2 or later
+**Current version:** 0.9.4 | **License:** GPLv2 or later
 
 ---
 
@@ -129,6 +129,10 @@ The custom `msc_view_participants` capability gates participant data and indemni
 | Entry confirmed | Entrant | — |
 | Entry rejected | Entrant | — |
 | Entry cancelled | Entrant | — |
+
+Notification delivery is **asynchronous** — emails are dispatched via WP-Cron immediately after the registration HTTP response is returned to the browser, so slow SMTP or PDF generation never causes a submission failure. On installations with `DISABLE_WP_CRON` set, delivery falls back to synchronous sending within the same request.
+
+A background retry job runs every 5 minutes and re-attempts any notifications that failed (SMTP error, exception during PDF generation, etc.). Each notification type is tracked independently so a retry only contacts recipients that have not yet received that specific email — preventing duplicates when a single failed recipient causes a partial delivery. The retry window for submission-time notifications is 48 hours; confirmation email retries have no age cap, since entries on manual-approval events can be confirmed days or weeks after submission.
 
 ---
 

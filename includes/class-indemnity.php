@@ -378,84 +378,134 @@ class MSC_Indemnity {
     }
 
     /* ── Email the signed PDF ─────────────────────────────────────────── */
+    /** Backwards-compat wrapper — sends to participant and admins, returns true only if all succeed. */
     public static function email_signed_pdf( $reg_id ) {
+        $reg = self::get_reg_for_pdf( $reg_id );
+        if ( ! $reg ) return false;
+        $tmp          = self::write_pdf_tempfile( $reg );
+        $participant  = self::mail_to_participant( $reg, $tmp );
+        $admin_result = self::mail_to_admins( $reg, $tmp );
+        self::cleanup_tempfile( $tmp );
+        return $participant && empty( $admin_result['failed'] );
+    }
+
+    /** Send the indemnity PDF to the participant only. */
+    public static function send_indemnity_to_participant( $reg_id ) {
+        $reg = self::get_reg_for_pdf( $reg_id );
+        if ( ! $reg ) return false;
+        $tmp    = self::write_pdf_tempfile( $reg );
+        $result = self::mail_to_participant( $reg, $tmp );
+        self::cleanup_tempfile( $tmp );
+        return $result;
+    }
+
+    /**
+     * Send the indemnity PDF + PoP to admins/event-creator only.
+     * $exclude — email addresses that have already received this notification;
+     *            they are skipped so retries never duplicate a successful delivery.
+     * Returns array( 'sent' => string[], 'failed' => string[] ).
+     */
+    public static function send_indemnity_to_admins( $reg_id, array $exclude = array() ) {
+        $reg = self::get_reg_for_pdf( $reg_id );
+        if ( ! $reg ) return array( 'sent' => array(), 'failed' => array() );
+        $tmp    = self::write_pdf_tempfile( $reg );
+        $result = self::mail_to_admins( $reg, $tmp, $exclude );
+        self::cleanup_tempfile( $tmp );
+        return $result;
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────
+
+    private static function get_reg_for_pdf( $reg_id ) {
         global $wpdb;
-        $reg = $wpdb->get_row( $wpdb->prepare(
+        return $wpdb->get_row( $wpdb->prepare(
             "SELECT r.*, u.display_name as user_name, u.user_email, p.post_title as event_name, p.post_author as event_author
              FROM {$wpdb->prefix}msc_registrations r
              LEFT JOIN {$wpdb->users} u ON u.ID = r.user_id
              LEFT JOIN {$wpdb->posts} p ON p.ID = r.event_id
              WHERE r.id = %d", $reg_id
         ) );
-        if ( ! $reg ) return;
+    }
 
+    private static function write_pdf_tempfile( $reg ) {
         $pdf_data = self::build_pdf( $reg );
-        $filename = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg_id . '.pdf';
-
-        // Write to a temp file with the correct .pdf extension.
-        // wp_tempnam() always produces a .tmp file, so use get_temp_dir() directly.
-        $tmp_dir = get_temp_dir();
-        $tmp     = $tmp_dir . wp_unique_filename( $tmp_dir, $filename );
+        $filename = 'indemnity-' . sanitize_title( $reg->event_name ) . '-' . $reg->id . '.pdf';
+        $tmp_dir  = get_temp_dir();
+        $tmp      = $tmp_dir . wp_unique_filename( $tmp_dir, $filename );
         file_put_contents( $tmp, $pdf_data );
+        return $tmp;
+    }
 
+    private static function mail_to_participant( $reg, $tmp ) {
+        $site_name  = get_bloginfo( 'name' );
         $user_name  = esc_html( $reg->user_name );
         $event_name = esc_html( $reg->event_name );
-        $site_name  = get_bloginfo( 'name' );
         $headers    = MSC_Emails::get_headers();
-
-        // ── Participant: signed indemnity PDF only ──────────────────────
-        $participant_message = "
+        $message    = "
             <p>Hi {$user_name},</p>
             <p>Please find attached your signed indemnity form for <strong>{$event_name}</strong>.</p>
             <p>Please keep this for your records.</p>
-            <p>See you at the track!<br>The " . esc_html($site_name) . " Team</p>";
-
-        MSC_Emails::send_mail(
+            <p>See you at the track!<br>The " . esc_html( $site_name ) . " Team</p>";
+        return MSC_Emails::send_mail(
             $reg->user_email,
             'Signed Indemnity Form - ' . $reg->event_name,
-            MSC_Emails::wrap( 'Signed Indemnity Form', $participant_message ),
+            MSC_Emails::wrap( 'Signed Indemnity Form', $message ),
             $headers,
             array( $tmp )
         );
+    }
 
-        // ── Admin / Event Creator: indemnity PDF + PoP ──────────────────
-        $admin_attachments = array( $tmp );
-        $pop_file_id       = ! empty( $reg->pop_file_id ) ? (int) $reg->pop_file_id : 0;
+    /**
+     * Send admin indemnity notification to each applicable recipient.
+     * $exclude — addresses already notified on a previous attempt; skipped here.
+     * Returns array( 'sent' => string[], 'failed' => string[] ) so the caller can
+     * persist per-recipient progress and avoid re-sending to successful recipients.
+     */
+    private static function mail_to_admins( $reg, $tmp, array $exclude = array() ) {
+        $user_name   = esc_html( $reg->user_name );
+        $event_name  = esc_html( $reg->event_name );
+        $headers     = MSC_Emails::get_headers();
+        $pop_file_id = ! empty( $reg->pop_file_id ) ? (int) $reg->pop_file_id : 0;
+
+        $attachments = array( $tmp );
         if ( $pop_file_id ) {
             $pop_path = get_attached_file( $pop_file_id );
             if ( $pop_path && file_exists( $pop_path ) ) {
-                $admin_attachments[] = $pop_path;
+                $attachments[] = $pop_path;
             }
         }
 
-        $admin_message = "
+        $message = "
             <p>A new event entry has been received and the indemnity form has been signed.</p>
             <p><strong>Participant:</strong> {$user_name}<br>
             <strong>Event:</strong> {$event_name}</p>
             <p>The signed indemnity form" . ( $pop_file_id ? ' and proof of payment are' : ' is' ) . " attached. You can also view both documents any time from the entries dashboard.</p>
-            <p><a href='" . esc_url( admin_url('admin.php?page=msc-registrations') ) . "'>View in admin dashboard &rarr;</a></p>";
+            <p><a href='" . esc_url( admin_url( 'admin.php?page=msc-registrations' ) ) . "'>View in admin dashboard &rarr;</a></p>";
+        $subject = 'New Entry: ' . $reg->event_name . ' - ' . $reg->user_name;
 
-        $admin_subject = 'New Entry: ' . $reg->event_name . ' - ' . $reg->user_name;
-
-        // Collect unique recipients (admin + event creator, deduplicated)
-        $admin_email     = get_option( 'admin_email' );
-        $recipients      = array( $admin_email );
-        $event_author    = get_user_by( 'id', $reg->event_author );
+        $admin_email  = get_option( 'admin_email' );
+        $recipients   = array( $admin_email );
+        $event_author = get_user_by( 'id', $reg->event_author );
         if ( $event_author && $event_author->user_email && $event_author->user_email !== $admin_email ) {
             $recipients[] = $event_author->user_email;
         }
 
+        $sent   = array();
+        $failed = array();
         foreach ( $recipients as $recipient ) {
-            MSC_Emails::send_mail(
-                $recipient,
-                $admin_subject,
-                MSC_Emails::wrap( 'New Entry', $admin_message ),
-                $headers,
-                $admin_attachments
-            );
+            if ( in_array( $recipient, $exclude, true ) ) {
+                continue;
+            }
+            if ( MSC_Emails::send_mail( $recipient, $subject, MSC_Emails::wrap( 'New Entry', $message ), $headers, $attachments ) ) {
+                $sent[] = $recipient;
+            } else {
+                $failed[] = $recipient;
+            }
         }
+        return array( 'sent' => $sent, 'failed' => $failed );
+    }
 
-        // ── Cleanup: delete only the temp indemnity PDF; PoP is kept for dashboard viewing ──
+    private static function cleanup_tempfile( $tmp ) {
         if ( ! @unlink( $tmp ) ) {
             error_log( 'MSC: Failed to delete temp indemnity PDF: ' . $tmp );
         }

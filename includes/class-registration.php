@@ -12,6 +12,8 @@ class MSC_Registration {
         add_action( 'wp_ajax_msc_update_entry_classes',       array( __CLASS__, 'ajax_update_entry_classes' ) );
         add_action( 'wp_ajax_msc_upload_pop',                 array( __CLASS__, 'ajax_upload_pop' ) );
         add_action( 'template_redirect',                      array( __CLASS__, 'maybe_serve_pop_file' ) );
+        add_action( 'msc_send_registration_notifications',    array( __CLASS__, 'send_registration_notifications' ) );
+        add_action( 'msc_retry_pending_notifications',        array( __CLASS__, 'retry_pending_notifications' ) );
     }
 
     /** Redirect media uploads to the protected msc-pop subdirectory */
@@ -463,6 +465,7 @@ class MSC_Registration {
             'user_id'             => $user_id,
             'vehicle_id'          => $primary_vehicle_id,
             'status'              => $status,
+            'submission_status'   => $status,
             'entry_fee'           => $total_fee,
             'fee_paid'            => 0,
             'indemnity_method'    => $ind_method,
@@ -480,7 +483,7 @@ class MSC_Registration {
             'pop_file_id'         => $pop_file_id,
             'class_id'            => null, // deprecated — classes stored in junction table
             'created_at'          => gmdate( 'Y-m-d H:i:s' ),
-        ), array( '%d','%d','%d','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ) );
+        ), array( '%d','%d','%d','%s','%s','%f','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%d','%s' ) );
 
         if ( false === $inserted ) {
             MSC_Logger::error( 'Registration', 'DB insert failed', array( 'event_id' => $event_id, 'db_error' => $wpdb->last_error ) );
@@ -539,22 +542,21 @@ class MSC_Registration {
         if ( isset( $_POST['sponsors'] ) )      update_user_meta( $user_id, 'msc_sponsors',      $sponsors );
         if ( isset( $_POST['emergency_rel'] ) ) update_user_meta( $user_id, 'msc_emergency_rel', $em_rel );
 
-        MSC_Logger::info( 'Registration', 'Sending registration received email', array( 'reg_id' => $reg_id ) );
-        MSC_Emails::send_registration_received( $reg_id );
         if ( $status === 'confirmed' ) self::assign_entry_number( $reg_id );
-        if ( $status === 'confirmed' ) {
-            MSC_Logger::info( 'Registration', 'Sending confirmation email', array( 'reg_id' => $reg_id ) );
-            MSC_Emails::send_confirmation( $reg_id );
-        }
-
-        if ( $ind_method === 'signed' ) {
-            MSC_Logger::info( 'Registration', 'Emailing signed indemnity PDF', array( 'reg_id' => $reg_id ) );
-            MSC_Indemnity::email_signed_pdf( $reg_id );
-        }
 
         $message = ( $status === 'confirmed' )
             ? 'You\'re registered! A confirmation email has been sent.'
             : 'Your entry has been submitted and is awaiting approval. We\'ll email you once confirmed.';
+
+        // Deliver notifications asynchronously so slow SMTP/PDF cannot cause HTTP 0.
+        // Fall back to synchronous sending when WP-Cron is disabled so installs that
+        // rely on a system cron (or have DISABLE_WP_CRON set) still receive emails.
+        if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) {
+            self::send_registration_notifications( $reg_id );
+        } else {
+            wp_schedule_single_event( time(), 'msc_send_registration_notifications', array( $reg_id ) );
+            spawn_cron();
+        }
 
         MSC_Logger::info( 'Registration', 'Submit complete', array( 'reg_id' => $reg_id, 'status' => $status ) );
         wp_send_json_success( array( 'message' => $message, 'status' => $status, 'reg_id' => $reg_id ) );
@@ -586,6 +588,228 @@ class MSC_Registration {
         );
         MSC_Logger::info( 'Registration', 'Entry cancelled', array( 'reg_id' => $reg_id, 'event_id' => $reg->event_id ) );
         wp_send_json_success( array( 'message' => 'Registration cancelled.' ) );
+    }
+
+    /**
+     * Send all post-registration notifications for a single registration.
+     * Called by the msc_send_registration_notifications cron action.
+     * Each notification type is tracked by its own DB flag so that retries only
+     * attempt what has not yet succeeded — preventing duplicate participant emails
+     * when a single recipient (e.g. one admin address) caused an earlier failure.
+     * notifications_sent=1 is set only when every applicable flag is complete.
+     */
+    public static function send_registration_notifications( $reg_id ) {
+        global $wpdb;
+        $reg_id = absint( $reg_id );
+        $reg    = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        if ( ! $reg ) {
+            MSC_Logger::error( 'Notifications', 'Registration not found', array( 'reg_id' => $reg_id ) );
+            return;
+        }
+        // Rejected/cancelled entries should not receive submission notifications.
+        // Mark all flags done so the retry cron stops picking this row up.
+        if ( in_array( $reg->status, array( 'rejected', 'cancelled' ), true ) ) {
+            MSC_Logger::info( 'Notifications', 'Entry is ' . $reg->status . ' — suppressing pending notifications', array( 'reg_id' => $reg_id ) );
+            $wpdb->update(
+                "{$wpdb->prefix}msc_registrations",
+                array( 'notifications_sent' => 1, 'notif_received' => 1, 'notif_confirmed' => 1, 'notif_indemnity' => 1, 'notif_admin' => 1 ),
+                array( 'id' => $reg_id ),
+                array( '%d', '%d', '%d', '%d', '%d' ),
+                array( '%d' )
+            );
+            return;
+        }
+
+        // needs_confirmed uses the live status, not submission_status:
+        // - auto-approved entries (status=confirmed from submission): confirmation is sent here
+        // - manually approved entries: the approval path calls send_confirmation() directly
+        //   and writes notif_confirmed=1 on success; if that fails, this cron retries it
+        // submission_status is kept only to render the correct message in the "received" email.
+        $sub_status      = $reg->submission_status ?: $reg->status;
+        $needs_confirmed = ( $reg->status === 'confirmed' );
+        $needs_indemnity = ( $reg->indemnity_method === 'signed' );
+
+        // Skip if every applicable notification is already done.
+        $any_pending = ! $reg->notif_received
+            || ( $needs_confirmed && ! $reg->notif_confirmed )
+            || ( $needs_indemnity && ! $reg->notif_indemnity )
+            || ( $needs_indemnity && ! $reg->notif_admin );
+
+        if ( ! $any_pending ) {
+            if ( ! $reg->notifications_sent ) {
+                $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notifications_sent' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+            }
+            return;
+        }
+
+        MSC_Logger::info( 'Notifications', 'Processing notifications', array( 'reg_id' => $reg_id, 'submission_status' => $sub_status ) );
+
+        // ── "Entry received" email to participant ──────────────────────
+        if ( ! $reg->notif_received ) {
+            // If the confirmation email was already sent (manual approval happened before
+            // this cron fired), sending a "pending approval" received email would present
+            // stale status to the participant. Skip it and mark as done.
+            if ( $reg->notif_confirmed ) {
+                $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_received' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                $reg->notif_received = 1;
+                MSC_Logger::info( 'Notifications', 'notif_received skipped — confirmation already sent', array( 'reg_id' => $reg_id ) );
+            } else {
+                try {
+                    $sent = MSC_Emails::send_registration_received( $reg_id );
+                } catch ( \Throwable $e ) {
+                    $sent = false;
+                    MSC_Logger::error( 'Notifications', 'send_registration_received threw: ' . $e->getMessage(), array( 'reg_id' => $reg_id ) );
+                }
+                if ( $sent ) {
+                    $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_received' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                    $reg->notif_received = 1;
+                    MSC_Logger::info( 'Notifications', 'notif_received sent', array( 'reg_id' => $reg_id ) );
+                } else {
+                    MSC_Logger::warning( 'Notifications', 'notif_received failed', array( 'reg_id' => $reg_id ) );
+                }
+            }
+        }
+
+        // ── Confirmation email to participant ─────────────────────────────
+        if ( $needs_confirmed && ! $reg->notif_confirmed ) {
+            try {
+                $sent = MSC_Emails::send_confirmation( $reg_id );
+            } catch ( \Throwable $e ) {
+                $sent = false;
+                MSC_Logger::error( 'Notifications', 'send_confirmation threw: ' . $e->getMessage(), array( 'reg_id' => $reg_id ) );
+            }
+            if ( $sent ) {
+                $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_confirmed' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                $reg->notif_confirmed = 1;
+                MSC_Logger::info( 'Notifications', 'notif_confirmed sent', array( 'reg_id' => $reg_id ) );
+            } else {
+                MSC_Logger::warning( 'Notifications', 'notif_confirmed failed', array( 'reg_id' => $reg_id ) );
+            }
+        }
+
+        // ── Indemnity PDF to participant ───────────────────────────────
+        if ( $needs_indemnity && ! $reg->notif_indemnity ) {
+            try {
+                $sent = MSC_Indemnity::send_indemnity_to_participant( $reg_id );
+            } catch ( \Throwable $e ) {
+                $sent = false;
+                MSC_Logger::error( 'Notifications', 'send_indemnity_to_participant threw: ' . $e->getMessage(), array( 'reg_id' => $reg_id ) );
+            }
+            if ( $sent ) {
+                $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_indemnity' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                $reg->notif_indemnity = 1;
+                MSC_Logger::info( 'Notifications', 'notif_indemnity sent', array( 'reg_id' => $reg_id ) );
+            } else {
+                MSC_Logger::warning( 'Notifications', 'notif_indemnity failed', array( 'reg_id' => $reg_id ) );
+            }
+        }
+
+        // ── Indemnity PDF + PoP to admins/event-creator ───────────────
+        // notif_admin_sent (JSON array) records which addresses already received
+        // the email so partial failures can be retried without duplicating
+        // deliveries to the recipients that already succeeded.
+        if ( $needs_indemnity && ! $reg->notif_admin ) {
+            try {
+                $already_sent = array();
+                if ( ! empty( $reg->notif_admin_sent ) ) {
+                    $decoded = json_decode( $reg->notif_admin_sent, true );
+                    if ( is_array( $decoded ) ) {
+                        $already_sent = $decoded;
+                    }
+                }
+
+                $result = MSC_Indemnity::send_indemnity_to_admins( $reg_id, $already_sent );
+
+                if ( ! empty( $result['sent'] ) ) {
+                    $all_sent_now = array_values( array_unique( array_merge( $already_sent, $result['sent'] ) ) );
+                    $wpdb->update(
+                        "{$wpdb->prefix}msc_registrations",
+                        array( 'notif_admin_sent' => wp_json_encode( $all_sent_now ) ),
+                        array( 'id' => $reg_id ),
+                        array( '%s' ),
+                        array( '%d' )
+                    );
+                    $reg->notif_admin_sent = wp_json_encode( $all_sent_now );
+                }
+
+                if ( empty( $result['failed'] ) ) {
+                    $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notif_admin' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+                    $reg->notif_admin = 1;
+                    MSC_Logger::info( 'Notifications', 'notif_admin sent', array( 'reg_id' => $reg_id ) );
+                } else {
+                    MSC_Logger::warning( 'Notifications', 'notif_admin partial failure', array( 'reg_id' => $reg_id, 'failed' => $result['failed'] ) );
+                }
+            } catch ( \Throwable $e ) {
+                MSC_Logger::error( 'Notifications', 'send_indemnity_to_admins threw: ' . $e->getMessage(), array( 'reg_id' => $reg_id ) );
+            }
+        }
+
+        // ── Mark complete when every applicable notification has succeeded ─
+        $all_done = $reg->notif_received
+            && ( ! $needs_confirmed || $reg->notif_confirmed )
+            && ( ! $needs_indemnity || $reg->notif_indemnity )
+            && ( ! $needs_indemnity || $reg->notif_admin );
+
+        if ( $all_done ) {
+            $wpdb->update( "{$wpdb->prefix}msc_registrations", array( 'notifications_sent' => 1 ), array( 'id' => $reg_id ), array( '%d' ), array( '%d' ) );
+            MSC_Logger::info( 'Notifications', 'All notifications complete', array( 'reg_id' => $reg_id ) );
+        } else {
+            MSC_Logger::warning( 'Notifications', 'Notifications incomplete — retry cron will attempt remainder', array( 'reg_id' => $reg_id ) );
+        }
+    }
+
+    /**
+     * Retry cron callback. Picks up two cases:
+     * 1. Submission-time notifications not yet complete (notifications_sent=0).
+     * 2. Entries confirmed after submission whose confirmation email failed
+     *    (status=confirmed, notif_confirmed=0) — notifications_sent may already be 1.
+     * Both are capped at 48 hours to avoid endlessly retrying truly stuck rows.
+     */
+    public static function retry_pending_notifications() {
+        global $wpdb;
+        $pending = $wpdb->get_col(
+            "SELECT id FROM {$wpdb->prefix}msc_registrations
+             WHERE (
+                   -- Submission-time notifications not yet complete.
+                   -- 48-hour cap avoids endlessly retrying truly stuck rows.
+                   ( notifications_sent = 0
+                     AND created_at <= DATE_SUB( UTC_TIMESTAMP(), INTERVAL 2 MINUTE )
+                     AND created_at >= DATE_SUB( UTC_TIMESTAMP(), INTERVAL 48 HOUR ) )
+                   OR
+                   -- Confirmation email not yet sent for a confirmed entry.
+                   -- No age cap: entries on manual-approval events can be confirmed
+                   -- days or weeks after submission.
+                   ( status = 'confirmed' AND notif_confirmed = 0 )
+               )
+             ORDER BY created_at ASC
+             LIMIT 10"
+        );
+        if ( empty( $pending ) ) return;
+        MSC_Logger::info( 'Notifications', 'Retrying pending notifications', array( 'count' => count( $pending ) ) );
+        foreach ( $pending as $reg_id ) {
+            self::send_registration_notifications( (int) $reg_id );
+        }
+    }
+
+    /**
+     * Mark a single per-notification flag as sent.
+     * Called by external paths (e.g. the manual approval handler) that send
+     * notifications directly so the retry cron does not re-send them.
+     */
+    public static function mark_notification_sent( $reg_id, $col ) {
+        global $wpdb;
+        $allowed = array( 'notif_received', 'notif_confirmed', 'notif_indemnity', 'notif_admin' );
+        if ( ! in_array( $col, $allowed, true ) ) return;
+        $wpdb->update(
+            "{$wpdb->prefix}msc_registrations",
+            array( $col => 1 ),
+            array( 'id' => absint( $reg_id ) ),
+            array( '%d' ),
+            array( '%d' )
+        );
     }
 
     /** Get all registrations for a user, with entered classes */

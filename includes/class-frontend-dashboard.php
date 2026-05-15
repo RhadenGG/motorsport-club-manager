@@ -1974,8 +1974,12 @@ class MSC_Frontend_Dashboard {
 
         $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
 
-        if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
-        if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+        if ( $status === 'confirmed' ) {
+            MSC_Registration::assign_entry_number( $reg_id );
+            if ( MSC_Emails::send_confirmation( $reg_id ) ) {
+                MSC_Registration::mark_notification_sent( $reg_id, 'notif_confirmed' );
+            }
+        }
         if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
         if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
 
@@ -2045,8 +2049,12 @@ class MSC_Frontend_Dashboard {
                 array( '%s' ),
                 array( '%d' )
             );
-            if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
-            if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+            if ( $status === 'confirmed' ) {
+                MSC_Registration::assign_entry_number( $reg_id );
+                if ( MSC_Emails::send_confirmation( $reg_id ) ) {
+                    MSC_Registration::mark_notification_sent( $reg_id, 'notif_confirmed' );
+                }
+            }
             if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
             $updated++;

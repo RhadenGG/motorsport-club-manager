@@ -3,7 +3,7 @@
  * Plugin Name: Motorsport Club Manager
  * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
- * Version:     0.9.3
+ * Version:     0.9.4
  * Author:      Trevor Botha
  * Author URI:  https://trevorbotha.net
  * Text Domain: motorsport-club
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MSC_VERSION',  '0.9.3' );
+define( 'MSC_VERSION',  '0.9.4' );
 define( 'MSC_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'MSC_URL',      plugin_dir_url( __FILE__ ) );
 define( 'MSC_BASENAME', plugin_basename( __FILE__ ) );
@@ -40,6 +40,16 @@ require_once MSC_PATH . 'includes/class-frontend-dashboard.php';
 register_activation_hook( __FILE__,   array( 'MSC_Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'MSC_Activator', 'deactivate' ) );
 
+add_filter( 'cron_schedules', function( $schedules ) {
+    if ( ! isset( $schedules['msc_five_minutes'] ) ) {
+        $schedules['msc_five_minutes'] = array(
+            'interval' => 300,
+            'display'  => 'Every 5 Minutes (MSC)',
+        );
+    }
+    return $schedules;
+} );
+
 add_action( 'plugins_loaded', 'msc_init' );
 function msc_init() {
     MSC_Logger::init();
@@ -58,6 +68,10 @@ function msc_init() {
     MSC_Admin_Participants::init();
     MSC_Frontend_Dashboard::init();
     MSC_Auth::init();
+
+    if ( ! wp_next_scheduled( 'msc_retry_pending_notifications' ) ) {
+        wp_schedule_event( time(), 'msc_five_minutes', 'msc_retry_pending_notifications' );
+    }
 }
 
 /**

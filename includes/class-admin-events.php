@@ -359,8 +359,12 @@ class MSC_Admin_Events {
                 $updated = 0;
                 foreach ( $bulk_ids as $rid ) {
                     $wpdb->update( $table, array( 'status' => $bulk_status ), array( 'id' => $rid ), array( '%s' ), array( '%d' ) );
-                    if ( $bulk_status === 'confirmed' )  MSC_Registration::assign_entry_number( $rid );
-                    if ( $bulk_status === 'confirmed' )  MSC_Emails::send_confirmation( $rid );
+                    if ( $bulk_status === 'confirmed' ) {
+                        MSC_Registration::assign_entry_number( $rid );
+                        if ( MSC_Emails::send_confirmation( $rid ) ) {
+                            MSC_Registration::mark_notification_sent( $rid, 'notif_confirmed' );
+                        }
+                    }
                     if ( $bulk_status === 'rejected' )   MSC_Emails::send_rejection( $rid, $bulk_rejection_reason );
                     if ( $bulk_status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $rid );
                     $updated++;
@@ -391,8 +395,12 @@ class MSC_Admin_Events {
             $fee_paid         = isset( $_POST['new_fee_paid'] ) ? 1 : 0;
             $rejection_reason = sanitize_textarea_field( wp_unslash( $_POST['rejection_reason'] ?? '' ) );
             $wpdb->update( $table, array( 'status' => $status, 'fee_paid' => $fee_paid ), array( 'id' => $reg_id ), array( '%s', '%d' ), array( '%d' ) );
-            if ( $status === 'confirmed' )  MSC_Registration::assign_entry_number( $reg_id );
-            if ( $status === 'confirmed' )  MSC_Emails::send_confirmation( $reg_id );
+            if ( $status === 'confirmed' ) {
+                MSC_Registration::assign_entry_number( $reg_id );
+                if ( MSC_Emails::send_confirmation( $reg_id ) ) {
+                    MSC_Registration::mark_notification_sent( $reg_id, 'notif_confirmed' );
+                }
+            }
             if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
             echo '<div class="updated notice is-dismissible"><p>Entry updated.</p></div>';

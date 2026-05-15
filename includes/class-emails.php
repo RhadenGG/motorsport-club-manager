@@ -119,7 +119,8 @@ class MSC_Emails {
         $event_dt   = get_post_meta($reg->event_id,'_msc_event_date',true);
         $date_str   = $event_dt ? date_i18n(get_option('date_format') . ' @ ' . get_option('time_format'), strtotime($event_dt)) : 'TBC';
         $fee_str    = $reg->entry_fee > 0 ? 'R ' . number_format($reg->entry_fee,2) : 'Free';
-        $status_msg = $reg->status === 'confirmed' ? 'You are confirmed! See you on the track.' : 'Your entry is <strong>pending approval</strong>. We will notify you once confirmed.';
+        $status_for_msg = isset( $reg->submission_status ) && $reg->submission_status !== '' ? $reg->submission_status : $reg->status;
+        $status_msg     = $status_for_msg === 'confirmed' ? 'You are confirmed! See you on the track.' : 'Your entry is <strong>pending approval</strong>. We will notify you once confirmed.';
 
         $body = "
         <p>Hi {$user_name},</p>
@@ -141,7 +142,7 @@ class MSC_Emails {
         // Participant confirmation only — no attachments.
         // Admin/creator notification with signed indemnity + PoP is handled by
         // MSC_Indemnity::email_signed_pdf() so they receive a single combined email.
-        self::send_mail( $reg->user_email, "Entry Received - {$reg->event_name}", self::wrap("Entry Received", $body), $headers );
+        return self::send_mail( $reg->user_email, "Entry Received - {$reg->event_name}", self::wrap("Entry Received", $body), $headers );
     }
 
     public static function send_confirmation( $reg_id ) {
@@ -171,7 +172,7 @@ class MSC_Emails {
         <p>Best regards,<br>" . esc_html($site_name) . "</p>";
 
         $headers = self::get_headers();
-        self::send_mail( $reg->user_email, "Entry Confirmed - {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
+        return self::send_mail( $reg->user_email, "Entry Confirmed - {$reg->event_name}", self::wrap("Entry Confirmed ✓", $body), $headers );
     }
 
     public static function send_rejection( $reg_id, $reason = '' ) {

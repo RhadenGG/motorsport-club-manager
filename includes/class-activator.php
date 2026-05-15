@@ -29,6 +29,13 @@ class MSC_Activator {
             notes text DEFAULT '',
             pop_file_id bigint(20) unsigned DEFAULT NULL,
             class_id bigint(20) unsigned DEFAULT NULL,
+            notifications_sent tinyint(1) NOT NULL DEFAULT 0,
+            submission_status varchar(30) NOT NULL DEFAULT '',
+            notif_received tinyint(1) NOT NULL DEFAULT 0,
+            notif_confirmed tinyint(1) NOT NULL DEFAULT 0,
+            notif_indemnity tinyint(1) NOT NULL DEFAULT 0,
+            notif_admin tinyint(1) NOT NULL DEFAULT 0,
+            notif_admin_sent text DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY idx_event (event_id),
             KEY idx_user (user_id)
@@ -68,6 +75,35 @@ class MSC_Activator {
         if ( ! in_array( 'pop_requested', $reg_cols, true ) ) {
             $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN pop_requested tinyint(1) NOT NULL DEFAULT 0" );
         }
+        if ( ! in_array( 'notifications_sent', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN notifications_sent tinyint(1) NOT NULL DEFAULT 0" );
+            // All pre-existing rows were processed by the old synchronous email path.
+            $wpdb->query( "UPDATE {$wpdb->prefix}msc_registrations SET notifications_sent = 1" );
+        }
+        if ( ! in_array( 'submission_status', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN submission_status varchar(30) NOT NULL DEFAULT ''" );
+            // Back-fill from current status — best approximation for existing rows.
+            $wpdb->query( "UPDATE {$wpdb->prefix}msc_registrations SET submission_status = status WHERE submission_status = ''" );
+        }
+        foreach ( array( 'notif_received', 'notif_confirmed', 'notif_indemnity', 'notif_admin' ) as $col ) {
+            if ( ! in_array( $col, $reg_cols, true ) ) {
+                $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN {$col} tinyint(1) NOT NULL DEFAULT 0" );
+            }
+        }
+        if ( ! in_array( 'notif_admin_sent', $reg_cols, true ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}msc_registrations ADD COLUMN notif_admin_sent text DEFAULT NULL" );
+        }
+        // Back-fill per-notification flags for rows that went through the old sync path.
+        // notif_confirmed is set only for already-confirmed rows; pending rows keep it at 0
+        // so the retry cron can service them if their manual-approval confirmation later fails.
+        $wpdb->query(
+            "UPDATE {$wpdb->prefix}msc_registrations
+             SET notif_received  = 1,
+                 notif_confirmed = CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END,
+                 notif_indemnity = 1,
+                 notif_admin     = 1
+             WHERE notifications_sent = 1 AND notif_received = 0"
+        );
 
         // Ensure unique index on (event_id, entry_number) to enforce no duplicates at DB level
         $idx = $wpdb->get_results( "SHOW INDEX FROM {$wpdb->prefix}msc_registrations WHERE Key_name = 'unique_event_entry_number'" );
@@ -210,6 +246,7 @@ class MSC_Activator {
     }
 
     public static function deactivate() {
+        wp_clear_scheduled_hook( 'msc_retry_pending_notifications' );
         flush_rewrite_rules();
     }
 }
