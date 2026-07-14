@@ -238,7 +238,10 @@ class MSC_Security {
     // ── Admin: resend verification email (Users list) ───────────────────────
 
     public static function add_resend_verification_row_action( $actions, $user ) {
-        if ( get_user_meta( $user->ID, 'msc_email_verified', true ) !== '0' ) return $actions;
+        // Treat missing meta (accounts created outside the registration flow) the
+        // same as unverified — only an explicit '1' counts as verified.
+        if ( get_user_meta( $user->ID, 'msc_email_verified', true ) === '1' ) return $actions;
+        if ( user_can( $user, 'manage_options' ) ) return $actions;
         if ( ! current_user_can( 'edit_user', $user->ID ) ) return $actions;
 
         $url = wp_nonce_url(
@@ -259,11 +262,18 @@ class MSC_Security {
 
         check_admin_referer( 'msc_admin_resend_verification_' . $user_id );
 
-        $result = 'already_verified';
+        $target   = get_userdata( $user_id );
+        $verified = get_user_meta( $user_id, 'msc_email_verified', true );
+        $result   = 'already_verified';
 
-        if ( get_user_meta( $user_id, 'msc_email_verified', true ) === '0' ) {
+        // Missing meta (account created outside the registration flow) is treated
+        // as unverified, same as an explicit '0'. Administrators are never gated.
+        if ( $verified !== '1' && ! ( $target && user_can( $target, 'manage_options' ) ) ) {
             $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );
             if ( ! $last || ( time() - $last ) > 120 ) {
+                if ( $verified === '' ) {
+                    update_user_meta( $user_id, 'msc_email_verified', '0' );
+                }
                 $token = wp_generate_password( 32, false );
                 update_user_meta( $user_id, 'msc_email_token', $token );
                 update_user_meta( $user_id, 'msc_verify_last_sent', time() );
