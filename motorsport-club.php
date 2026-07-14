@@ -4,8 +4,8 @@
  * Plugin URI:  https://github.com/RhadenGG/motorsport-club-manager
  * Description: Full motorsport event management — events, vehicle garage, classes, registration, indemnity signing & entry fees.
  * Version:     0.9.8
- * Author:      Trevor Botha
- * Author URI:  https://trevorbotha.net
+ * Author:      National Technology Solutions
+ * Author URI:  https://ntsolutions.co.za
  * Text Domain: motorsport-club
  * License:     GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
