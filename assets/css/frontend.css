@@ -18,11 +18,11 @@
 .msc-next-event-img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .msc-next-event-placeholder { display: flex; align-items: center; justify-content: center; font-size: 40px; }
 .msc-next-event-body { padding: 8px 12px 10px; }
-.msc-next-event-label { margin: 0 0 2px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--msc-primary); }
+.msc-next-event-label { margin: 0 0 2px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--msc-primary) !important; }
 .msc-next-event-title { margin: 0 0 4px; font-size: 14px; line-height: 1.25; }
-.msc-next-event-title a { color: var(--msc-dark); text-decoration: none; }
-.msc-next-event-title a:hover { color: var(--msc-primary); }
-.msc-next-event-meta { margin: 1px 0; font-size: 11px; color: #555; }
+.msc-next-event-title a { color: var(--msc-dark) !important; text-decoration: none; }
+.msc-next-event-title a:hover { color: var(--msc-primary) !important; }
+.msc-next-event-meta { margin: 1px 0; font-size: 11px; color: #555 !important; }
 
 /* ── Events Grid ─────────────────────────────────────────────────────────── */
 .msc-events-grid {
@@ -49,13 +49,13 @@
 .msc-event-thumb-placeholder { display:flex; align-items:center; justify-content:center; font-size:64px; }
 .msc-event-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
 .msc-event-title { margin: 0 0 8px; font-size: 18px; }
-.msc-event-title a { color: var(--msc-dark); text-decoration: none; }
-.msc-event-title a:hover { color: var(--msc-primary); }
-.msc-event-date, .msc-event-location { margin: 4px 0; font-size: 13px; color: #555; }
+.msc-event-title a { color: var(--msc-dark) !important; text-decoration: none; }
+.msc-event-title a:hover { color: var(--msc-primary) !important; }
+.msc-event-date, .msc-event-location { margin: 4px 0; font-size: 13px; color: #555 !important; }
 .msc-event-classes { margin: 8px 0; }
 .msc-class-pill { background: #ede7f6; color: #4a148c; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; display: inline-block; margin: 2px 2px 2px 0; }
 .msc-event-footer { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; }
-.msc-event-fee { font-weight: 700; color: var(--msc-dark); }
+.msc-event-fee { font-weight: 700; color: var(--msc-dark) !important; }
 .msc-badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: .5px; display: inline-block; margin-bottom: 6px; }
 .msc-badge-full   { background: var(--msc-primary); color: #fff; }
 .msc-badge-closed { background: var(--msc-dark); color: #fff; }
@@ -86,8 +86,8 @@
 .msc-meta-row { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--msc-border); gap: 10px; }
 .msc-meta-row:last-child { border-bottom: none; }
 .msc-meta-icon { font-size: 16px; width: 24px; flex-shrink: 0; }
-.msc-meta-label { font-weight: 600; color: #555; font-size: 13px; min-width: 100px; }
-.msc-meta-value { color: var(--msc-dark); font-size: 14px; }
+.msc-meta-label { font-weight: 600; color: #555 !important; font-size: 13px; min-width: 100px; }
+.msc-meta-value { color: var(--msc-dark) !important; font-size: 14px; }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .msc-btn {

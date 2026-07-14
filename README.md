@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.7 | **License:** GPLv2 or later
+**Current version:** 0.9.8 | **License:** GPLv2 or later
 
 ---
 
