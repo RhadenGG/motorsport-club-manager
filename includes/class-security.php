@@ -27,6 +27,11 @@ class MSC_Security {
         add_filter( 'wp_authenticate_user',             array( __CLASS__, 'check_email_verified' ), 10, 2 );
         add_action( 'init',                             array( __CLASS__, 'handle_email_verification' ) );
         add_filter( 'login_message',                    array( __CLASS__, 'login_verification_notice' ) );
+
+        // Admin: resend verification email from the Users list
+        add_filter( 'user_row_actions',  array( __CLASS__, 'add_resend_verification_row_action' ), 10, 2 );
+        add_action( 'admin_post_msc_admin_resend_verification', array( __CLASS__, 'handle_admin_resend_verification' ) );
+        add_action( 'admin_notices',     array( __CLASS__, 'admin_resend_verification_notice' ) );
     }
 
     // ── wp-admin access restriction ──────────────────────────────────────────
@@ -228,6 +233,66 @@ class MSC_Security {
             $message .= '<div class="message">Verification email resent. Please check your inbox.</div>';
         }
         return $message;
+    }
+
+    // ── Admin: resend verification email (Users list) ───────────────────────
+
+    public static function add_resend_verification_row_action( $actions, $user ) {
+        if ( get_user_meta( $user->ID, 'msc_email_verified', true ) !== '0' ) return $actions;
+        if ( ! current_user_can( 'edit_user', $user->ID ) ) return $actions;
+
+        $url = wp_nonce_url(
+            admin_url( 'admin-post.php?action=msc_admin_resend_verification&user_id=' . $user->ID ),
+            'msc_admin_resend_verification_' . $user->ID
+        );
+        $actions['msc_resend_verification'] = '<a href="' . esc_url( $url ) . '">Resend verification email</a>';
+
+        return $actions;
+    }
+
+    public static function handle_admin_resend_verification() {
+        $user_id = isset( $_GET['user_id'] ) ? absint( $_GET['user_id'] ) : 0;
+
+        if ( ! $user_id || ! current_user_can( 'edit_user', $user_id ) ) {
+            wp_die( 'You are not allowed to do this.', 'Forbidden', array( 'response' => 403 ) );
+        }
+
+        check_admin_referer( 'msc_admin_resend_verification_' . $user_id );
+
+        $result = 'already_verified';
+
+        if ( get_user_meta( $user_id, 'msc_email_verified', true ) === '0' ) {
+            $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );
+            if ( ! $last || ( time() - $last ) > 120 ) {
+                $token = wp_generate_password( 32, false );
+                update_user_meta( $user_id, 'msc_email_token', $token );
+                update_user_meta( $user_id, 'msc_verify_last_sent', time() );
+                self::send_verification_email( $user_id, $token );
+                $result = 'sent';
+            } else {
+                $result = 'cooldown';
+            }
+        }
+
+        $redirect = wp_get_referer() ? wp_get_referer() : admin_url( 'users.php' );
+        wp_safe_redirect( add_query_arg( 'msc_resend_result', $result, $redirect ) );
+        exit;
+    }
+
+    public static function admin_resend_verification_notice() {
+        if ( ! isset( $_GET['msc_resend_result'] ) ) return;
+
+        $messages = array(
+            'sent'             => array( 'success', 'Verification email resent.' ),
+            'cooldown'         => array( 'warning', 'A verification email was already sent recently. Please wait a couple of minutes before resending again.' ),
+            'already_verified' => array( 'info', "This user's email is already verified." ),
+        );
+
+        $result = sanitize_key( wp_unslash( $_GET['msc_resend_result'] ) );
+        if ( ! isset( $messages[ $result ] ) ) return;
+
+        list( $type, $text ) = $messages[ $result ];
+        echo '<div class="notice notice-' . esc_attr( $type ) . ' is-dismissible"><p><strong>Motorsport Club Manager:</strong> ' . esc_html( $text ) . '</p></div>';
     }
 
     public static function onboarding_redirect( $redirect_to, $requested, $user ) {

@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.6 | **License:** GPLv2 or later
+**Current version:** 0.9.7 | **License:** GPLv2 or later
 
 ---
 
@@ -87,6 +87,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Custom Auth Flow
 - Styled shortcode pages for login (`[msc_login]`), registration (`[msc_register]`), and password setup (`[msc_set_password]`).
 - Registration sends an email verification link; verified users are redirected to the set-password page to choose their password before being redirected to login.
+- Admins can resend the verification email for any unverified account via a **Resend verification email** row action on the wp-admin Users list.
 - First-login onboarding redirect prompts new members to complete their profile.
 - Compatible with Cloudflare Turnstile / CAPTCHA.
 
