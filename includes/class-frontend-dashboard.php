@@ -28,6 +28,7 @@ class MSC_Frontend_Dashboard {
         add_action( 'wp_ajax_msc_fe_update_reg_status', array( __CLASS__, 'ajax_update_reg_status' ) );
         add_action( 'wp_ajax_msc_fe_bulk_reg_status',   array( __CLASS__, 'ajax_bulk_reg_status' ) );
         add_action( 'wp_ajax_msc_fe_toggle_paid',        array( __CLASS__, 'ajax_toggle_paid' ) );
+        add_action( 'wp_ajax_msc_fe_update_race_number', array( __CLASS__, 'ajax_update_race_number' ) );
 
         // AJAX: Results
         add_action( 'wp_ajax_msc_fe_save_results',      array( __CLASS__, 'ajax_save_results' ) );
@@ -1024,7 +1025,16 @@ class MSC_Frontend_Dashboard {
                     <td rowspan="<?php echo $rs ?>" class="col-event"><?php echo esc_html( $r->event_name ); ?></td>
                     <td class="col-class"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
                     <td class="col-vehicle"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
-                    <td class="col-race" style="font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td class="col-race" style="font-weight:600">
+                    <?php if ( $first && $first['vehicle_id'] && self::can_edit_entries( $r->event_id ) ) : ?>
+                        <span class="msc-race-display" data-vehicle-id="<?php echo (int) $first['vehicle_id']; ?>" data-reg-id="<?php echo $r->id; ?>" data-race-value="<?php echo esc_attr( $first['comp_number'] ); ?>">
+                            <span class="msc-race-value"><?php echo $first['comp_number'] !== '' ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></span>
+                            <button type="button" class="msc-race-edit-btn" title="Edit race number — note: this updates the vehicle's race number everywhere it's entered">✎</button>
+                        </span>
+                    <?php else : ?>
+                        <?php echo ( $first && $first['comp_number'] !== '' ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?>
+                    <?php endif; ?>
+                    </td>
                     <td rowspan="<?php echo $rs ?>" class="col-fee" style="white-space:nowrap"><?php echo $r->entry_fee > 0 ? 'R '.number_format($r->entry_fee,2) : 'Free'; ?></td>
                     <td rowspan="<?php echo $rs ?>" class="col-date" style="white-space:nowrap"><?php echo esc_html( date('d M Y', strtotime($r->created_at)) ); ?></td>
                     <td rowspan="<?php echo $rs ?>" style="vertical-align:top">
@@ -1091,7 +1101,16 @@ class MSC_Frontend_Dashboard {
                 <tr class="msc-entry-subrow">
                     <td class="col-class"><?php echo esc_html( $ep['class_name'] ); ?></td>
                     <td class="col-vehicle"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
-                    <td class="col-race" style="font-weight:600"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+                    <td class="col-race" style="font-weight:600">
+                    <?php if ( $ep['vehicle_id'] && self::can_edit_entries( $r->event_id ) ) : ?>
+                        <span class="msc-race-display" data-vehicle-id="<?php echo (int) $ep['vehicle_id']; ?>" data-reg-id="<?php echo $r->id; ?>" data-race-value="<?php echo esc_attr( $ep['comp_number'] ); ?>">
+                            <span class="msc-race-value"><?php echo $ep['comp_number'] !== '' ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></span>
+                            <button type="button" class="msc-race-edit-btn" title="Edit race number — note: this updates the vehicle's race number everywhere it's entered">✎</button>
+                        </span>
+                    <?php else : ?>
+                        <?php echo $ep['comp_number'] !== '' ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?>
+                    <?php endif; ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if ( ! empty( $conditions_display ) ) : ?>
@@ -1210,6 +1229,67 @@ class MSC_Frontend_Dashboard {
                         btn.text(paid ? '✓ Paid' : 'Mark Paid');
                         $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
                     }
+                });
+            });
+
+            // Edit race number
+            var raceEditBtnHtml = '<button type="button" class="msc-race-edit-btn" title="Edit race number — note: this updates the vehicle\'s race number everywhere it\'s entered">✎</button>';
+            function raceDisplayHtml(value) {
+                var display = value ? $('<span>').text(value).html() : '<span style="color:#aaa">—</span>';
+                return '<span class="msc-race-value">' + display + '</span>' + raceEditBtnHtml;
+            }
+
+            $(document).on('click', '.msc-race-edit-btn', function(){
+                var wrap = $(this).closest('.msc-race-display');
+                if (wrap.find('.msc-race-input').length) return;
+                var current = wrap.data('race-value') || '';
+                wrap.data('orig-html', wrap.html());
+                var input     = $('<input type="text" class="msc-race-input" style="width:60px;padding:2px 4px;font-size:12px;border:1px solid #ddd;border-radius:3px">').val(current);
+                var saveBtn   = $('<button type="button" class="msc-race-save" title="Save" style="margin-left:4px">✓</button>');
+                var cancelBtn = $('<button type="button" class="msc-race-cancel" title="Cancel" style="margin-left:2px">✕</button>');
+                wrap.empty().append(input, saveBtn, cancelBtn);
+                input.trigger('focus').trigger('select');
+            });
+
+            $(document).on('click', '.msc-race-cancel', function(){
+                var wrap = $(this).closest('.msc-race-display');
+                wrap.html(wrap.data('orig-html'));
+            });
+
+            $(document).on('keydown', '.msc-race-input', function(e){
+                if (e.key === 'Enter') { e.preventDefault(); $(this).closest('.msc-race-display').find('.msc-race-save').trigger('click'); }
+                if (e.key === 'Escape') { $(this).closest('.msc-race-display').find('.msc-race-cancel').trigger('click'); }
+            });
+
+            $(document).on('click', '.msc-race-save', function(){
+                var wrap    = $(this).closest('.msc-race-display');
+                var value   = wrap.find('.msc-race-input').val().trim();
+                var vehicle = wrap.data('vehicle-id');
+                var regId   = wrap.data('reg-id');
+                wrap.find('.msc-race-save, .msc-race-cancel').prop('disabled', true);
+                $.post(ajaxUrl, {
+                    action:       'msc_fe_update_race_number',
+                    nonce:        nonce,
+                    reg_id:       regId,
+                    vehicle_id:   vehicle,
+                    race_number:  value,
+                }).done(function(res){
+                    if (res.success) {
+                        wrap.attr('data-race-value', res.data.race_number).data('race-value', res.data.race_number);
+                        wrap.html(raceDisplayHtml(res.data.race_number));
+                        // Every row/sub-row showing the same vehicle should reflect the new number too.
+                        $('.msc-race-display[data-vehicle-id="' + vehicle + '"]').not(wrap).each(function(){
+                            $(this).attr('data-race-value', res.data.race_number).data('race-value', res.data.race_number);
+                            $(this).html(raceDisplayHtml(res.data.race_number));
+                        });
+                        $('#msc-reg-msg').text('Race number updated.').css('color','green').show();
+                    } else {
+                        wrap.html(wrap.data('orig-html'));
+                        $('#msc-reg-msg').text(res.data.message || 'Error.').css('color','red').show();
+                    }
+                }).fail(function(){
+                    wrap.html(wrap.data('orig-html'));
+                    $('#msc-reg-msg').text('Network error — please try again.').css('color','red').show();
                 });
             });
 
@@ -2016,6 +2096,45 @@ class MSC_Frontend_Dashboard {
         );
 
         wp_send_json_success( array( 'fee_paid' => $fee_paid ) );
+    }
+
+    // ─── AJAX: Update Race Number ──────────────────────────────────────────────
+
+    /**
+     * Race numbers live on the vehicle post (_msc_comp_number), not the
+     * registration row, so this updates the vehicle directly.
+     */
+    public static function ajax_update_race_number() {
+        check_ajax_referer( 'msc_nonce', 'nonce' );
+        if ( ! self::can_mutate() ) wp_send_json_error( array( 'message' => 'Unauthorized.' ) );
+
+        global $wpdb;
+        $reg_id      = absint( $_POST['reg_id'] ?? 0 );
+        $vehicle_id  = absint( $_POST['vehicle_id'] ?? 0 );
+        $race_number = isset( $_POST['race_number'] ) ? sanitize_text_field( wp_unslash( $_POST['race_number'] ) ) : '';
+
+        if ( ! $reg_id || ! $vehicle_id ) wp_send_json_error( array( 'message' => 'Invalid request.' ) );
+
+        $event_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT event_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        if ( ! $event_id || ! self::can_edit_entries( $event_id ) ) {
+            wp_send_json_error( array( 'message' => 'You cannot modify this entry.' ) );
+        }
+
+        // Confirm the vehicle actually belongs to this registration.
+        if ( get_post_type( $vehicle_id ) !== 'msc_vehicle' || ! MSC_Registration::vehicle_belongs_to_registration( $reg_id, $vehicle_id ) ) {
+            wp_send_json_error( array( 'message' => 'Vehicle does not belong to this entry.' ) );
+        }
+
+        if ( $race_number === '' ) {
+            delete_post_meta( $vehicle_id, '_msc_comp_number' );
+        } else {
+            update_post_meta( $vehicle_id, '_msc_comp_number', $race_number );
+        }
+
+        wp_send_json_success( array( 'race_number' => $race_number ) );
     }
 
     // ─── AJAX: Bulk Update Registration Status ────────────────────────────────

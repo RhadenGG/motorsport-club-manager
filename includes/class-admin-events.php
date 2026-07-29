@@ -445,6 +445,30 @@ class MSC_Admin_Events {
             echo '<div class="updated notice is-dismissible"><p>Registration #' . $reg_id . ' deleted.</p></div>';
         }
 
+        // ── Handle race number update ────────────────────────────────
+        if (
+            isset( $_POST['msc_update_race_number'] ) &&
+            isset( $_POST['_wpnonce_race'] ) &&
+            wp_verify_nonce( $_POST['_wpnonce_race'], 'msc_race_number_action' )
+        ) {
+            $race_reg_id      = intval( $_POST['reg_id'] ?? 0 );
+            $race_vehicle_id  = intval( $_POST['vehicle_id'] );
+            $race_number      = sanitize_text_field( wp_unslash( $_POST['race_number'] ?? '' ) );
+            if (
+                $race_vehicle_id && get_post_type( $race_vehicle_id ) === 'msc_vehicle' &&
+                MSC_Registration::vehicle_belongs_to_registration( $race_reg_id, $race_vehicle_id )
+            ) {
+                if ( $race_number === '' ) {
+                    delete_post_meta( $race_vehicle_id, '_msc_comp_number' );
+                } else {
+                    update_post_meta( $race_vehicle_id, '_msc_comp_number', $race_number );
+                }
+                echo '<div class="updated notice is-dismissible"><p>Race number updated.</p></div>';
+            } else {
+                echo '<div class="error notice is-dismissible"><p>Could not update race number — vehicle does not belong to this entry.</p></div>';
+            }
+        }
+
         // ── Handle status update ───────────────────────────────────────
         if (
             isset( $_POST['msc_update_status'] ) &&
@@ -626,7 +650,20 @@ class MSC_Admin_Events {
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo esc_html($r->event_name) ?></td>
         <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['class_name'] ) : '—'; ?></td>
         <td style="white-space:nowrap"><?php echo $first ? esc_html( $first['vehicle_name'] ) : ''; ?></td>
-        <td style="white-space:nowrap;font-weight:600"><?php echo ( $first && $first['comp_number'] ) ? esc_html( $first['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+        <td style="white-space:nowrap;font-weight:600">
+        <?php if ( $first && $first['vehicle_id'] ) : ?>
+        <form method="post" style="display:flex;gap:4px;align-items:center;margin:0" title="Editing this updates the vehicle's race number everywhere it's entered">
+        <?php wp_nonce_field( 'msc_race_number_action', '_wpnonce_race' ); ?>
+        <input type="hidden" name="reg_id" value="<?php echo (int) $r->id; ?>">
+        <input type="hidden" name="vehicle_id" value="<?php echo (int) $first['vehicle_id']; ?>">
+        <input type="text" name="race_number" value="<?php echo esc_attr( $first['comp_number'] ); ?>"
+            style="width:56px;padding:2px 4px;font-size:12px;border:1px solid #ccc;border-radius:3px">
+        <button type="submit" name="msc_update_race_number" value="1" class="button button-small">Save</button>
+        </form>
+        <?php else : ?>
+        <span style="color:#aaa">—</span>
+        <?php endif; ?>
+        </td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php echo $r->entry_fee > 0 ? esc_html('R '.number_format($r->entry_fee,2)) : 'Free' ?></td>
         <td rowspan="<?php echo $rs ?>" style="vertical-align:top"><?php
             if ( $r->pop_file_id ) {
@@ -694,7 +731,20 @@ class MSC_Admin_Events {
         <tr>
         <td style="white-space:nowrap;padding-top:2px"><?php echo esc_html( $ep['class_name'] ); ?></td>
         <td style="white-space:nowrap;padding-top:2px"><?php echo esc_html( $ep['vehicle_name'] ); ?></td>
-        <td style="white-space:nowrap;font-weight:600;padding-top:2px"><?php echo $ep['comp_number'] ? esc_html( $ep['comp_number'] ) : '<span style="color:#aaa">—</span>'; ?></td>
+        <td style="white-space:nowrap;font-weight:600;padding-top:2px">
+        <?php if ( $ep['vehicle_id'] ) : ?>
+        <form method="post" style="display:flex;gap:4px;align-items:center;margin:0" title="Editing this updates the vehicle's race number everywhere it's entered">
+        <?php wp_nonce_field( 'msc_race_number_action', '_wpnonce_race' ); ?>
+        <input type="hidden" name="reg_id" value="<?php echo (int) $r->id; ?>">
+        <input type="hidden" name="vehicle_id" value="<?php echo (int) $ep['vehicle_id']; ?>">
+        <input type="text" name="race_number" value="<?php echo esc_attr( $ep['comp_number'] ); ?>"
+            style="width:56px;padding:2px 4px;font-size:12px;border:1px solid #ccc;border-radius:3px">
+        <button type="submit" name="msc_update_race_number" value="1" class="button button-small">Save</button>
+        </form>
+        <?php else : ?>
+        <span style="color:#aaa">—</span>
+        <?php endif; ?>
+        </td>
         </tr>
         <?php endforeach; ?>
         <?php endforeach; endif; ?>

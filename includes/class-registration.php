@@ -991,6 +991,38 @@ class MSC_Registration {
         return $label ?: ( get_the_title( $vehicle_id ) ?: '—' );
     }
 
+    /**
+     * Whether a vehicle is actually attached to a registration — used to stop a
+     * tampered request from editing an unrelated vehicle (e.g. race number).
+     * Only trusts the legacy single-vehicle column for registrations that
+     * predate the junction table entirely; once an entry has junction rows,
+     * that column is never updated again and must not be treated as current.
+     */
+    public static function vehicle_belongs_to_registration( $reg_id, $vehicle_id ) {
+        global $wpdb;
+        $reg_id     = (int) $reg_id;
+        $vehicle_id = (int) $vehicle_id;
+        if ( ! $reg_id || ! $vehicle_id ) return false;
+
+        $belongs = (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT 1 FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d AND vehicle_id = %d",
+            $reg_id, $vehicle_id
+        ) );
+        if ( $belongs ) return true;
+
+        $has_junction_rows = (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT 1 FROM {$wpdb->prefix}msc_registration_classes WHERE registration_id = %d LIMIT 1",
+            $reg_id
+        ) );
+        if ( $has_junction_rows ) return false;
+
+        $legacy_vehicle_id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT vehicle_id FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        return $legacy_vehicle_id === $vehicle_id;
+    }
+
     /** Return class+vehicle pairs for a registration: [['class_name', 'vehicle_name', 'is_primary'], ...] ordered primary first */
     public static function get_class_vehicle_pairs( $reg_id ) {
         global $wpdb;

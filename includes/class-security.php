@@ -28,9 +28,10 @@ class MSC_Security {
         add_action( 'init',                             array( __CLASS__, 'handle_email_verification' ) );
         add_filter( 'login_message',                    array( __CLASS__, 'login_verification_notice' ) );
 
-        // Admin: resend verification email from the Users list
+        // Admin: resend verification email / manually verify from the Users list
         add_filter( 'user_row_actions',  array( __CLASS__, 'add_resend_verification_row_action' ), 10, 2 );
         add_action( 'admin_post_msc_admin_resend_verification', array( __CLASS__, 'handle_admin_resend_verification' ) );
+        add_action( 'admin_post_msc_admin_mark_verified',       array( __CLASS__, 'handle_admin_mark_verified' ) );
         add_action( 'admin_notices',     array( __CLASS__, 'admin_resend_verification_notice' ) );
     }
 
@@ -238,17 +239,28 @@ class MSC_Security {
     // ── Admin: resend verification email (Users list) ───────────────────────
 
     public static function add_resend_verification_row_action( $actions, $user ) {
-        // Treat missing meta (accounts created outside the registration flow) the
-        // same as unverified — only an explicit '1' counts as verified.
-        if ( get_user_meta( $user->ID, 'msc_email_verified', true ) === '1' ) return $actions;
+        $verified = get_user_meta( $user->ID, 'msc_email_verified', true );
+        if ( $verified === '1' ) return $actions;
         if ( user_can( $user, 'manage_options' ) ) return $actions;
         if ( ! current_user_can( 'edit_user', $user->ID ) ) return $actions;
 
-        $url = wp_nonce_url(
-            admin_url( 'admin-post.php?action=msc_admin_resend_verification&user_id=' . $user->ID ),
-            'msc_admin_resend_verification_' . $user->ID
+        // Only offer "Resend" for accounts actively mid-verification-flow ('0').
+        // Missing meta means the account predates this feature (or was created by
+        // an admin) and was never gated on login — resending would incorrectly
+        // pull it into the gate. Those accounts can still be marked verified below.
+        if ( $verified === '0' ) {
+            $resend_url = wp_nonce_url(
+                admin_url( 'admin-post.php?action=msc_admin_resend_verification&user_id=' . $user->ID ),
+                'msc_admin_resend_verification_' . $user->ID
+            );
+            $actions['msc_resend_verification'] = '<a href="' . esc_url( $resend_url ) . '">Resend verification email</a>';
+        }
+
+        $verify_url = wp_nonce_url(
+            admin_url( 'admin-post.php?action=msc_admin_mark_verified&user_id=' . $user->ID ),
+            'msc_admin_mark_verified_' . $user->ID
         );
-        $actions['msc_resend_verification'] = '<a href="' . esc_url( $url ) . '">Resend verification email</a>';
+        $actions['msc_mark_verified'] = '<a href="' . esc_url( $verify_url ) . '">Mark as verified</a>';
 
         return $actions;
     }
@@ -264,16 +276,14 @@ class MSC_Security {
 
         $target   = get_userdata( $user_id );
         $verified = get_user_meta( $user_id, 'msc_email_verified', true );
-        $result   = 'already_verified';
+        $result   = $verified === '1' ? 'already_verified' : 'not_gated';
 
-        // Missing meta (account created outside the registration flow) is treated
-        // as unverified, same as an explicit '0'. Administrators are never gated.
-        if ( $verified !== '1' && ! ( $target && user_can( $target, 'manage_options' ) ) ) {
+        // Only accounts explicitly mid-flow ('0') get a resend. Accounts with no
+        // meta at all were never gated on login in the first place — leave their
+        // state alone rather than pulling them into the verification gate.
+        if ( $verified === '0' && ! ( $target && user_can( $target, 'manage_options' ) ) ) {
             $last = intval( get_user_meta( $user_id, 'msc_verify_last_sent', true ) );
             if ( ! $last || ( time() - $last ) > 120 ) {
-                if ( $verified === '' ) {
-                    update_user_meta( $user_id, 'msc_email_verified', '0' );
-                }
                 $token = wp_generate_password( 32, false );
                 update_user_meta( $user_id, 'msc_email_token', $token );
                 update_user_meta( $user_id, 'msc_verify_last_sent', time() );
@@ -289,6 +299,28 @@ class MSC_Security {
         exit;
     }
 
+    /**
+     * Manually mark a user's email as verified, without sending any email.
+     * Used to fix accounts stuck by a stale token/link, or to explicitly
+     * confirm an account that was previously gated in error.
+     */
+    public static function handle_admin_mark_verified() {
+        $user_id = isset( $_GET['user_id'] ) ? absint( $_GET['user_id'] ) : 0;
+
+        if ( ! $user_id || ! current_user_can( 'edit_user', $user_id ) ) {
+            wp_die( 'You are not allowed to do this.', 'Forbidden', array( 'response' => 403 ) );
+        }
+
+        check_admin_referer( 'msc_admin_mark_verified_' . $user_id );
+
+        update_user_meta( $user_id, 'msc_email_verified', '1' );
+        delete_user_meta( $user_id, 'msc_email_token' );
+
+        $redirect = wp_get_referer() ? wp_get_referer() : admin_url( 'users.php' );
+        wp_safe_redirect( add_query_arg( 'msc_resend_result', 'marked_verified', $redirect ) );
+        exit;
+    }
+
     public static function admin_resend_verification_notice() {
         if ( ! isset( $_GET['msc_resend_result'] ) ) return;
 
@@ -296,6 +328,8 @@ class MSC_Security {
             'sent'             => array( 'success', 'Verification email resent.' ),
             'cooldown'         => array( 'warning', 'A verification email was already sent recently. Please wait a couple of minutes before resending again.' ),
             'already_verified' => array( 'info', "This user's email is already verified." ),
+            'not_gated'        => array( 'info', "This account was never gated on login, so there's nothing to resend. Use \"Mark as verified\" if you'd like to confirm it explicitly." ),
+            'marked_verified'  => array( 'success', "User's email has been manually marked as verified." ),
         );
 
         $result = sanitize_key( wp_unslash( $_GET['msc_resend_result'] ) );

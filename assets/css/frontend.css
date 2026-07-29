@@ -770,7 +770,13 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-dash-table .col-event    { width:130px; }
 .msc-dash-table .col-class    { width:120px; }
 .msc-dash-table .col-vehicle  { width:140px; }
-.msc-dash-table .col-race     { width:52px; }
+.msc-dash-table .col-race     { width:72px; }
+.msc-race-display { display:inline-flex; align-items:center; gap:4px; }
+.msc-race-edit-btn { background:none; border:none; cursor:pointer; color:#999; font-size:12px; padding:0; line-height:1; }
+.msc-race-edit-btn:hover { color:var(--msc-primary,#e94560); }
+.msc-race-save, .msc-race-cancel { background:none; border:none; cursor:pointer; font-size:12px; padding:0; line-height:1; }
+.msc-race-save { color:#2e7d32; }
+.msc-race-cancel { color:#c0392b; }
 .msc-dash-table .col-fee      { width:64px; }
 .msc-dash-table .col-date     { width:72px; }
 .msc-dash-table .col-status   { width:82px; }
