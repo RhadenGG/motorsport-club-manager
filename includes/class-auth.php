@@ -125,8 +125,12 @@ class MSC_Auth {
             $referer = wp_get_referer() ?: self::login_url();
 
             if ( $user->get_error_code() === 'email_not_verified' ) {
-                // Our own error — use the dedicated notice (includes resend link).
-                wp_safe_redirect( add_query_arg( 'msc_auth_err', 'not_verified', $referer ) );
+                // Preserve the resend link (with its nonce) that check_email_verified()
+                // built into the error message. Without this, members land on a dead
+                // end: told to check an inbox with no self-service way to resend.
+                $tok = wp_generate_password( 12, false );
+                set_transient( 'msc_verify_msg_' . $tok, $user->get_error_message(), 120 );
+                wp_safe_redirect( add_query_arg( array( 'msc_auth_err' => 'not_verified', 'msc_verify_tok' => $tok ), $referer ) );
             } else {
                 // For all other WP errors, store the actual message in a transient
                 // so we can display it without losing detail through URL sanitisation.
@@ -245,6 +249,18 @@ class MSC_Auth {
             }
         }
 
+        // Retrieve the "not verified" message with its resend link, stored server-side
+        // so the nonce'd link survives the redirect intact.
+        $verify_msg = '';
+        if ( $error === 'not_verified' && isset( $_GET['msc_verify_tok'] ) ) {
+            $tok = sanitize_text_field( wp_unslash( $_GET['msc_verify_tok'] ) );
+            $stored = get_transient( 'msc_verify_msg_' . $tok );
+            if ( $stored ) {
+                $verify_msg = $stored;
+                delete_transient( 'msc_verify_msg_' . $tok );
+            }
+        }
+
         // Enqueue the Cloudflare Turnstile API so CAPTCHA plugins that hook into
         // login_form can render their widget on this frontend page.
         wp_enqueue_script( 'cf-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', array(), null, true );
@@ -270,6 +286,8 @@ class MSC_Auth {
 
                     <?php if ( $wp_error_msg ) : ?>
                         <div class="msc-notice msc-notice-error"><?php echo esc_html( $wp_error_msg ); ?></div>
+                    <?php elseif ( $verify_msg ) : ?>
+                        <div class="msc-notice msc-notice-error"><?php echo wp_kses_post( $verify_msg ); ?></div>
                     <?php elseif ( $error ) : ?>
                         <div class="msc-notice msc-notice-error"><?php echo esc_html( self::error_message( $error ) ); ?></div>
                     <?php endif; ?>

@@ -33,6 +33,8 @@ class MSC_Security {
         add_action( 'admin_post_msc_admin_resend_verification', array( __CLASS__, 'handle_admin_resend_verification' ) );
         add_action( 'admin_post_msc_admin_mark_verified',       array( __CLASS__, 'handle_admin_mark_verified' ) );
         add_action( 'admin_notices',     array( __CLASS__, 'admin_resend_verification_notice' ) );
+        add_filter( 'manage_users_columns',       array( __CLASS__, 'add_verified_column' ) );
+        add_filter( 'manage_users_custom_column', array( __CLASS__, 'render_verified_column' ), 10, 3 );
     }
 
     // ── wp-admin access restriction ──────────────────────────────────────────
@@ -337,6 +339,29 @@ class MSC_Security {
 
         list( $type, $text ) = $messages[ $result ];
         echo '<div class="notice notice-' . esc_attr( $type ) . ' is-dismissible"><p><strong>Motorsport Club Manager:</strong> ' . esc_html( $text ) . '</p></div>';
+    }
+
+    /**
+     * Adds a "Verification" column to the Users list so verification state is
+     * visible without a DB tool — the deciding factor for whether "Resend" or
+     * "Mark as verified" appears in row actions.
+     */
+    public static function add_verified_column( $columns ) {
+        $columns['msc_verified'] = 'Verification';
+        return $columns;
+    }
+
+    public static function render_verified_column( $output, $column_name, $user_id ) {
+        if ( $column_name !== 'msc_verified' ) return $output;
+
+        $verified = get_user_meta( $user_id, 'msc_email_verified', true );
+        if ( $verified === '1' ) {
+            return '<span style="color:#27ae60">✓ Verified</span>';
+        }
+        if ( $verified === '0' ) {
+            return '<span style="color:#e67e22">⏳ Pending — gated at login</span>';
+        }
+        return '<span style="color:#888">— Not gated</span>';
     }
 
     public static function onboarding_redirect( $redirect_to, $requested, $user ) {

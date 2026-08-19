@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.9 | **License:** GPLv2 or later
+**Current version:** 0.9.10 | **License:** GPLv2 or later
 
 ---
 
@@ -87,7 +87,8 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 ### Custom Auth Flow
 - Styled shortcode pages for login (`[msc_login]`), registration (`[msc_register]`), and password setup (`[msc_set_password]`).
 - Registration sends an email verification link; verified users are redirected to the set-password page to choose their password before being redirected to login.
-- Admins can **resend the verification email** for an account still mid-verification, or **mark an account as verified** manually with no email sent, via row actions on the wp-admin Users list. Accounts with no verification history (created before this feature, or created directly by an admin) were never gated on login and are left alone rather than being pulled into the gate.
+- On the `[msc_login]` page, a member who tries to log in before verifying sees a **Resend verification email** link inline in the error message, so they can self-serve without needing an admin.
+- Admins can **resend the verification email** for an account still mid-verification, or **mark an account as verified** manually with no email sent, via row actions on the wp-admin Users list. Accounts with no verification history (created before this feature, or created directly by an admin) were never gated on login and are left alone rather than being pulled into the gate. A **Verification** column on the Users list shows each account's state (Verified / Pending — gated at login / Not gated) at a glance.
 - First-login onboarding redirect prompts new members to complete their profile.
 - Compatible with Cloudflare Turnstile / CAPTCHA.
 
