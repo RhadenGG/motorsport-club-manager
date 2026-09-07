@@ -1184,6 +1184,13 @@ jQuery(function ($) {
                     return;
                 }
 
+                var emName  = $.trim($('#msc-edit-emergency-name').val());
+                var emPhone = $.trim($('#msc-edit-emergency-phone').val());
+                if (!emName || !emPhone) {
+                    $('#msc-edit-msg').text('Please complete both emergency contact fields.').css('color','red').show();
+                    return;
+                }
+
                 var btn = $(this);
                 btn.prop('disabled', true).text('Saving…');
                 $('#msc-edit-msg').hide();
@@ -1212,6 +1219,8 @@ jQuery(function ($) {
                 }
                 fd.append('msc_pit_crew_1', $('#msc-edit-pit-crew-1').val());
                 fd.append('msc_pit_crew_2', $('#msc-edit-pit-crew-2').val());
+                fd.append('msc_emergency_name', emName);
+                fd.append('msc_emergency_phone', emPhone);
                 // Condition answers for newly-added classes
                 $('#msc-edit-conditions-wrap .msc-edit-cond-group').each(function() {
                     var classId = $(this).data('class-id');
@@ -1604,6 +1613,8 @@ jQuery(function ($) {
         var panel = $('<div class="msc-entry-edit-panel" style="background:#f8f9fa;border:1px solid #dde0e5;border-radius:8px;padding:20px;margin-top:10px"></div>');
         var pitCrew1 = data.pit_crew_1 || '';
         var pitCrew2 = data.pit_crew_2 || '';
+        var emName   = data.emergency_name || '';
+        var emPhone  = data.emergency_phone || '';
         var popLabel = isAdminEdit
             ? 'Proof of Payment <span style="font-weight:normal;color:#888">(optional — or request from entrant below)</span>'
             : 'Proof of Payment for amount owed <span style="color:#d63638">*</span>';
@@ -1647,6 +1658,15 @@ jQuery(function ($) {
             + '      <input type="text" id="msc-edit-pit-crew-1" value="' + $('<span>').text(pitCrew1).html() + '" placeholder="Optional"></div>'
             + '    <div class="msc-field"><label>Name #2</label>'
             + '      <input type="text" id="msc-edit-pit-crew-2" value="' + $('<span>').text(pitCrew2).html() + '" placeholder="Optional"></div>'
+            + '  </div>'
+            + '</div>'
+            + '<div style="margin-bottom:16px">'
+            + '  <p class="msc-reg-section-label" style="margin-bottom:8px">Emergency Contact</p>'
+            + '  <div class="msc-reg-grid-2">'
+            + '    <div class="msc-field"><label>Name <span style="color:#d63638">*</span></label>'
+            + '      <input type="text" id="msc-edit-emergency-name" value="' + $('<span>').text(emName).html() + '"></div>'
+            + '    <div class="msc-field"><label>Phone <span style="color:#d63638">*</span></label>'
+            + '      <input type="text" id="msc-edit-emergency-phone" value="' + $('<span>').text(emPhone).html() + '"></div>'
             + '  </div>'
             + '</div>'
             + '<div id="msc-edit-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'

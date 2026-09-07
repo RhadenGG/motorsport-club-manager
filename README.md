@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.10 | **License:** GPLv2 or later
+**Current version:** 0.9.11 | **License:** GPLv2 or later
 
 ---
 
@@ -54,7 +54,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - A sticky **"Submitting your entry…"** banner with a spinner appears on submit and blocks accidental page refresh until the server responds. On a temporary server error (HTTP 503), the form automatically retries once after 5 seconds with a "Server busy, retrying…" status update; if the retry also fails, a clear message explains the server is busy and the entry was not submitted.
 
 ### Entry Editing
-- Members can add or remove classes and update pit crew names (optional) on a pending or confirmed entry from their **My Account** dashboard.
+- Members can add or remove classes and update pit crew names (optional) and emergency contact name/phone (required) on a pending or confirmed entry from their **My Account** dashboard.
 - **Admins and event creators** can edit any entrant's entry directly from the **Entries tab** of the staff dashboard or the **wp-admin Entries** table — an **Edit** button appears on each eligible row.
   - The edit panel loads the entrant's own vehicles (not the admin's garage).
   - A **Proof of Payment** field is shown but optional — admins can save a fee increase without uploading a file if they instead check **"Request PoP from entrant"**.

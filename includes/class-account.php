@@ -422,6 +422,9 @@ class MSC_Account {
                                 ?>
                                 <span>👥 Pit Crew: <?php echo esc_html( $pc_label ); ?></span>
                                 <?php endif; ?>
+                                <?php if ( ! empty( $r->emergency_name ) || ! empty( $r->emergency_phone ) ) : ?>
+                                <span>🚑 Emergency: <?php echo esc_html( trim( $r->emergency_name . ' ' . $r->emergency_phone ) ); ?></span>
+                                <?php endif; ?>
                             </div>
                             <?php $acct_conditions = MSC_Registration::get_conditions_for_display( $r->id );
                             if ( ! empty( $acct_conditions ) ) : ?>

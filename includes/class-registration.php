@@ -1210,6 +1210,8 @@ class MSC_Registration {
             'user_vehicles'   => $user_vehicles,
             'pit_crew_1'      => $reg->pit_crew_1,
             'pit_crew_2'      => $reg->pit_crew_2,
+            'emergency_name'  => $reg->emergency_name,
+            'emergency_phone' => $reg->emergency_phone,
             'is_admin_edit'   => $is_admin_edit,
             'pop_link'        => $is_admin_edit
                 ? add_query_arg( 'msc_pop_reg', $reg->id, msc_get_account_url( 'registrations' ) )
@@ -1491,6 +1493,22 @@ class MSC_Registration {
             if ( $new_pit_crew_1 !== null ) { $pit_update['pit_crew_1'] = $new_pit_crew_1; $pit_fmts[] = '%s'; }
             if ( $new_pit_crew_2 !== null ) { $pit_update['pit_crew_2'] = $new_pit_crew_2; $pit_fmts[] = '%s'; }
             $wpdb->update( "{$wpdb->prefix}msc_registrations", $pit_update, array( 'id' => $reg_id ), $pit_fmts, array( '%d' ) );
+        }
+
+        // Update emergency contact on the registration record
+        if ( isset( $_POST['msc_emergency_name'] ) || isset( $_POST['msc_emergency_phone'] ) ) {
+            $new_em_name  = sanitize_text_field( wp_unslash( $_POST['msc_emergency_name'] ?? '' ) );
+            $new_em_phone = sanitize_text_field( wp_unslash( $_POST['msc_emergency_phone'] ?? '' ) );
+            if ( ! $new_em_name || ! $new_em_phone ) {
+                wp_send_json_error( array( 'message' => 'Please complete both emergency contact fields.' ) );
+            }
+            $wpdb->update(
+                "{$wpdb->prefix}msc_registrations",
+                array( 'emergency_name' => $new_em_name, 'emergency_phone' => $new_em_phone ),
+                array( 'id' => $reg_id ),
+                array( '%s', '%s' ),
+                array( '%d' )
+            );
         }
 
         if ( $is_admin_edit ) {
