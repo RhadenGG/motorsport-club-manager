@@ -397,6 +397,99 @@ class MSC_Admin_Events {
         }
     }
 
+    /**
+     * Admin-triggered resend of already-sent participant emails (Entry Received,
+     * Entry Confirmed, Signed Indemnity PDF). Reuses the same tested MSC_Emails /
+     * MSC_Indemnity senders used by the original send and the retry cron — it does
+     * NOT touch the notif_* delivery-tracking columns, so it cannot interfere with
+     * the async notification/retry system in MSC_Registration::send_registration_notifications().
+     * 'confirmed' and 'indemnity' are only sent where they still apply to the entry's
+     * current state (status=confirmed / indemnity_method=signed) to avoid emailing an
+     * entrant content that contradicts their entry's actual status.
+     *
+     * @param int   $reg_id Registration ID.
+     * @param array $types  Subset of 'received', 'confirmed', 'indemnity'.
+     * @return array{sent: string[], skipped: string[]}
+     */
+    private static function resend_notification_emails( $reg_id, array $types ) {
+        global $wpdb;
+        $reg_id = absint( $reg_id );
+        $result = array( 'sent' => array(), 'skipped' => array() );
+        $reg    = $wpdb->get_row( $wpdb->prepare(
+            "SELECT status, indemnity_method FROM {$wpdb->prefix}msc_registrations WHERE id = %d",
+            $reg_id
+        ) );
+        if ( ! $reg ) return $result;
+
+        if ( in_array( 'received', $types, true ) ) {
+            if ( MSC_Emails::send_registration_received( $reg_id ) ) {
+                $result['sent'][] = 'received';
+                MSC_Logger::info( 'Notifications', 'Admin resent entry-received email', array( 'reg_id' => $reg_id ) );
+            } else {
+                $result['skipped'][] = 'received';
+            }
+        }
+
+        if ( in_array( 'confirmed', $types, true ) ) {
+            if ( $reg->status === 'confirmed' ) {
+                if ( MSC_Emails::send_confirmation( $reg_id ) ) {
+                    $result['sent'][] = 'confirmed';
+                    MSC_Logger::info( 'Notifications', 'Admin resent confirmation email', array( 'reg_id' => $reg_id ) );
+                } else {
+                    $result['skipped'][] = 'confirmed';
+                }
+            } else {
+                $result['skipped'][] = 'confirmed';
+            }
+        }
+
+        if ( in_array( 'indemnity', $types, true ) ) {
+            if ( $reg->indemnity_method === 'signed' ) {
+                if ( MSC_Indemnity::send_indemnity_to_participant( $reg_id ) ) {
+                    $result['sent'][] = 'indemnity';
+                    MSC_Logger::info( 'Notifications', 'Admin resent indemnity PDF email', array( 'reg_id' => $reg_id ) );
+                } else {
+                    $result['skipped'][] = 'indemnity';
+                }
+            } else {
+                $result['skipped'][] = 'indemnity';
+            }
+        }
+
+        return $result;
+    }
+
+    private static function resend_type_label( $type ) {
+        $labels = array(
+            'received'  => 'Entry Received',
+            'confirmed' => 'Entry Confirmed',
+            'indemnity' => 'Indemnity PDF',
+        );
+        return $labels[ $type ] ?? $type;
+    }
+
+    private static function format_resend_summary( array $res ) {
+        $parts = array();
+        if ( ! empty( $res['sent'] ) ) {
+            $parts[] = 'Resent: ' . implode( ', ', array_map( array( __CLASS__, 'resend_type_label' ), $res['sent'] ) ) . '.';
+        }
+        if ( ! empty( $res['skipped'] ) ) {
+            $parts[] = 'Skipped (not applicable to this entry): ' . implode( ', ', array_map( array( __CLASS__, 'resend_type_label' ), $res['skipped'] ) ) . '.';
+        }
+        return $parts ? implode( ' ', $parts ) : 'No emails were sent.';
+    }
+
+    private static function format_resend_totals( array $totals ) {
+        $parts = array();
+        foreach ( $totals['sent'] as $type => $count ) {
+            $parts[] = $count . ' ' . self::resend_type_label( $type ) . ' email(s) sent';
+        }
+        foreach ( $totals['skipped'] as $type => $count ) {
+            $parts[] = $count . ' ' . self::resend_type_label( $type ) . ' skipped (not applicable)';
+        }
+        return $parts ? implode( '. ', $parts ) . '.' : 'No emails were sent.';
+    }
+
     public static function registrations_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( 'Unauthorized access.' );
@@ -489,6 +582,49 @@ class MSC_Admin_Events {
             if ( $status === 'rejected' )   MSC_Emails::send_rejection( $reg_id, $rejection_reason );
             if ( $status === 'cancelled' )  MSC_Emails::send_cancellation_by_admin( $reg_id );
             echo '<div class="updated notice is-dismissible"><p>Entry updated.</p></div>';
+        }
+
+        // ── Handle resend (single row) ───────────────────────────────────
+        if (
+            isset( $_POST['msc_resend_emails'] ) &&
+            isset( $_POST['_wpnonce_resend'] ) &&
+            wp_verify_nonce( $_POST['_wpnonce_resend'], 'msc_resend_action' )
+        ) {
+            $resend_reg_id = intval( $_POST['reg_id'] ?? 0 );
+            $resend_types  = isset( $_POST['resend_types'] ) && is_array( $_POST['resend_types'] )
+                ? array_intersect( array_map( 'sanitize_key', wp_unslash( $_POST['resend_types'] ) ), array( 'received', 'confirmed', 'indemnity' ) )
+                : array();
+            if ( $resend_reg_id && ! empty( $resend_types ) ) {
+                $r_res = self::resend_notification_emails( $resend_reg_id, $resend_types );
+                echo '<div class="updated notice is-dismissible"><p>' . esc_html( self::format_resend_summary( $r_res ) ) . '</p></div>';
+            } else {
+                echo '<div class="error notice is-dismissible"><p>Select at least one email to resend.</p></div>';
+            }
+        }
+
+        // ── Handle resend (bulk) ──────────────────────────────────────────
+        if (
+            isset( $_POST['msc_bulk_resend_emails'] ) &&
+            isset( $_POST['_wpnonce_bulk_resend'] ) &&
+            wp_verify_nonce( $_POST['_wpnonce_bulk_resend'], 'msc_bulk_resend_action' )
+        ) {
+            $resend_types = isset( $_POST['resend_types'] ) && is_array( $_POST['resend_types'] )
+                ? array_intersect( array_map( 'sanitize_key', wp_unslash( $_POST['resend_types'] ) ), array( 'received', 'confirmed', 'indemnity' ) )
+                : array();
+            $resend_ids   = isset( $_POST['bulk_ids'] ) && is_array( $_POST['bulk_ids'] )
+                ? array_filter( array_map( 'intval', $_POST['bulk_ids'] ) )
+                : array();
+            if ( ! empty( $resend_types ) && ! empty( $resend_ids ) ) {
+                $totals = array( 'sent' => array(), 'skipped' => array() );
+                foreach ( $resend_ids as $rrid ) {
+                    $r_res = self::resend_notification_emails( $rrid, $resend_types );
+                    foreach ( $r_res['sent'] as $t )    { $totals['sent'][ $t ]    = ( $totals['sent'][ $t ]    ?? 0 ) + 1; }
+                    foreach ( $r_res['skipped'] as $t ) { $totals['skipped'][ $t ] = ( $totals['skipped'][ $t ] ?? 0 ) + 1; }
+                }
+                echo '<div class="updated notice is-dismissible"><p>' . esc_html( self::format_resend_totals( $totals ) ) . '</p></div>';
+            } else {
+                echo '<div class="error notice is-dismissible"><p>Select at least one entry and one email to resend.</p></div>';
+            }
         }
 
         // ── Filters ────────────────────────────────────────────────────
@@ -589,6 +725,23 @@ class MSC_Admin_Events {
         <input type="hidden" name="msc_bulk_update_status" value="1">
         <input type="hidden" name="bulk_status" id="msc-bulk-status-hidden">
         <input type="hidden" name="rejection_reason" id="msc-bulk-rej-reason-hidden">
+        </form>
+
+        <!-- Resend emails (separate from status change — does not touch entry status) -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
+            <button type="button" id="msc-bulk-resend-toggle" class="button">✉ Resend Emails to Selected</button>
+        </div>
+        <div id="msc-bulk-resend-wrap" style="display:none;margin-bottom:14px;padding:10px 12px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;max-width:480px">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Which emails to resend:</label>
+            <label style="display:block;margin-bottom:4px;font-size:13px"><input type="checkbox" class="msc-bulk-resend-type" value="received"> Entry Received</label>
+            <label style="display:block;margin-bottom:4px;font-size:13px"><input type="checkbox" class="msc-bulk-resend-type" value="confirmed"> Entry Confirmed</label>
+            <label style="display:block;margin-bottom:8px;font-size:13px"><input type="checkbox" class="msc-bulk-resend-type" value="indemnity"> Signed Indemnity PDF</label>
+            <p style="font-size:11px;color:#666;margin:0 0 8px">Entry Confirmed and Indemnity PDF are only sent to selected entries where they apply (status = Confirmed / indemnity signed) — others are skipped automatically, nothing else on the entry is changed.</p>
+            <button type="button" id="msc-bulk-resend-apply" class="button button-primary button-small">Send to Selected</button>
+        </div>
+        <form method="post" id="msc-bulk-resend-form" style="display:none">
+        <?php wp_nonce_field( 'msc_bulk_resend_action', '_wpnonce_bulk_resend' ); ?>
+        <input type="hidden" name="msc_bulk_resend_emails" value="1">
         </form>
 
         <!-- Table -->
@@ -718,6 +871,24 @@ class MSC_Admin_Events {
         🗑 Delete
         </button>
         </form>
+        <div class="msc-admin-resend-wrap" style="margin-top:4px">
+        <button type="button" class="button button-small msc-resend-toggle">✉ Resend</button>
+        <div class="msc-resend-panel" style="display:none;margin-top:4px;padding:6px 8px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;min-width:170px">
+        <form method="post" class="msc-resend-row-form">
+        <?php wp_nonce_field( 'msc_resend_action', '_wpnonce_resend' ); ?>
+        <input type="hidden" name="reg_id" value="<?php echo (int) $r->id; ?>">
+        <input type="hidden" name="msc_resend_emails" value="1">
+        <label style="display:block;font-size:11px;margin-bottom:2px"><input type="checkbox" name="resend_types[]" value="received"> Entry Received</label>
+        <label style="display:block;font-size:11px;margin-bottom:2px" title="<?php echo $r->status !== 'confirmed' ? 'Only available once the entry is confirmed' : ''; ?>">
+        <input type="checkbox" name="resend_types[]" value="confirmed" <?php disabled( $r->status !== 'confirmed', true ); ?>> Confirmed<?php echo $r->status !== 'confirmed' ? ' <span style="color:#aaa">(n/a)</span>' : ''; ?>
+        </label>
+        <label style="display:block;font-size:11px;margin-bottom:4px" title="<?php echo $r->indemnity_method !== 'signed' ? 'No signed indemnity PDF on this entry' : ''; ?>">
+        <input type="checkbox" name="resend_types[]" value="indemnity" <?php disabled( $r->indemnity_method !== 'signed', true ); ?>> Indemnity PDF<?php echo $r->indemnity_method !== 'signed' ? ' <span style="color:#aaa">(n/a)</span>' : ''; ?>
+        </label>
+        <button type="submit" class="button button-small button-primary">Send</button>
+        </form>
+        </div>
+        </div>
         <?php if ( in_array( $r->status, array('pending','confirmed'), true ) && ! MSC_Results::is_closed( $r->event_id ) ) : ?>
         <button type="button" class="button button-small msc-admin-edit-entry" data-id="<?php echo $r->id; ?>" style="margin-top:4px">Edit</button>
         <?php endif; ?>
@@ -828,6 +999,55 @@ class MSC_Admin_Events {
                     form.submit();
                 });
             }
+
+            // Bulk resend panel
+            var resendToggle = document.getElementById('msc-bulk-resend-toggle');
+            var resendWrap    = document.getElementById('msc-bulk-resend-wrap');
+            var resendApply   = document.getElementById('msc-bulk-resend-apply');
+            var resendForm    = document.getElementById('msc-bulk-resend-form');
+
+            if (resendToggle && resendWrap) {
+                resendToggle.addEventListener('click', function(){
+                    resendWrap.style.display = (resendWrap.style.display === 'none') ? 'block' : 'none';
+                });
+            }
+            if (resendApply && resendForm) {
+                resendApply.addEventListener('click', function(){
+                    var types = Array.prototype.slice.call(document.querySelectorAll('.msc-bulk-resend-type:checked')).map(function(cb){ return cb.value; });
+                    if (!types.length) { alert('Choose at least one email to resend.'); return; }
+                    var checked = document.querySelectorAll('.msc-admin-bulk-cb:checked');
+                    if (!checked.length) { alert('No registrations selected.'); return; }
+                    if (!confirm('Resend the selected email(s) to ' + checked.length + ' entrant(s)?')) return;
+
+                    resendForm.querySelectorAll('input[name="bulk_ids[]"], input[name="resend_types[]"]').forEach(function(el){ el.remove(); });
+                    types.forEach(function(t){
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = 'resend_types[]'; inp.value = t;
+                        resendForm.appendChild(inp);
+                    });
+                    checked.forEach(function(cb){
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = 'bulk_ids[]'; inp.value = cb.value;
+                        resendForm.appendChild(inp);
+                    });
+                    resendForm.submit();
+                });
+            }
+
+            // Per-row resend panel toggle + confirm-before-send
+            document.querySelectorAll('.msc-resend-toggle').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var panel = btn.closest('.msc-admin-resend-wrap').querySelector('.msc-resend-panel');
+                    if (panel) panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+                });
+            });
+            document.querySelectorAll('.msc-resend-row-form').forEach(function(f){
+                f.addEventListener('submit', function(e){
+                    var checked = f.querySelectorAll('input[name="resend_types[]"]:checked');
+                    if (!checked.length) { e.preventDefault(); alert('Choose at least one email to resend.'); return; }
+                    if (!confirm('Resend the selected email(s) to this entrant?')) e.preventDefault();
+                });
+            });
         })();
         </script>
         <?php

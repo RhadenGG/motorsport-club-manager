@@ -2,7 +2,7 @@
 
 A WordPress plugin for end-to-end motorsport event management — from event creation and member entries through to race results and document archival. Built for real clubs running live race days.
 
-**Current version:** 0.9.11 | **License:** GPLv2 or later
+**Current version:** 0.9.12 | **License:** GPLv2 or later
 
 ---
 
@@ -108,7 +108,7 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - The entire results module can be disabled in **Settings** for clubs that use an external results system — the event open/closed lifecycle (used to lock entries) is unaffected.
 
 ### Admin (wp-admin)
-- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, an inline-editable Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, indemnity PDF links, **Edit** button (opens the same inline edit panel as the frontend dashboard), and **📋 PoP Link** copy button when a PoP upload has been requested from the entrant.
+- **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, an inline-editable Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, indemnity PDF links, **Edit** button (opens the same inline edit panel as the frontend dashboard), **📋 PoP Link** copy button when a PoP upload has been requested from the entrant, and **✉ Resend** (per-row and bulk) to re-send the Entry Received, Entry Confirmed, and/or Signed Indemnity PDF emails to an entrant without changing their status or entry number — Entry Confirmed and Indemnity PDF are only offered where they still apply (status = Confirmed / indemnity signed).
 - **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
 - **Motorsport Club → Vehicle Classes:** taxonomy term management.
 - **Motorsport Club → Settings:** banking details, auth page URLs, SMTP configuration, **Results Module** toggle (disable built-in results entry and display for clubs using an external results system), and **debug logging** toggle.
