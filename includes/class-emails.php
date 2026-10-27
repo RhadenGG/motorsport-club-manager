@@ -6,6 +6,22 @@ class MSC_Emails {
     public static function init() {
         // Content-Type is set per-send via explicit headers — no global filter needed.
         add_action( 'phpmailer_init', array( __CLASS__, 'configure_smtp' ) );
+        add_action( 'wp_mail_failed', array( __CLASS__, 'log_mail_failure' ) );
+    }
+
+    /**
+     * wp_mail() swallows the real PHPMailer/SMTP error into a bare false.
+     * This surfaces the actual rejection reason (e.g. SMTP response code,
+     * auth failure, throttling) so failures are diagnosable from the log
+     * instead of just "Send failed".
+     */
+    public static function log_mail_failure( $wp_error ) {
+        if ( ! is_wp_error( $wp_error ) ) return;
+        $data = $wp_error->get_error_data();
+        MSC_Logger::error( 'Email', 'wp_mail_failed: ' . $wp_error->get_error_message(), array(
+            'to'      => isset( $data['to'] ) ? $data['to'] : null,
+            'subject' => isset( $data['subject'] ) ? $data['subject'] : null,
+        ) );
     }
 
     /** Configure PHPMailer to use custom SMTP if enabled in settings */
