@@ -1365,3 +1365,19 @@ button.msc-btn:disabled { background: #ccc; border-color: #ccc; cursor: not-allo
 .msc-cond-detail-table td { padding: 2px 0; }
 .msc-cond-detail-table td:first-child { padding-right: 16px; color: #555; white-space: nowrap; }
 .msc-cond-detail-table td:last-child { font-weight: 500; }
+
+/* ── Public Entry List ─────────────────────────────────────────── */
+.msc-entry-list-count  { color: #666; margin: -.4em 0 1em; }
+.msc-entry-list-empty  { color: #666; }
+.msc-entry-list .msc-class-results-heading { display: flex; align-items: center; gap: 8px; }
+.msc-entry-list-class-count {
+    background: var(--msc-border);
+    color: var(--msc-dark);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: .7em;
+    font-weight: 600;
+}
+.msc-entry-list-table { margin-bottom: 1.5em; }
+.msc-col-race-number  { width: 90px; text-align: center; }
+.msc-entry-list-notice { font-size: .88em; color: #666; margin-top: 12px; }

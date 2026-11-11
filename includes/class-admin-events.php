@@ -144,6 +144,7 @@ class MSC_Admin_Events {
                    'reg_open'       => get_post_meta( $post->ID, '_msc_reg_open', true ),
                    'reg_close'      => get_post_meta( $post->ID, '_msc_reg_close', true ),
                    'indemnity_text' => get_post_meta( $post->ID, '_msc_indemnity_text', true ),
+                   'entry_list'     => get_post_meta( $post->ID, '_msc_entry_list_visibility', true ),
         );
         ?>
         <table class="form-table" style="width:100%">
@@ -174,6 +175,17 @@ class MSC_Admin_Events {
         <td colspan="3">
         <label><input type="radio" name="msc_approval" value="manual"  <?php checked($d['approval'],'manual'); ?>> Manual (requires admin approval)</label>&nbsp;&nbsp;
         <label><input type="radio" name="msc_approval" value="instant" <?php checked($d['approval'],'instant'); ?>> Automatic (instant confirmation)</label>
+        </td>
+        </tr>
+        <tr>
+        <th><label for="msc_entry_list_visibility">Public Entry List</label></th>
+        <td colspan="3">
+        <select name="msc_entry_list_visibility" id="msc_entry_list_visibility">
+        <option value=""     <?php selected($d['entry_list'],''); ?>>Use site default (<?php echo get_option( 'msc_public_entry_list', 0 ) ? 'shown' : 'hidden'; ?>)</option>
+        <option value="show" <?php selected($d['entry_list'],'show'); ?>>Show for this event</option>
+        <option value="hide" <?php selected($d['entry_list'],'hide'); ?>>Hide for this event</option>
+        </select>
+        <p class="description">Lists confirmed entrants (name, class and Race Number) on the public event page. Site default is set in Motorsport Club &gt; Settings.</p>
         </td>
         </tr>
         <tr>
@@ -326,6 +338,11 @@ class MSC_Admin_Events {
         }
         if ( isset($_POST['msc_indemnity_text']) ) {
             update_post_meta( $post_id, '_msc_indemnity_text', sanitize_textarea_field(wp_unslash($_POST['msc_indemnity_text'])) );
+        }
+        if ( isset($_POST['msc_entry_list_visibility']) ) {
+            $visibility = sanitize_key( wp_unslash( $_POST['msc_entry_list_visibility'] ) );
+            if ( in_array( $visibility, array( 'show', 'hide' ), true ) ) update_post_meta( $post_id, '_msc_entry_list_visibility', $visibility );
+            else delete_post_meta( $post_id, '_msc_entry_list_visibility' );
         }
         if ( isset($_POST['msc_indemnity_pdf_id']) ) {
             $pdf_id = intval($_POST['msc_indemnity_pdf_id']);
@@ -1082,6 +1099,7 @@ class MSC_Admin_Events {
             update_option( 'msc_dashboard_event_access_mode', $access_mode );
             
             update_option( 'msc_results_enabled', isset( $_POST['msc_results_enabled'] ) ? 1 : 0 );
+            update_option( 'msc_public_entry_list', isset( $_POST['msc_public_entry_list'] ) ? 1 : 0 );
             update_option( 'msc_debug_logging', isset( $_POST['msc_debug_logging'] ) ? 1 : 0 );
             if ( get_option( 'msc_debug_logging' ) ) {
                 MSC_Logger::maybe_setup_dir();
@@ -1257,6 +1275,19 @@ class MSC_Admin_Events {
                                 When enabled, a Results meta box appears on each event and race results are shown on the public event page after the event is closed.
                                 Disable this if you manage results through a separate system.
                                 Closing events (to lock registrations) still works regardless of this setting.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Public Entry List</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="msc_public_entry_list" value="1" <?php checked( get_option( 'msc_public_entry_list', 0 ), 1 ); ?>>
+                                <strong>Show the entry list on public event pages</strong>
+                            </label>
+                            <p class="description">
+                                Lists confirmed entrants grouped by class, showing only their name and Race Number. Pending, rejected and cancelled entries are never shown.
+                                Individual events can override this in the event editor. Entrants are told on the entry form that these details will be published.
                             </p>
                         </td>
                     </tr>

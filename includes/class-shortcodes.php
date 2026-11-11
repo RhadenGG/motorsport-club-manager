@@ -7,6 +7,7 @@ class MSC_Shortcodes {
         add_shortcode( 'msc_events_list',     array( __CLASS__, 'events_list' ) );
         add_shortcode( 'msc_next_event',      array( __CLASS__, 'next_event' ) );
         add_shortcode( 'msc_register_event',  array( __CLASS__, 'register_form' ) );
+        add_shortcode( 'msc_entry_list',      array( __CLASS__, 'entry_list' ) );
         add_action(    'wp_enqueue_scripts',  array( __CLASS__, 'enqueue' ) );
         add_filter( 'the_content',       array( __CLASS__, 'append_to_event' ) );
         add_filter( 'post_thumbnail_html', array( __CLASS__, 'suppress_event_thumbnail' ), 10, 2 );
@@ -48,6 +49,9 @@ class MSC_Shortcodes {
             }
             $content .= self::render_event_meta( $event_id );
             $content .= self::register_form( array( 'event_id' => $event_id ) );
+            if ( self::is_entry_list_public( $event_id ) ) {
+                $content .= self::get_entry_list_html( $event_id );
+            }
             if ( get_option( 'msc_results_enabled', 1 ) && MSC_Results::is_closed( $event_id ) ) {
                 $content .= MSC_Results::get_results_html( $event_id );
             }
@@ -626,6 +630,10 @@ class MSC_Shortcodes {
                         <?php endif; ?>
                     </div>
 
+                    <?php if ( self::is_entry_list_public( $event_id ) ) : ?>
+                    <p class="description msc-entry-list-notice">Once your entry is confirmed, your name, class(es) and Race Number will be shown on this event's public entry list.</p>
+                    <?php endif; ?>
+
                     <div id="msc-reg-error" class="msc-notice msc-notice-error" style="display:none;margin-top:12px"></div>
 
                     <div style="margin-top:20px;display:flex;gap:12px">
@@ -637,6 +645,131 @@ class MSC_Shortcodes {
 
             <!-- Success -->
             <div id="msc-reg-success" style="display:none" class="msc-notice msc-notice-success msc-success-big"></div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Whether an event's entry list may be shown publicly: the per-event
+     * override wins, otherwise the site-wide default applies.
+     */
+    public static function is_entry_list_public( $event_id ) {
+        $visibility = get_post_meta( $event_id, '_msc_entry_list_visibility', true );
+        if ( $visibility === 'show' ) return true;
+        if ( $visibility === 'hide' ) return false;
+        return (bool) get_option( 'msc_public_entry_list', 0 );
+    }
+
+    /** [msc_entry_list event_id="123"] — honours the same visibility rules as the event page. */
+    public static function entry_list( $atts = array() ) {
+        $atts     = shortcode_atts( array( 'event_id' => get_the_ID() ), $atts );
+        $event_id = intval( $atts['event_id'] );
+        $event    = get_post( $event_id );
+        // Never expose entrants of draft/private events through an arbitrary event_id.
+        if ( ! $event || $event->post_type !== 'msc_event' || $event->post_status !== 'publish' ) return '';
+        if ( ! self::is_entry_list_public( $event_id ) ) return '';
+        // The event page appends the list itself; avoid rendering it twice.
+        if ( is_singular( 'msc_event' ) && get_the_ID() === $event_id ) return '';
+        return self::get_entry_list_html( $event_id );
+    }
+
+    /**
+     * Public entry list: confirmed entries only, grouped by class, showing
+     * entrant name and Race Number — nothing else leaves the database.
+     */
+    public static function get_entry_list_html( $event_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'msc_registrations';
+
+        // Legacy registrations (no junction rows) fall back to the single class/vehicle
+        // columns; once junction rows exist the legacy vehicle column is stale, so it is
+        // never used as a fallback for them.
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT r.id AS reg_id,
+                    CASE WHEN rc.id IS NULL THEN r.class_id   ELSE rc.class_id   END AS class_id,
+                    CASE WHEN rc.id IS NULL THEN r.vehicle_id ELSE rc.vehicle_id END AS vehicle_id,
+                    NULLIF(TRIM(CONCAT(COALESCE(um_fn.meta_value,''),' ',COALESCE(um_ln.meta_value,''))), '') AS full_name,
+                    u.display_name
+             FROM $table r
+             LEFT JOIN {$wpdb->prefix}msc_registration_classes rc ON rc.registration_id = r.id
+             LEFT JOIN {$wpdb->users}    u     ON u.ID = r.user_id
+             LEFT JOIN {$wpdb->usermeta} um_fn ON um_fn.user_id = r.user_id AND um_fn.meta_key = 'first_name'
+             LEFT JOIN {$wpdb->usermeta} um_ln ON um_ln.user_id = r.user_id AND um_ln.meta_key = 'last_name'
+             WHERE r.event_id = %d AND r.status = 'confirmed'",
+            $event_id
+        ) );
+
+        $vehicle_ids = array_filter( array_map( 'intval', wp_list_pluck( $rows, 'vehicle_id' ) ) );
+        if ( $vehicle_ids ) update_meta_cache( 'post', $vehicle_ids );
+
+        $by_class = array();
+        $entrants = array();
+        foreach ( $rows as $r ) {
+            $cid = (int) $r->class_id;
+            if ( ! $cid ) continue;
+            $vid = (int) $r->vehicle_id;
+            $by_class[ $cid ][] = array(
+                'name'   => $r->full_name ?: ( $r->display_name ?: '—' ),
+                'number' => $vid ? trim( (string) get_post_meta( $vid, '_msc_comp_number', true ) ) : '',
+            );
+            $entrants[ (int) $r->reg_id ] = true;
+        }
+
+        // Race Number ascending (natural order), entries without one last, then by name.
+        foreach ( $by_class as &$list ) {
+            usort( $list, function ( $a, $b ) {
+                if ( ( $a['number'] === '' ) !== ( $b['number'] === '' ) ) return $a['number'] === '' ? 1 : -1;
+                $cmp = strnatcasecmp( $a['number'], $b['number'] );
+                return $cmp !== 0 ? $cmp : strcasecmp( $a['name'], $b['name'] );
+            } );
+        }
+        unset( $list );
+
+        // Use event class order where available, then any classes no longer allowed on the event.
+        $event_class_ids = get_post_meta( $event_id, '_msc_event_classes', true );
+        $ordered = $event_class_ids ? array_map( 'intval', (array) $event_class_ids ) : array();
+        $ordered = array_unique( array_merge( $ordered, array_keys( $by_class ) ) );
+
+        ob_start();
+        ?>
+        <div class="msc-results-wrap msc-entry-list">
+            <h2 class="msc-results-title">📋 Entry List</h2>
+            <?php if ( empty( $entrants ) ) : ?>
+            <p class="msc-entry-list-empty">No confirmed entries yet.</p>
+            <?php else : ?>
+            <p class="msc-entry-list-count"><?php echo esc_html( sprintf( _n( '%d confirmed entrant', '%d confirmed entrants', count( $entrants ) ), count( $entrants ) ) ); ?></p>
+            <?php foreach ( $ordered as $cid ) :
+                if ( empty( $by_class[ $cid ] ) ) continue;
+                $term       = get_term( $cid, 'msc_vehicle_class' );
+                $class_name = ( $term && ! is_wp_error( $term ) ) ? $term->name : 'Class #' . $cid;
+            ?>
+            <div class="msc-class-results-section">
+                <h3 class="msc-class-results-heading">
+                    <span class="msc-class-badge-heading"><?php echo esc_html( $class_name ); ?></span>
+                    <span class="msc-entry-list-class-count"><?php echo (int) count( $by_class[ $cid ] ); ?></span>
+                </h3>
+                <div class="msc-results-table-wrap">
+                    <table class="msc-results-table msc-entry-list-table">
+                        <thead>
+                            <tr>
+                                <th class="msc-col-race-number">Race #</th>
+                                <th>Entrant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ( $by_class[ $cid ] as $i => $e ) : ?>
+                            <tr class="<?php echo $i % 2 === 0 ? 'msc-row-even' : 'msc-row-odd'; ?>">
+                                <td class="msc-col-race-number"><strong><?php echo $e['number'] !== '' ? esc_html( $e['number'] ) : '—'; ?></strong></td>
+                                <td><?php echo esc_html( $e['name'] ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            <?php endif; ?>
         </div>
         <?php
         return ob_get_clean();

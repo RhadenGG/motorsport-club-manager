@@ -107,6 +107,13 @@ A WordPress plugin for end-to-end motorsport event management — from event cre
 - Manual driver entries (name + vehicle description) for walk-ins not in the system.
 - The entire results module can be disabled in **Settings** for clubs that use an external results system — the event open/closed lifecycle (used to lock entries) is unaffected.
 
+### Public Entry List
+- Optional public list of **confirmed** entrants on each event page, grouped by class and sorted by Race Number.
+- Shows only the entrant's name, class and Race Number. Pending, rejected and cancelled entries never appear.
+- Off by default; enable site-wide under **Settings → Public Entry List**, and override per event (show/hide) in the event editor.
+- When the list is public, the entry form tells entrants that their name, class(es) and Race Number will be published.
+- Can also be embedded elsewhere with `[msc_entry_list event_id="123"]` (published events only, same visibility rules).
+
 ### Admin (wp-admin)
 - **Motorsport Club → Events:** event list with per-event entries sub-pages, paginated at 50 rows; each entry shows Class, Vehicle, an inline-editable Race #, Phone, and Sponsors as separate columns with multi-vehicle sub-rows; inline status update, paid checkbox, PoP view, indemnity PDF links, **Edit** button (opens the same inline edit panel as the frontend dashboard), **📋 PoP Link** copy button when a PoP upload has been requested from the entrant, and **✉ Resend** (per-row and bulk) to re-send the Entry Received, Entry Confirmed, and/or Signed Indemnity PDF emails to an entrant without changing their status or entry number — Entry Confirmed and Indemnity PDF are only offered where they still apply (status = Confirmed / indemnity signed).
 - **Motorsport Club → Participants:** same expandable CRM view as the frontend dashboard; First/Last name shown as primary identifier.
@@ -174,6 +181,7 @@ A background retry job runs every 5 minutes and re-attempts any notifications th
 | `[msc_events_list]` | Public grid of upcoming events | `count` (default 10), `show_past` (default 0) |
 | `[msc_next_event]` | Compact featured event card (sidebar/footer) | — |
 | `[msc_register_event]` | Embed the entry form for a specific event | `event_id` |
+| `[msc_entry_list]` | Public list of confirmed entrants (name, class, Race Number) for an event | `event_id` (defaults to current post) |
 | `[msc_my_account]` | Member garage, entries, and profile dashboard | — |
 | `[msc_event_dashboard]` | Staff management dashboard | — |
 | `[msc_login]` | Styled login form | — |
